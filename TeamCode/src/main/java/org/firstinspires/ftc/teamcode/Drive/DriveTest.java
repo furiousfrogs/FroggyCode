@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode.Drive;
+package org.firstinspires.ftc.teamcode;
 
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
@@ -30,11 +30,11 @@ public class DriveTest extends LinearOpMode {
         while (opModeIsActive()) {
             double y = -gamepad1.left_stick_y; // Remember, Y stick value is reversed
             double x = gamepad1.left_stick_x * 1.1; // Counteract imperfect strafing
-            double rx = gamepad1.right_stick_x;
-            if (Math.abs(y)>0.2){
+            double rx = gamepad1.left_trigger - gamepad1.right_trigger;
+            if (Math.abs(y)<0.2){
                 y=0.0;
             }
-            if (Math.abs(x)>0.2){
+            if (Math.abs(x)<0.2){
                 x=0.0;
             }
 
