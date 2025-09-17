@@ -17,13 +17,14 @@ public class WheelPID extends OpMode {
     private double RPM;
     private double lastTime;
     private int lastPosition;
+
     Motor launcher;
     FtcDashboard dashboard = FtcDashboard.getInstance();
 
 
     @Override
     public void init() {
-        Motor launcher = new Motor(hardwareMap, "launcher");
+        launcher = new Motor(hardwareMap, "launcher", 28, 6000);
         launcher.setRunMode(Motor.RunMode.RawPower);
 
         lastTime = getRuntime();
@@ -49,10 +50,14 @@ public class WheelPID extends OpMode {
     public void runFeedforward () {
             SimpleMotorFeedforward feedforward = new SimpleMotorFeedforward(var.fwKs, var.fwKv, var.fwKa);
 
-        double targetRpm = 5000.0;
-        double feedforwardPower = feedforward.calculate(targetRpm, 0.0); // accel = 0 at steady-state
+
+        double feedforwardPower = feedforward.calculate(var.targetrpm, 0.0); // accel = 0 at steady-state
 
         launcher.set(feedforwardPower);
+    }
+
+    public void adjusttarget() {
+        //gamepads n shit
     }
 
     public void telemetry() {
@@ -69,6 +74,7 @@ public class WheelPID extends OpMode {
     public void loop() {
         calculateRPM();
         runFeedforward();
+        telemetry();
     }
 
 }
