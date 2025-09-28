@@ -17,14 +17,9 @@ import java.util.List;
 @TeleOp(name = "Vision (AprilTag + VisionPortal)")
 public class Vision extends LinearOpMode {
 
+
     @Override
     public void runOpMode() throws InterruptedException {
-
-        double kPturn = 0.6;        // scale turn power by angle error
-        double minPower = 0.08;
-        double maxPower = 1.0;
-        double alignDegTol = 1.5;   // done when |bearing| < this
-        double minDecisionMargin = 15.0; // ignore sketchy detections
 
         DcMotor fl = hardwareMap.dcMotor.get("fl");
         DcMotor bl = hardwareMap.dcMotor.get("bl");
@@ -79,20 +74,20 @@ public class Vision extends LinearOpMode {
                     double bearingDeg = Math.toDegrees(bearingRad);
                     telemetry.addData("bearing (deg)", "%.1f", bearingDeg);
 
-                    if (d.decisionMargin > minDecisionMargin && d.ftcPose.y  > 0.1) {
+                    if (d.decisionMargin > var.minDecisionMargin && d.ftcPose.y  > 0.1) {
                         double error = bearingDeg;              // target = 0°
-                        double turn = kPturn * error;           // proportional control
-                        turn = Math.max(-maxPower, Math.min(maxPower, turn));
+                        double turn = var.kPturn * error;           // proportional control
+                        turn = Math.max(-var.maxPower, Math.min(var.maxPower, turn));
 
-                        if (Math.abs(error) <= alignDegTol) {
+                        if (Math.abs(error) <= var.alignDegTol) {
                             fl.setPower(0.0);
                             bl.setPower(0.0);
                             fr.setPower(0.0);
                             br.setPower(0.0);
                             telemetry.addLine("Aligned ✓");
                         } else {
-                            if (Math.abs(turn) < minPower) {
-                                turn = Math.copySign(minPower, turn);
+                            if (Math.abs(turn) < var.minPower) {
+                                turn = Math.copySign(var.minPower, turn);
                             }
                             // Positive 'turn' spins right; negative spins left
                             // Left side gets +turn, right side gets -turn (given your motor directions)
