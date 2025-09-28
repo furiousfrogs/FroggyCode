@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode.Camera;
+package org.firstinspires.ftc.teamcode.commandbase.vision;
 
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
@@ -6,7 +6,7 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 
 import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
-import org.firstinspires.ftc.teamcode.var;
+import org.firstinspires.ftc.teamcode.hardware.Globals;
 import org.firstinspires.ftc.vision.VisionPortal;
 import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
 import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
@@ -74,20 +74,20 @@ public class Vision extends LinearOpMode {
                     double bearingDeg = Math.toDegrees(bearingRad);
                     telemetry.addData("bearing (deg)", "%.1f", bearingDeg);
 
-                    if (d.decisionMargin > var.minDecisionMargin && d.ftcPose.y  > 0.1) {
+                    if (d.decisionMargin > Globals.minDecisionMargin && d.ftcPose.y  > 0.1) {
                         double error = bearingDeg;              // target = 0°
-                        double turn = var.kPturn * error;           // proportional control
-                        turn = Math.max(-var.maxPower, Math.min(var.maxPower, turn));
+                        double turn = Globals.kPturn * error;           // proportional control
+                        turn = Math.max(-Globals.maxPower, Math.min(Globals.maxPower, turn));
 
-                        if (Math.abs(error) <= var.alignDegTol) {
+                        if (Math.abs(error) <= Globals.alignDegTol) {
                             fl.setPower(0.0);
                             bl.setPower(0.0);
                             fr.setPower(0.0);
                             br.setPower(0.0);
                             telemetry.addLine("Aligned ✓");
                         } else {
-                            if (Math.abs(turn) < var.minPower) {
-                                turn = Math.copySign(var.minPower, turn);
+                            if (Math.abs(turn) < Globals.minPower) {
+                                turn = Math.copySign(Globals.minPower, turn);
                             }
                             // Positive 'turn' spins right; negative spins left
                             // Left side gets +turn, right side gets -turn (given your motor directions)
