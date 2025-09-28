@@ -1,16 +1,10 @@
-package org.firstinspires.ftc.teamcode.Turret;
+package org.firstinspires.ftc.teamcode.commandbase;
 
-
-import static org.firstinspires.ftc.teamcode.var.downset;
-import static org.firstinspires.ftc.teamcode.var.upset;
 
 import com.acmerobotics.dashboard.FtcDashboard;
 import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
-import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
-import com.qualcomm.robotcore.hardware.DcMotor;
-import com.qualcomm.robotcore.hardware.Servo;
 import com.seattlesolvers.solverslib.command.button.GamepadButton;
 import com.seattlesolvers.solverslib.controller.wpilibcontroller.SimpleMotorFeedforward;
 import com.seattlesolvers.solverslib.gamepad.GamepadEx;
@@ -19,7 +13,7 @@ import com.seattlesolvers.solverslib.hardware.SimpleServo;
 import com.seattlesolvers.solverslib.hardware.motors.Motor;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
-import org.firstinspires.ftc.teamcode.var;
+import org.firstinspires.ftc.teamcode.hardware.Globals;
 
 @TeleOp
 public class WheelPID extends OpMode {
@@ -78,19 +72,19 @@ public class WheelPID extends OpMode {
     }
 
     public void runFeedforward() {
-        SimpleMotorFeedforward feedforward = new SimpleMotorFeedforward(var.fwKs, var.fwKv, var.fwKa);
+        SimpleMotorFeedforward feedforward = new SimpleMotorFeedforward(Globals.fwKs, Globals.fwKv, Globals.fwKa);
 
 
-        double feedforwardPower = feedforward.calculate(var.targetrpm, 0.0); // accel = 0 at steady-state
+        double feedforwardPower = feedforward.calculate(Globals.targetrpm, 0.0); // accel = 0 at steady-state
 
         launcher.set(feedforwardPower);
     }
 
     public void adjusttarget() {
         if(gamepadEx.getButton(GamepadKeys.Button.CIRCLE)){
-            set.turnToAngle(downset);
+            set.turnToAngle(Globals.downset);
         } else if (gamepadEx.getButton(GamepadKeys.Button.TRIANGLE)) {
-            set.turnToAngle(upset);
+            set.turnToAngle(Globals.upset);
         }
     }
 
