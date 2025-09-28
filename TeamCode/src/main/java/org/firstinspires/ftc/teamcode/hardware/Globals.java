@@ -13,4 +13,10 @@ public class Globals {
 
     public static double downset=0.0F;
     public static double upset=0.9F;
+
+    public static double kPturn = 0.6F;        // scale turn power by angle error
+    public static double minPower = 0.08;
+    public static double maxPower = 1.0;
+    public static double alignDegTol = 1.5;   // done when |bearing| < this
+    public static double minDecisionMargin = 15.0; // ignore sketchy detections
 }
