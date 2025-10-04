@@ -10,6 +10,7 @@ import com.seattlesolvers.solverslib.controller.wpilibcontroller.SimpleMotorFeed
 import com.seattlesolvers.solverslib.gamepad.GamepadEx;
 import com.seattlesolvers.solverslib.gamepad.GamepadKeys;
 import com.seattlesolvers.solverslib.hardware.SimpleServo;
+import com.seattlesolvers.solverslib.hardware.motors.CRServo;
 import com.seattlesolvers.solverslib.hardware.motors.Motor;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
@@ -27,6 +28,7 @@ public class WheelPID extends OpMode {
 
     Motor launcher;
     SimpleServo set;
+    CRServo rotate;
     FtcDashboard dashboard = FtcDashboard.getInstance();
 
     GamepadEx gamepadEx;
@@ -42,16 +44,15 @@ public class WheelPID extends OpMode {
                 AngleUnit.DEGREES
         );
 
+        rotate = new CRServo(
+                hardwareMap, "rotate"
+        );
+
         lastTime = getRuntime();
         lastPosition = launcher.getCurrentPosition();
 
         gamepadEx = new GamepadEx(gamepad1);
-        GamepadButton triangle = new GamepadButton(
-                gamepadEx, GamepadKeys.Button.TRIANGLE
-        );
-        GamepadButton circle = new GamepadButton(
-                gamepadEx, GamepadKeys.Button.CIRCLE
-        );
+
 
     }
 
@@ -76,11 +77,15 @@ public class WheelPID extends OpMode {
 
 
         double feedforwardPower = feedforward.calculate(Globals.targetrpm, 0.0); // accel = 0 at steady-state
+        if (gamepadEx.getButton(GamepadKeys.Button.CROSS)){
+            launcher.set(feedforwardPower);
+        } else {
+            launcher.set(0);
+        }
 
-        launcher.set(feedforwardPower);
     }
 
-    public void adjusttarget() {
+    public void inputBall() {
         if(gamepadEx.getButton(GamepadKeys.Button.CIRCLE)){
             set.turnToAngle(Globals.downset);
         } else if (gamepadEx.getButton(GamepadKeys.Button.TRIANGLE)) {
@@ -88,6 +93,16 @@ public class WheelPID extends OpMode {
         }
     }
 
+    public void rotate() {
+        if (gamepadEx.getButton(GamepadKeys.Button.RIGHT_BUMPER)){
+            rotate.set(1);
+        } else if (gamepadEx.getButton(GamepadKeys.Button.LEFT_BUMPER)){
+            rotate.set(-1);
+        } else {
+            rotate.set(0);
+        }
+
+    }
 
     public void telemetry() {
         // Normal telemetry
@@ -105,6 +120,7 @@ public class WheelPID extends OpMode {
         calculateRPM();
         runFeedforward();
         telemetry();
-        adjusttarget();
+        inputBall();
+        rotate();
     }
 }
