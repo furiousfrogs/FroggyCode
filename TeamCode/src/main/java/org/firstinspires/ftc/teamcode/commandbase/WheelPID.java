@@ -1,16 +1,19 @@
-package org.firstinspires.ftc.teamcode.Turret;
+package org.firstinspires.ftc.teamcode.commandbase;
 
 
 import com.acmerobotics.dashboard.FtcDashboard;
 import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
-import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
-import com.qualcomm.robotcore.hardware.DcMotor;
+import com.seattlesolvers.solverslib.command.button.GamepadButton;
 import com.seattlesolvers.solverslib.controller.wpilibcontroller.SimpleMotorFeedforward;
+import com.seattlesolvers.solverslib.gamepad.GamepadEx;
+import com.seattlesolvers.solverslib.gamepad.GamepadKeys;
+import com.seattlesolvers.solverslib.hardware.SimpleServo;
 import com.seattlesolvers.solverslib.hardware.motors.Motor;
 
-import org.firstinspires.ftc.teamcode.var;
+import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+import org.firstinspires.ftc.teamcode.hardware.Globals;
 
 @TeleOp
 public class WheelPID extends OpMode {
@@ -18,17 +21,38 @@ public class WheelPID extends OpMode {
     private double lastTime;
     private int lastPosition;
 
+
+
+
+
     Motor launcher;
+    SimpleServo set;
     FtcDashboard dashboard = FtcDashboard.getInstance();
+
+    GamepadEx gamepadEx;
 
 
     @Override
     public void init() {
-        launcher = new Motor(hardwareMap, "launcher", 28, 6000);
+        launcher = new Motor(hardwareMap, "fl", 28, 6000);
         launcher.setRunMode(Motor.RunMode.RawPower);
+
+        set = new SimpleServo(
+                hardwareMap, "set", 0, 180,
+                AngleUnit.DEGREES
+        );
 
         lastTime = getRuntime();
         lastPosition = launcher.getCurrentPosition();
+
+        gamepadEx = new GamepadEx(gamepad1);
+        GamepadButton triangle = new GamepadButton(
+                gamepadEx, GamepadKeys.Button.TRIANGLE
+        );
+        GamepadButton circle = new GamepadButton(
+                gamepadEx, GamepadKeys.Button.CIRCLE
+        );
+
     }
 
     public void calculateRPM() {
@@ -47,19 +71,22 @@ public class WheelPID extends OpMode {
         }
     }
 
-    public void runFeedforward () {
-            SimpleMotorFeedforward feedforward = new SimpleMotorFeedforward(var.fwKs, var.fwKv, var.fwKa);
+    public void runFeedforward() {
+        SimpleMotorFeedforward feedforward = new SimpleMotorFeedforward(Globals.fwKs, Globals.fwKv, Globals.fwKa);
 
 
-        double feedforwardPower = feedforward.calculate(var.targetrpm, 0.0); // accel = 0 at steady-state
+        double feedforwardPower = feedforward.calculate(Globals.targetrpm, 0.0); // accel = 0 at steady-state
 
         launcher.set(feedforwardPower);
     }
 
     public void adjusttarget() {
-        //gamepads n shit
+        if(gamepadEx.getButton(GamepadKeys.Button.CIRCLE)){
+            set.turnToAngle(Globals.downset);
+        } else if (gamepadEx.getButton(GamepadKeys.Button.TRIANGLE)) {
+            set.turnToAngle(Globals.upset);
+        }
     }
-
 
 
     public void telemetry() {
@@ -72,11 +99,12 @@ public class WheelPID extends OpMode {
         packet.put("RPM", RPM);
         dashboard.sendTelemetryPacket(packet);
     }
+
     @Override
     public void loop() {
         calculateRPM();
         runFeedforward();
         telemetry();
+        adjusttarget();
     }
-
 }
