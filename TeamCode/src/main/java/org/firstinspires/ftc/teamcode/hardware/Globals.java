@@ -6,16 +6,18 @@ import com.acmerobotics.dashboard.config.Config;
 @Config
 public class Globals {
     public static float fwKa = 0.01F; //basically does nothing
-    public static float fwKs = 0.085F; //small change
+    public static float fwKs = 0.2F; //small change
     public static float fwKv = 0.00014F; //main change
+    public static float launcherTol = 100F;
 
-    public static float turretKP = 0.020F;
+    public static float turretKP = 0.018F;
     public static float turretKI = 0.000F;
-    public static float turretKD = 0.002F;
+    public static float turretKD = 0.013F;
     public static float turretKF = 0.000F;
 
-    public static float turretTol = 0.05F;
-    public static float turretMin = 0.2F;
+    public static float turretTol = 2F;
+    public static float turretMin = 0.11F;
+    public static float turretMax = 0.8F;
 
 
     public static float targetrpm = 6000F;

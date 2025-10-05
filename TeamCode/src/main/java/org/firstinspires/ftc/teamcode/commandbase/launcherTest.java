@@ -26,8 +26,8 @@ import org.firstinspires.ftc.teamcode.hardware.Globals;
 
 import java.util.List;
 
-@TeleOp(name = "AutoAimTurret")
-public class AutoAimTurret extends OpMode {
+@TeleOp(name = "launcher test")
+public class launcherTest extends OpMode {
     private boolean aligned = false;
     private boolean speed = false;
     private boolean sight = false;
@@ -89,8 +89,7 @@ public class AutoAimTurret extends OpMode {
     @Override
     public void loop() {
         calculateRPM();
-        runFeedforward();
-        inputBall();
+        launcherawe();
         autoAim();      // now only reads/controls; does NOT rebuild vision
         doTelemetry();
     }
@@ -134,6 +133,11 @@ public class AutoAimTurret extends OpMode {
             }
 
             if (chosen != null) {
+                double err = chosenBearing;
+                boolean onTargetNow = Math.abs(err) <= Globals.turretTol;
+
+
+                aligned = onTargetNow;
                 double bearing = Math.abs(chosenBearing) < Globals.turretTol ? 0.0 : chosenBearing;
 
                 double raw = pidf.calculate(bearing, 0.0);          // measured, setpoint
@@ -147,11 +151,13 @@ public class AutoAimTurret extends OpMode {
 
         } else if (lb ^ rb) {  // exactly one bumper pressed -> manual nudge
             // use max safe speed, not ±1
-            turretPower = lb ? +1 : 1;
+            turretPower = lb ? +1 : -1;
+            aligned = false;
 
         } else {
             // both pressed (or any other case) -> stop
             turretPower = 0.0;
+            aligned = false;
         }
 
         rotate.set(turretPower);
@@ -175,30 +181,40 @@ public class AutoAimTurret extends OpMode {
     }
 
 
-    private void runFeedforward() {
+    private void launcherawe() {
+        List<AprilTagDetection> detections = tagProcessor.getDetections();
+        if (detections != null && !detections.isEmpty() && aligned) {
+            for (AprilTagDetection d : detections) {
+                distance = d.ftcPose.range;
+                power = Globals.targetrpm; // TODO FORMULA FOR POWER. replace targetrpm with the formula
+                speed = true;
+            }
+        } else {
+            power = 0;
+            speed = false;
+        }
+
         SimpleMotorFeedforward ff = new SimpleMotorFeedforward(Globals.fwKs, Globals.fwKv, Globals.fwKa);
-        double feedforwardPower = ff.calculate(Globals.targetrpm, 0.0);
+        double feedforwardPower = ff.calculate(power, 0.0);
 
         if (gamepadEx.getButton(GamepadKeys.Button.CROSS)) {
             launcher.set(feedforwardPower);
+            if (power > 1000 && Math.abs(Globals.targetrpm - RPM) < Globals.launcherTol) { // TODO replace targetrpm with power
+                set.turnToAngle(Globals.upset);
+            }
         } else {
             launcher.set(0);
-        }
-    }
-
-    private void inputBall() {
-        if (gamepadEx.getButton(GamepadKeys.Button.CIRCLE)) {
             set.turnToAngle(Globals.downset);
-        } else if (gamepadEx.getButton(GamepadKeys.Button.TRIANGLE)) {
-            set.turnToAngle(Globals.upset);
         }
+
     }
 
 
     private void doTelemetry() {
         telemetry.addData("RPM", RPM);
         telemetry.addData("bearing: ", bearing);
-
+        telemetry.addData("distance: ", distance);
+        telemetry.addData("aligned? ", aligned);
         telemetry.update();
 
         TelemetryPacket packet = new TelemetryPacket();
