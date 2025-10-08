@@ -30,14 +30,17 @@ import java.util.List;
 public class launcherTest extends OpMode {
     private boolean aligned = false;
     private boolean speed = false;
+    private boolean patternDetected = false;
     private boolean sight = false;
+    private boolean autoAimEnabled = false;
+    private boolean prevTri = false;
+
     private VisionPortal visionPortal;
     private AprilTagProcessor tagProcessor;
     private double distance;
     private double power;
     private PIDFController pidf;
     private double turretPower = 0.0;
-
 
     private Motor launcher;
     private SimpleServo set;
@@ -50,6 +53,14 @@ public class launcherTest extends OpMode {
     private FtcDashboard dashboard = FtcDashboard.getInstance();
     private GamepadEx gamepadEx;
     private double bearing = 0.0;
+
+    public enum pattern {
+        PPG,
+        PGP,
+        GPP
+    }
+
+    pattern currentPattern = pattern.PPG;
     @Override
     public void init() {
 
@@ -87,11 +98,12 @@ public class launcherTest extends OpMode {
     }
 
     @Override
-    public void loop() {
+    public void loop() { // TODO add revolver sequence logic
         calculateRPM();
         launcherawe();
         autoAim();      // now only reads/controls; does NOT rebuild vision
         doTelemetry();
+        findPattern();
     }
 
     @Override
@@ -99,70 +111,93 @@ public class launcherTest extends OpMode {
         if (visionPortal != null) visionPortal.close();
     }
 
-    // ----------------- AUTO AIM (bearing -> power) -----------------
+    private void findPattern() {
+        List<AprilTagDetection> code = tagProcessor.getDetections();
+        if (code!= null && !code.isEmpty() && !patternDetected) {
+            for (AprilTagDetection c : code) {
+                if (c.id == 21) {
+                    currentPattern = pattern.GPP;
+                    patternDetected = true;
+                } else if (c.id == 22) {
+                    currentPattern = pattern.PGP;
+                    patternDetected = true;
+                } else if (c.id == 23) {
+                    currentPattern = pattern.PPG;
+                    patternDetected = true;
+                } else {
+                    patternDetected = false;
+                    telemetry.addLine("NO PATTERN FOUND");
+                }
+            }
+        }
+
+    } //TODO currently is always on, add a toggle.
+
     private void autoAim() {
+        // Pull live gains (Dashboard)
         pidf.setP(Globals.turretKP);
         pidf.setI(Globals.turretKI);
         pidf.setD(Globals.turretKD);
         pidf.setF(Globals.turretKF);
 
+        // Toggle with TRIANGLE (edge)
+        boolean tri = gamepadEx.getButton(GamepadKeys.Button.TRIANGLE);
+        if (tri && !prevTri) {
+            autoAimEnabled = !autoAimEnabled;
+            pidf.reset(); // avoid D/I kick
+        }
+        prevTri = tri;
 
         boolean lb = gamepadEx.getButton(GamepadKeys.Button.LEFT_BUMPER);
         boolean rb = gamepadEx.getButton(GamepadKeys.Button.RIGHT_BUMPER);
-        if (!(lb || rb)) {  // neither bumper -> auto aim
 
-            List<AprilTagDetection> detections = tagProcessor.getDetections();
 
-            AprilTagDetection chosen = null;
-            double chosenBearing = 0.0;
+        List<AprilTagDetection> detections = tagProcessor.getDetections();
 
-            if (detections != null && !detections.isEmpty()) {
-                if (turretPower == 0) {
-                    aligned = true;
-                }
-                for (AprilTagDetection d : detections) {
-                    if (d.ftcPose != null) {
-                        bearing = d.ftcPose.bearing;
-                        double b = d.ftcPose.bearing; // deg; +left, -right
-                        if (chosen == null || Math.abs(b) < Math.abs(chosenBearing)) {
-                            chosen = d;
-                            chosenBearing = b;
-                        }
+
+        AprilTagDetection chosen = null;
+        double chosenBearing = 0.0;
+        if (detections != null && !detections.isEmpty()) {
+            for (AprilTagDetection d : detections) {
+                if (d.ftcPose != null) {
+                    double b = d.ftcPose.bearing;
+                    if (chosen == null || Math.abs(b) < Math.abs(chosenBearing)) {
+                        chosen = d;
+                        chosenBearing = b;
                     }
                 }
             }
+        }
 
+        if (autoAimEnabled && !(lb || rb)) {
             if (chosen != null) {
                 double err = chosenBearing;
-                boolean onTargetNow = Math.abs(err) <= Globals.turretTol;
+                boolean onTarget = Math.abs(err) <= Globals.turretTol;
+                aligned = onTarget;
+
+                double ctrlErr = onTarget ? 0.0 : err;
+                double raw = pidf.calculate(ctrlErr, 0.0);
+                double out = applyMinEffort(raw, Globals.turretMin);
 
 
-                aligned = onTargetNow;
-                double bearing = Math.abs(chosenBearing) < Globals.turretTol ? 0.0 : chosenBearing;
-
-                double raw = pidf.calculate(bearing, 0.0);          // measured, setpoint
-                double out = applyMinEffort(raw, Globals.turretMin);       // beat stiction
-
-                turretPower = clamp(-out, -Globals.turretMax, +Globals.turretMax);   // safety
+                turretPower = clamp(out, -Globals.turretMax, +Globals.turretMax);
             } else {
-                turretPower = 0.0; // no tag -> stop (or add slow scan here)
                 aligned = false;
+                turretPower = 0.0;
             }
 
-        } else if (lb ^ rb) {  // exactly one bumper pressed -> manual nudge
-            // use max safe speed, not ±1
-            turretPower = lb ? +1 : -1;
+        } else if (lb ^ rb) {
             aligned = false;
+            turretPower = lb ? -Globals.turretMax : +Globals.turretMax;
 
         } else {
-            // both pressed (or any other case) -> stop
-            turretPower = 0.0;
             aligned = false;
+            turretPower = 0.0;
         }
 
         rotate.set(turretPower);
-    }
 
+    }
     // ----------------- Launcher utilities (unchanged logic) -----------------
     private void calculateRPM() {
         double currentTime = getRuntime();
@@ -215,6 +250,7 @@ public class launcherTest extends OpMode {
         telemetry.addData("bearing: ", bearing);
         telemetry.addData("distance: ", distance);
         telemetry.addData("aligned? ", aligned);
+        telemetry.addData("pattern?: ", currentPattern);
         telemetry.update();
 
         TelemetryPacket packet = new TelemetryPacket();

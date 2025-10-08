@@ -31,10 +31,9 @@ public class AutoAimTurret extends OpMode {
     private boolean aligned = false;
     private boolean speed = false;
     private boolean sight = false;
+
     private VisionPortal visionPortal;
     private AprilTagProcessor tagProcessor;
-    private double distance;
-    private double power;
     private PIDFController pidf;
     private double turretPower = 0.0;
 
