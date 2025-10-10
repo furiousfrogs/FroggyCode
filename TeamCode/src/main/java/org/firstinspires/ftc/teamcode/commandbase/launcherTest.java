@@ -142,6 +142,20 @@ public class launcherTest extends OpMode {
         }
 
     } //TODO currently is always on, add a toggle.
+    private void rotate90()
+    private void patternAlgo() {
+        switch (currentPattern) {
+            case PPG:
+
+
+                break;
+            case PGP:
+                break;
+            case GPP:
+                break;
+
+        }
+    }
 
     private void autoAim() {
         // Pull live gains (Dashboard)
