@@ -5,11 +5,15 @@ import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
+import com.qualcomm.robotcore.hardware.ColorSensor;
+import com.qualcomm.robotcore.hardware.DistanceSensor;
+import com.qualcomm.robotcore.hardware.NormalizedColorSensor;
 import com.seattlesolvers.solverslib.command.button.GamepadButton;
 import com.seattlesolvers.solverslib.controller.PIDFController;
 import com.seattlesolvers.solverslib.controller.wpilibcontroller.SimpleMotorFeedforward;
 import com.seattlesolvers.solverslib.gamepad.GamepadEx;
 import com.seattlesolvers.solverslib.gamepad.GamepadKeys;
+import com.seattlesolvers.solverslib.hardware.SensorColor;
 import com.seattlesolvers.solverslib.hardware.SimpleServo;
 import com.seattlesolvers.solverslib.hardware.motors.CRServo;
 import com.seattlesolvers.solverslib.hardware.motors.Motor;
@@ -54,6 +58,8 @@ public class launcherTest extends OpMode {
     private GamepadEx gamepadEx;
     private double bearing = 0.0;
 
+    private NormalizedColorSensor colour;
+    private DistanceSensor dist;
     public enum pattern {
         PPG,
         PGP,
@@ -63,6 +69,10 @@ public class launcherTest extends OpMode {
     pattern currentPattern = pattern.PPG;
     @Override
     public void init() {
+
+        colour = (NormalizedColorSensor) hardwareMap.get(ColorSensor.class, "color");
+        dist = hardwareMap.get(DistanceSensor.class, "colour");
+
 
         launcher = new Motor(hardwareMap, "fl", 28, 6000);
         launcher.setRunMode(Motor.RunMode.RawPower);
