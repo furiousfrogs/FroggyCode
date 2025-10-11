@@ -2,6 +2,7 @@ package org.firstinspires.ftc.teamcode.commandbase;
 
 import com.acmerobotics.dashboard.FtcDashboard;
 import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
+import com.qualcomm.hardware.motors.GoBILDA5202Series;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
@@ -46,7 +47,7 @@ public class launcherTest extends OpMode {
     private PIDFController pidf;
     private double turretPower = 0.0;
 
-    private Motor launcher;
+    private Motor launcher, revolver;
     private SimpleServo set;
     private CRServo rotate;
 
@@ -70,8 +71,12 @@ public class launcherTest extends OpMode {
     @Override
     public void init() {
 
-        colour = (NormalizedColorSensor) hardwareMap.get(ColorSensor.class, "color");
-        dist = hardwareMap.get(DistanceSensor.class, "colour");
+        //colour = (NormalizedColorSensor) hardwareMap.get(ColorSensor.class, "color");
+        //dist = hardwareMap.get(DistanceSensor.class, "colour");
+
+        revolver = new Motor(hardwareMap, "revolver", 28, 1150);
+        revolver.setRunMode(Motor.RunMode.PositionControl);
+        revolver.setPositionCoefficient(Globals.revolverKP);
 
 
         launcher = new Motor(hardwareMap, "fl", 28, 6000);
@@ -109,16 +114,31 @@ public class launcherTest extends OpMode {
 
     @Override
     public void loop() { // TODO add revolver sequence logic
-        calculateRPM();
-        launcherawe();
-        autoAim();      // now only reads/controls; does NOT rebuild vision
-        doTelemetry();
-        findPattern();
+        //calculateRPM();
+        //launcherawe();
+        //autoAim();      // now only reads/controls; does NOT rebuild vision
+        //doTelemetry();
+        //findPattern();
+        revolverRotate();
     }
 
     @Override
     public void stop() {
         if (visionPortal != null) visionPortal.close();
+    }
+
+    private void revolverRotate() {
+        revolver.setPositionCoefficient(Globals.revolverKP);
+        revolver.setPositionTolerance(Globals.revolverTol);
+        if (gamepadEx.getButton(GamepadKeys.Button.SQUARE)) {
+            revolver.setTargetPosition(revolver.getCurrentPosition() + 1160); // 2 rotations
+        } else if (gamepadEx.getButton(GamepadKeys.Button.CROSS)) {
+            revolver.setTargetPosition(revolver.getCurrentPosition() - 1160);
+        }
+        if (!revolver.atTargetPosition()) {
+            revolver.set(0.20);
+        }
+        revolver.stopMotor();
     }
 
     private void findPattern() {
@@ -142,7 +162,7 @@ public class launcherTest extends OpMode {
         }
 
     } //TODO currently is always on, add a toggle.
-    private void rotate90()
+
     private void patternAlgo() {
         switch (currentPattern) {
             case PPG:
