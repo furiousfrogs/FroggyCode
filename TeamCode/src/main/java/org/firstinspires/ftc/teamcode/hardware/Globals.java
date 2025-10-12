@@ -20,8 +20,9 @@ public class Globals {
     public static float turretMax = 0.8F;
 
     public static int oneRotation = 360;
-    public static float revolverTol = 5.0F;
-    public static float revolverKP = 0.005F;
+    public static int revolverTol = 5;
+    public static float revolverKP = 0.01F;
+    public static float revolverKD=0.002F;
     public static float targetrpm = 6000F;
 
     public static double downset=0.0F;
