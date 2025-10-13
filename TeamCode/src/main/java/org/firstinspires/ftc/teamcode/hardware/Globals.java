@@ -19,18 +19,20 @@ public class Globals {
     public static float turretMin = 0.11F;
     public static float turretMax = 0.8F;
 
-    public static int oneRotation = 740;
-    public static float revolverTol = 0.3F;
-    public static float revolverKP = 0.2F;
+    public static int oneRotation = 360;
+    public static int revolverTol = 5;
+    public static float revolverKP = 0.01F;
+    public static float revolverKD=0.002F;
     public static float targetrpm = 6000F;
 
     public static double downset=0.0F;
-    public static double upset=130F;
+    public static double upset=170F;
 
     public static double kPturn = 0.6F;        // scale turn power by angle error
     public static double minPower = 0.08;
     public static double maxPower = 1.0;
     public static double alignDegTol = 1.5;   // done when |bearing| < this
     public static double minDecisionMargin = 15.0; // ignore sketchy detections
-
+    public static double cpr=1538.0;
+    public static double rpm=435.0;
 }

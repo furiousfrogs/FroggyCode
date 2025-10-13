@@ -1,5 +1,7 @@
 package org.firstinspires.ftc.teamcode.commandbase;
 
+import static java.lang.Math.pow;
+
 import com.acmerobotics.dashboard.FtcDashboard;
 import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
 import com.qualcomm.hardware.motors.GoBILDA5202Series;
@@ -114,12 +116,12 @@ public class launcherTest extends OpMode {
 
     @Override
     public void loop() { // TODO add revolver sequence logic
-        //calculateRPM();
-        //launcherawe();
-        //autoAim();      // now only reads/controls; does NOT rebuild vision
-        //doTelemetry();
-        //findPattern();
-        revolverRotate();
+        calculateRPM();
+        launcherawe();
+        autoAim();      // now only reads/controls; does NOT rebuild vision
+        doTelemetry();
+        findPattern();
+        //revolverRotate();
     }
 
     @Override
@@ -224,7 +226,7 @@ public class launcherTest extends OpMode {
                 double out = applyMinEffort(raw, Globals.turretMin);
 
 
-                turretPower = clamp(out, -Globals.turretMax, +Globals.turretMax);
+                turretPower = -clamp(out, -Globals.turretMax, +Globals.turretMax);
             } else {
                 aligned = false;
                 turretPower = 0.0;
@@ -265,7 +267,8 @@ public class launcherTest extends OpMode {
         if (detections != null && !detections.isEmpty() && aligned) {
             for (AprilTagDetection d : detections) {
                 distance = d.ftcPose.range;
-                power = Globals.targetrpm; // TODO FORMULA FOR POWER. replace targetrpm with the formula
+
+                power = (2358.7* pow(2.71828, 0.008*distance)); // TODO FORMULA FOR POWER. replace targetrpm with the formula
                 speed = true;
             }
         } else {
@@ -276,9 +279,9 @@ public class launcherTest extends OpMode {
         SimpleMotorFeedforward ff = new SimpleMotorFeedforward(Globals.fwKs, Globals.fwKv, Globals.fwKa);
         double feedforwardPower = ff.calculate(power, 0.0);
 
-        if (gamepadEx.getButton(GamepadKeys.Button.CROSS)) {
+        if (gamepadEx.getButton(GamepadKeys.Button.CROSS) && aligned) {
             launcher.set(feedforwardPower);
-            if (power > 1000 && Math.abs(Globals.targetrpm - RPM) < Globals.launcherTol) { // TODO replace targetrpm with power
+            if (power > 1000 && Math.abs(power - RPM) < Globals.launcherTol) { // TODO replace targetrpm with power
                 set.turnToAngle(Globals.upset);
             }
         } else {
