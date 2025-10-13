@@ -24,6 +24,7 @@ import com.seattlesolvers.solverslib.hardware.motors.Motor;
 import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.vision.VisionPortal;
+import org.firstinspires.ftc.vision.VisionProcessor;
 import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
 import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
 
@@ -39,14 +40,14 @@ public class launcherTest extends OpMode {
     private boolean speed = false;
     private boolean patternDetected = false;
     private boolean sight = false;
-    private boolean autoAimEnabled = false;
+    private boolean autoAimEnabled = true;
     private boolean prevTri = false;
 
     private VisionPortal visionPortal;
     private AprilTagProcessor tagProcessor;
     private double distance;
     private double power;
-    private PIDFController pidf;
+    private PIDFController turretPIDF;
     private double turretPower = 0.0;
 
     private Motor launcher, revolver;
@@ -92,7 +93,7 @@ public class launcherTest extends OpMode {
         gamepadEx = new GamepadEx(gamepad1);
 
 
-        pidf = new PIDFController(Globals.turretKP, Globals.turretKI, Globals.turretKD, Globals.turretKF);
+        turretPIDF = new PIDFController(Globals.turretKP, Globals.turretKI, Globals.turretKD, Globals.turretKF);
 
 
         tagProcessor = new AprilTagProcessor.Builder()
@@ -124,11 +125,6 @@ public class launcherTest extends OpMode {
         //revolverRotate();
     }
 
-    @Override
-    public void stop() {
-        if (visionPortal != null) visionPortal.close();
-    }
-
     private void revolverRotate() {
         revolver.setPositionCoefficient(Globals.revolverKP);
         revolver.setPositionTolerance(Globals.revolverTol);
@@ -144,23 +140,28 @@ public class launcherTest extends OpMode {
     }
 
     private void findPattern() {
-        List<AprilTagDetection> code = tagProcessor.getDetections();
-        if (code!= null && !code.isEmpty() && !patternDetected) {
-            for (AprilTagDetection c : code) {
-                if (c.id == 21) {
-                    currentPattern = pattern.GPP;
-                    patternDetected = true;
-                } else if (c.id == 22) {
-                    currentPattern = pattern.PGP;
-                    patternDetected = true;
-                } else if (c.id == 23) {
-                    currentPattern = pattern.PPG;
-                    patternDetected = true;
-                } else {
-                    patternDetected = false;
-                    telemetry.addLine("NO PATTERN FOUND");
+        if (!patternDetected && !gamepadEx.getButton(GamepadKeys.Button.OPTIONS)) {
+            List<AprilTagDetection> code = tagProcessor.getDetections();
+            if (code != null && !code.isEmpty() && !patternDetected) {
+                for (AprilTagDetection c : code) {
+                    if (c.id == 21) {
+
+                        currentPattern = pattern.GPP;
+                        patternDetected = true;
+                    } else if (c.id == 22) {
+                        currentPattern = pattern.PGP;
+                        patternDetected = true;
+                    } else if (c.id == 23) {
+                        currentPattern = pattern.PPG;
+                        patternDetected = true;
+                    } else {
+                        patternDetected = false;
+                        telemetry.addLine("NO PATTERN FOUND");
+                    }
                 }
             }
+        } if (gamepadEx.getButton(GamepadKeys.Button.OPTIONS)) {
+            patternDetected = false;
         }
 
     } //TODO currently is always on, add a toggle.
@@ -168,8 +169,6 @@ public class launcherTest extends OpMode {
     private void patternAlgo() {
         switch (currentPattern) {
             case PPG:
-
-
                 break;
             case PGP:
                 break;
@@ -181,16 +180,16 @@ public class launcherTest extends OpMode {
 
     private void autoAim() {
         // Pull live gains (Dashboard)
-        pidf.setP(Globals.turretKP);
-        pidf.setI(Globals.turretKI);
-        pidf.setD(Globals.turretKD);
-        pidf.setF(Globals.turretKF);
+        turretPIDF.setP(Globals.turretKP);
+        turretPIDF.setI(Globals.turretKI);
+        turretPIDF.setD(Globals.turretKD);
+        turretPIDF.setF(Globals.turretKF);
 
         // Toggle with TRIANGLE (edge)
         boolean tri = gamepadEx.getButton(GamepadKeys.Button.TRIANGLE);
         if (tri && !prevTri) {
             autoAimEnabled = !autoAimEnabled;
-            pidf.reset(); // avoid D/I kick
+            turretPIDF.reset(); // avoid D/I kick
         }
         prevTri = tri;
 
@@ -199,46 +198,46 @@ public class launcherTest extends OpMode {
 
 
         List<AprilTagDetection> detections = tagProcessor.getDetections();
+        if (autoAimEnabled) {
+            visionPortal.setProcessorEnabled(tagProcessor, true);
 
-
-        AprilTagDetection chosen = null;
-        double chosenBearing = 0.0;
-        if (detections != null && !detections.isEmpty()) {
-            for (AprilTagDetection d : detections) {
-                if (d.ftcPose != null) {
-                    double b = d.ftcPose.bearing;
-                    if (chosen == null || Math.abs(b) < Math.abs(chosenBearing)) {
-                        chosen = d;
-                        chosenBearing = b;
+            AprilTagDetection chosen = null;
+            double chosenBearing = 0.0;
+            if (detections != null && !detections.isEmpty()) {
+                for (AprilTagDetection d : detections) {
+                    if (d.ftcPose != null) {
+                        double bearing = d.ftcPose.bearing; // +- based on red/blue side
+                        if (chosen == null || Math.abs(bearing) < Math.abs(chosenBearing)) {
+                            chosen = d;
+                            chosenBearing = bearing;
+                        }
                     }
                 }
             }
-        }
 
-        if (autoAimEnabled && !(lb || rb)) {
             if (chosen != null) {
-                double err = chosenBearing;
-                boolean onTarget = Math.abs(err) <= Globals.turretTol;
+
+                boolean onTarget = Math.abs(chosenBearing) <= Globals.turretTol;
                 aligned = onTarget;
 
-                double ctrlErr = onTarget ? 0.0 : err;
-                double raw = pidf.calculate(ctrlErr, 0.0);
+                double ctrlErr = onTarget ? Globals.turretCamOffset : chosenBearing;
+                double raw = turretPIDF.calculate(ctrlErr, Globals.turretCamOffset); // replace 5.0 with the amount of error bc the camera is on the left side
                 double out = applyMinEffort(raw, Globals.turretMin);
-
-
-                turretPower = -clamp(out, -Globals.turretMax, +Globals.turretMax);
+                turretPower = -clamp(out, -Globals.turretMax, +Globals.turretMax); //THIS IS NEGATIVE
             } else {
                 aligned = false;
                 turretPower = 0.0;
             }
 
-        } else if (lb ^ rb) {
+        } else if (!autoAimEnabled && !patternDetected) {
+                visionPortal.setProcessorEnabled(tagProcessor, false);
+        }
+
+
+        if (lb ^ rb && !autoAimEnabled) {
             aligned = false;
             turretPower = lb ? -Globals.turretMax : +Globals.turretMax;
 
-        } else {
-            aligned = false;
-            turretPower = 0.0;
         }
 
         rotate.set(turretPower);
