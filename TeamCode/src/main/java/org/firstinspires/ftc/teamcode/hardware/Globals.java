@@ -20,9 +20,9 @@ public class Globals {
     public static float turretMax = 0.8F;
     public static float turretCamOffset = 5.0F;
 
-    public static int oneRotation = 360;
-    public static int revolverTol = 5;
-    public static float revolverKP = 0.01F;
+    public static int oneRotation = 753; // actually 2 rotations lol  || Minus is counter-clockwise rotation.
+    public static int revolverTol = 0;
+    public static float revolverKP = 0.006F;
     public static float revolverKD=0.002F;
     public static float targetrpm = 6000F;
 
@@ -34,6 +34,6 @@ public class Globals {
     public static double maxPower = 1.0;
     public static double alignDegTol = 1.5;   // done when |bearing| < this
     public static double minDecisionMargin = 15.0; // ignore sketchy detections
-    public static double cpr=1538.0;
+    public static double cpr=384.5;
     public static double rpm=435.0;
 }

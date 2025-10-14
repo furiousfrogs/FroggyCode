@@ -34,8 +34,8 @@ import org.firstinspires.ftc.teamcode.hardware.Globals;
 
 import java.util.List;
 
-@TeleOp(name = "launcher test")
-public class launcherTest extends OpMode {
+@TeleOp(name = "Subsystem Testing")
+public class subsystems extends OpMode {
     private boolean aligned = false;
     private boolean speed = false;
     private boolean patternDetected = false;
@@ -70,6 +70,9 @@ public class launcherTest extends OpMode {
         GPP
     }
 
+    private int revolverTarget = 0;      // persistent target (ticks or degrees—match your units!)
+    private boolean indexInProgress = false;  // true while a step is underway
+
     pattern currentPattern = pattern.PPG;
     @Override
     public void init() {
@@ -80,6 +83,10 @@ public class launcherTest extends OpMode {
         revolver = new Motor(hardwareMap, "revolver", 28, 1150);
         revolver.setRunMode(Motor.RunMode.PositionControl);
         revolver.setPositionCoefficient(Globals.revolverKP);
+        revolver.setPositionTolerance(Globals.revolverTol);
+        revolverTarget = revolver.getCurrentPosition();
+        revolver.setTargetPosition(revolverTarget);
+        revolver.stopMotor();
 
 
         launcher = new Motor(hardwareMap, "fl", 28, 6000);
@@ -125,18 +132,24 @@ public class launcherTest extends OpMode {
         //revolverRotate();
     }
 
-    private void revolverRotate() {
-        revolver.setPositionCoefficient(Globals.revolverKP);
-        revolver.setPositionTolerance(Globals.revolverTol);
-        if (gamepadEx.getButton(GamepadKeys.Button.SQUARE)) {
-            revolver.setTargetPosition(revolver.getCurrentPosition() + 1160); // 2 rotations
-        } else if (gamepadEx.getButton(GamepadKeys.Button.CROSS)) {
-            revolver.setTargetPosition(revolver.getCurrentPosition() - 1160);
+    private void rotate(boolean clockwise) {
+        if (indexInProgress) {
+
+            if (revolver.atTargetPosition()) {
+                revolver.stopMotor();
+                indexInProgress = false;
+            } else {
+                revolver.set(0.8);
+            }
+            return;
         }
-        if (!revolver.atTargetPosition()) {
-            revolver.set(0.20);
-        }
-        revolver.stopMotor();
+
+        // Start a new step
+        double step = clockwise ? Globals.oneRotation : -Globals.oneRotation;
+        revolverTarget += step;
+        revolver.setTargetPosition(revolverTarget);
+        revolver.set(0.8);
+        indexInProgress = true;
     }
 
     private void findPattern() {

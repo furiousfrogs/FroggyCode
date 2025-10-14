@@ -47,13 +47,13 @@ public class rotatetest extends OpMode {
         gamepadEx.readButtons();
         revolver.setPositionCoefficient(Globals.revolverKP);
         revolver.setPositionTolerance(Globals.revolverTol);
-        if (reader.wasJustPressed()) {
-            logicalTarget += Globals.oneRotation * 0.75;  // 270 degrees
+        if (gamepadEx.wasJustPressed(GamepadKeys.Button.SQUARE)) {
+            revolver.setTargetPosition(revolver.getCurrentPosition() + Globals.oneRotation);
         } else if (gamepadEx.wasJustPressed(GamepadKeys.Button.CROSS)) {
-            logicalTarget -= Globals.oneRotation * 0.75;
+            revolver.setTargetPosition(revolver.getCurrentPosition() - Globals.oneRotation);
         }
 
-        revolver.setTargetPosition((int)logicalTarget);
+
 
         if (!revolver.atTargetPosition()) {
             revolver.set(0.3);
