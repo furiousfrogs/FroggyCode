@@ -26,7 +26,7 @@ public class WheelPID extends OpMode {
 
 
 
-    Motor launcher;
+    Motor launcher1, launcher2;
     SimpleServo set;
     CRServo rotate;
     FtcDashboard dashboard = FtcDashboard.getInstance();
@@ -36,20 +36,21 @@ public class WheelPID extends OpMode {
 
     @Override
     public void init() {
-        launcher = new Motor(hardwareMap, "fl", 28, 6000);
-        launcher.setRunMode(Motor.RunMode.RawPower);
+        launcher1 = new Motor(hardwareMap, "fl", 28, 6000);
+        launcher1.setRunMode(Motor.RunMode.RawPower);
+
+        launcher2 = new Motor(hardwareMap, "fr", 28, 6000);
+        launcher2.setRunMode(Motor.RunMode.RawPower);
 
         set = new SimpleServo(
                 hardwareMap, "set", 0, 180,
                 AngleUnit.DEGREES
         );
 
-        rotate = new CRServo(
-                hardwareMap, "rotate"
-        );
+        
 
         lastTime = getRuntime();
-        lastPosition = launcher.getCurrentPosition();
+        lastPosition = launcher1.getCurrentPosition();
 
         gamepadEx = new GamepadEx(gamepad1);
 
@@ -58,7 +59,7 @@ public class WheelPID extends OpMode {
 
     public void calculateRPM() {
         double currentTime = getRuntime();
-        int currentPosition = launcher.getCurrentPosition();
+        int currentPosition = launcher1.getCurrentPosition();
 
         double deltaTime = currentTime - lastTime;
         int deltaTicks = currentPosition - lastPosition;
@@ -77,32 +78,27 @@ public class WheelPID extends OpMode {
 
 
         double feedforwardPower = feedforward.calculate(Globals.targetrpm, 0.0); // accel = 0 at steady-state
-        if (gamepadEx.getButton(GamepadKeys.Button.CROSS)){
-            launcher.set(feedforwardPower);
-        } else {
-            launcher.set(0);
-        }
 
-    }
 
-    public void inputBall() {
-        if(gamepadEx.getButton(GamepadKeys.Button.CIRCLE)){
-            set.turnToAngle(Globals.downset);
+        if (gamepadEx.getButton(GamepadKeys.Button.CROSS)) {
+            launcher1.set(feedforwardPower);
+            launcher2.set(feedforwardPower);
+            if (Globals.targetrpm > 1000 && Math.abs(Globals.targetrpm - RPM) < Globals.launcherTol) { // TODO replace targetrpm with power
+                set.turnToAngle(Globals.upset);
+            }
         } else if (gamepadEx.getButton(GamepadKeys.Button.TRIANGLE)) {
-            set.turnToAngle(Globals.upset);
-        }
-    }
-
-    public void rotate() {
-        if (gamepadEx.getButton(GamepadKeys.Button.RIGHT_BUMPER)){
-            rotate.set(1);
-        } else if (gamepadEx.getButton(GamepadKeys.Button.LEFT_BUMPER)){
-            rotate.set(-1);
-        } else {
-            rotate.set(0);
+            launcher1.set(0.9);
+            launcher2.set(0.9);
+            set.turnToAngle(Globals.downset);
+        } else if (!gamepadEx.getButton(GamepadKeys.Button.TRIANGLE) || !gamepadEx.getButton(GamepadKeys.Button.CROSS)){
+            launcher1.set(0);
+            launcher2.set(0);
+            set.turnToAngle(Globals.downset);
         }
 
     }
+
+
 
     public void telemetry() {
         // Normal telemetry
@@ -120,7 +116,7 @@ public class WheelPID extends OpMode {
         calculateRPM();
         runFeedforward();
         telemetry();
-        inputBall();
-        rotate();
+
+
     }
 }

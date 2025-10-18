@@ -20,7 +20,7 @@ public class Globals {
     public static float turretMax = 0.8F;
     public static float turretCamOffset = 5.0F;
 
-    public static int oneRotation = 753; // actually 2 rotations lol  || Minus is counter-clockwise rotation.
+    public static int oneRotation = 94; // actually 2 rotations lol  || Minus is counter-clockwise rotation.
     public static int revolverTol = 0;
     public static float revolverKP = 0.006F;
     public static float revolverKD=0.002F;
