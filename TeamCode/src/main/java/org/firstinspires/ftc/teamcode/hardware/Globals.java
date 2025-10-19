@@ -5,9 +5,9 @@ import com.acmerobotics.dashboard.config.Config;
 
 @Config
 public class Globals {
-    public static float fwKa = 0.01F; //basically does nothing
-    public static float fwKs = 0.2F; //small change
-    public static float fwKv = 0.00014F; //main change
+    public static float fwKa = 0.1F; //basically does nothing
+    public static float fwKs = 0.07F; //small change
+    public static float fwKv = 0.00019875F; //main change
 
 
     public static float launcherTol = 5F;
@@ -40,4 +40,10 @@ public class Globals {
     public static double minDecisionMargin = 15.0; // ignore sketchy detections
     public static double cpr=384.5;
     public static double rpm=435.0;
+
+
+    public static float flykP;
+    public static float flykI;
+    public static float flykD;
+    public static float flykF;
 }

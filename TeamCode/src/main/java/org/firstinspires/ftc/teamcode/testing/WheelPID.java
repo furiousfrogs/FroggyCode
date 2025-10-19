@@ -1,10 +1,13 @@
 package org.firstinspires.ftc.teamcode.testing;
 
 
+import static org.firstinspires.ftc.teamcode.hardware.Globals.*;
+
 import com.acmerobotics.dashboard.FtcDashboard;
 import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+import com.seattlesolvers.solverslib.controller.PIDFController;
 import com.seattlesolvers.solverslib.controller.wpilibcontroller.SimpleMotorFeedforward;
 import com.seattlesolvers.solverslib.gamepad.GamepadEx;
 import com.seattlesolvers.solverslib.gamepad.GamepadKeys;
@@ -88,6 +91,23 @@ public class WheelPID extends OpMode {
         } else {
             launcher1.set(0);
             launcher2.set(0);
+        }
+
+    }
+
+
+    public void PIDF(){
+        PIDFController pidf = new PIDFController(flykP, flykI, flykD, flykF);
+        double PIDFPower=pidf.calculate(Globals.targetrpm,0.0);
+        if(gamepadEx.getButton(GamepadKeys.Button.CIRCLE)){
+            launcher1.set(PIDFPower);
+            launcher2.set(PIDFPower);
+            if(Math.abs(targetrpm-RPM)<Globals.launcherTol){
+                telemetry.addLine("at speed");
+            }else{
+                launcher1.set(0);
+                launcher2.set(0);
+            }
         }
 
     }
