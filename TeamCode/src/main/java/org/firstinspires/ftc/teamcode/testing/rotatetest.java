@@ -1,15 +1,10 @@
-package org.firstinspires.ftc.teamcode.commandbase.vision;
-
-import android.provider.Settings;
+package org.firstinspires.ftc.teamcode.testing;
 
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
-import com.qualcomm.robotcore.hardware.DcMotor;
-import com.seattlesolvers.solverslib.gamepad.ButtonReader; //SIX SEVENNNNNN SIX OR SEVEN
 import com.seattlesolvers.solverslib.gamepad.GamepadEx;
 import com.seattlesolvers.solverslib.gamepad.GamepadKeys;
 import com.seattlesolvers.solverslib.hardware.motors.Motor;
-import com.seattlesolvers.solverslib.hardware.motors.MotorEx;
 
 import org.firstinspires.ftc.teamcode.hardware.Globals;
 @TeleOp(name = "rotate test")
@@ -21,7 +16,7 @@ public class rotatetest extends OpMode {
     private int revolverTarget = 0;
 
     // tuning
-    private static final double DRIVE_POWER = 0.01; // while PositionControl does its job
+    private static final double DRIVE_POWER = 0.1; // while PositionControl does its job
 
     @Override
     public void init() {

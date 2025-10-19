@@ -1,11 +1,10 @@
-package org.firstinspires.ftc.teamcode.commandbase;
+package org.firstinspires.ftc.teamcode.testing;
 
 
 import com.acmerobotics.dashboard.FtcDashboard;
 import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
-import com.seattlesolvers.solverslib.command.button.GamepadButton;
 import com.seattlesolvers.solverslib.controller.wpilibcontroller.SimpleMotorFeedforward;
 import com.seattlesolvers.solverslib.gamepad.GamepadEx;
 import com.seattlesolvers.solverslib.gamepad.GamepadKeys;
@@ -36,10 +35,10 @@ public class WheelPID extends OpMode {
 
     @Override
     public void init() {
-        launcher1 = new Motor(hardwareMap, "fl", 28, 6000);
+        launcher1 = new Motor(hardwareMap, "l1", 28, 6000);
         launcher1.setRunMode(Motor.RunMode.RawPower);
 
-        launcher2 = new Motor(hardwareMap, "fr", 28, 6000);
+        launcher2 = new Motor(hardwareMap, "l2", 28, 6000);
         launcher2.setRunMode(Motor.RunMode.RawPower);
 
         set = new SimpleServo(
@@ -83,19 +82,24 @@ public class WheelPID extends OpMode {
         if (gamepadEx.getButton(GamepadKeys.Button.CROSS)) {
             launcher1.set(feedforwardPower);
             launcher2.set(feedforwardPower);
-            if (Globals.targetrpm > 1000 && Math.abs(Globals.targetrpm - RPM) < Globals.launcherTol) { // TODO replace targetrpm with power
-                set.turnToAngle(Globals.upset);
+            if (Math.abs(Globals.targetrpm - RPM) < Globals.launcherTol) { // TODO replace targetrpm with power
+                telemetry.addLine("at speed");
             }
-        } else if (gamepadEx.getButton(GamepadKeys.Button.TRIANGLE)) {
-            launcher1.set(0.9);
-            launcher2.set(0.9);
-            set.turnToAngle(Globals.downset);
-        } else if (!gamepadEx.getButton(GamepadKeys.Button.TRIANGLE) || !gamepadEx.getButton(GamepadKeys.Button.CROSS)){
+        } else {
             launcher1.set(0);
             launcher2.set(0);
-            set.turnToAngle(Globals.downset);
         }
 
+    }
+
+    public void runPower() {
+        if (gamepadEx.getButton(GamepadKeys.Button.TRIANGLE)){
+            launcher1.set(Globals.launcherPower);
+            launcher2.set(Globals.launcherPower);
+    } else {
+            launcher1.set(0);
+            launcher2.set(0);
+        }
     }
 
 
@@ -113,6 +117,7 @@ public class WheelPID extends OpMode {
 
     @Override
     public void loop() {
+        runPower();
         calculateRPM();
         runFeedforward();
         telemetry();

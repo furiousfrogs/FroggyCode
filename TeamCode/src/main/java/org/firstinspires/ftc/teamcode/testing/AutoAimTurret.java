@@ -1,11 +1,10 @@
-package org.firstinspires.ftc.teamcode.commandbase;
+package org.firstinspires.ftc.teamcode.testing;
 
 import com.acmerobotics.dashboard.FtcDashboard;
 import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
-import com.seattlesolvers.solverslib.command.button.GamepadButton;
 import com.seattlesolvers.solverslib.controller.PIDFController;
 import com.seattlesolvers.solverslib.controller.wpilibcontroller.SimpleMotorFeedforward;
 import com.seattlesolvers.solverslib.gamepad.GamepadEx;
@@ -19,8 +18,6 @@ import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.vision.VisionPortal;
 import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
 import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
-
-import android.util.Size;
 
 import org.firstinspires.ftc.teamcode.hardware.Globals;
 
@@ -87,9 +84,9 @@ public class AutoAimTurret extends OpMode {
 
     @Override
     public void loop() {
-        calculateRPM();
-        runFeedforward();
-        inputBall();
+        //calculateRPM();
+        //runFeedforward();
+        //inputBall();
         autoAim();      // now only reads/controls; does NOT rebuild vision
         doTelemetry();
     }

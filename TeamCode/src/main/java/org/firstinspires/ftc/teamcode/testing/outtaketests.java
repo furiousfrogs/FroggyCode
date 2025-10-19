@@ -1,12 +1,10 @@
-package org.firstinspires.ftc.teamcode.commandbase;
+package org.firstinspires.ftc.teamcode.testing;
 
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.seattlesolvers.solverslib.gamepad.GamepadEx;
 import com.seattlesolvers.solverslib.gamepad.GamepadKeys;
 import com.seattlesolvers.solverslib.hardware.motors.Motor;
-
-import org.firstinspires.ftc.teamcode.hardware.Globals;
 
 @TeleOp(name = "outtake")
 public class outtaketests extends OpMode {

@@ -8,7 +8,11 @@ public class Globals {
     public static float fwKa = 0.01F; //basically does nothing
     public static float fwKs = 0.2F; //small change
     public static float fwKv = 0.00014F; //main change
-    public static float launcherTol = 100F;
+
+
+    public static float launcherTol = 5F;
+    public static float launcherPower = 0.01F;
+
 
     public static float turretKP = 0.018F;
     public static float turretKI = 0.000F;

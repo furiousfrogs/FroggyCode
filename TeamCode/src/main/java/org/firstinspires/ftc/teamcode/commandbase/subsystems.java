@@ -23,6 +23,7 @@ import com.seattlesolvers.solverslib.hardware.motors.Motor;
 
 import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+import org.firstinspires.ftc.teamcode.hardware.turretConstants;
 import org.firstinspires.ftc.vision.VisionPortal;
 import org.firstinspires.ftc.vision.VisionProcessor;
 import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
@@ -43,6 +44,8 @@ public class subsystems extends OpMode {
     private boolean autoAimEnabled = true;
     private boolean prevTri = false;
 
+    double turretTarget = 150F;
+
     private VisionPortal visionPortal;
     private AprilTagProcessor tagProcessor;
     private double distance;
@@ -51,8 +54,7 @@ public class subsystems extends OpMode {
     private double turretPower = 0.0;
 
     private Motor launcher, revolver;
-    private SimpleServo set;
-    private CRServo rotate;
+    private SimpleServo set, rotate;
 
     private double RPM;
     private double lastTime;
@@ -80,20 +82,21 @@ public class subsystems extends OpMode {
         //colour = (NormalizedColorSensor) hardwareMap.get(ColorSensor.class, "color");
         //dist = hardwareMap.get(DistanceSensor.class, "colour");
 
-        revolver = new Motor(hardwareMap, "revolver", 28, 1150);
-        revolver.setRunMode(Motor.RunMode.PositionControl);
-        revolver.setPositionCoefficient(Globals.revolverKP);
-        revolver.setPositionTolerance(Globals.revolverTol);
-        revolverTarget = revolver.getCurrentPosition();
-        revolver.setTargetPosition(revolverTarget);
-        revolver.stopMotor();
+        //revolver = new Motor(hardwareMap, "revolver", 28, 1150);
+        //revolver.setRunMode(Motor.RunMode.PositionControl);
+        //revolver.setPositionCoefficient(Globals.revolverKP);
+        //revolver.setPositionTolerance(Globals.revolverTol);
+        //revolverTarget = revolver.getCurrentPosition();
+        //revolver.setTargetPosition(revolverTarget);
+        //revolver.stopMotor();
 
 
-        launcher = new Motor(hardwareMap, "fl", 28, 6000);
+        launcher = new Motor(hardwareMap, "l1", 28, 6000);
         launcher.setRunMode(Motor.RunMode.RawPower);
 
         set = new SimpleServo(hardwareMap, "set", 0, 180, AngleUnit.DEGREES);
-        rotate = new CRServo(hardwareMap, "rotate");
+        rotate = new SimpleServo(hardwareMap, "turret", 0, 300, AngleUnit.DEGREES);
+        rotate.turnToAngle(turretTarget);
 
         lastTime = getRuntime();
         lastPosition = launcher.getCurrentPosition();
@@ -124,11 +127,11 @@ public class subsystems extends OpMode {
 
     @Override
     public void loop() { // TODO add revolver sequence logic
-        calculateRPM();
-        launcherawe();
-        autoAim();      // now only reads/controls; does NOT rebuild vision
-        doTelemetry();
-        findPattern();
+        //calculateRPM();
+        //launcherawe();
+        autoAimServoMode();      // now only reads/controls; does NOT rebuild vision
+        //doTelemetry();
+        //findPattern();
         //revolverRotate();
     }
 
@@ -191,7 +194,24 @@ public class subsystems extends OpMode {
         }
     }
 
-    private void autoAim() {
+    // ----------------- Launcher utilities (unchanged logic) -----------------
+    private void calculateRPM() {
+        double currentTime = getRuntime();
+        int currentPosition = launcher.getCurrentPosition();
+
+        double deltaTime = currentTime - lastTime;
+        int deltaTicks = currentPosition - lastPosition;
+
+        if (deltaTime > 0.1) {
+            double revs = (double) deltaTicks / 28.0; // GoBILDA CPR
+            RPM = (revs / deltaTime) * 60.0;
+
+            lastTime = currentTime;
+            lastPosition = currentPosition;
+        }
+    }
+
+    private void autoAimServoMode() {
         // Pull live gains (Dashboard)
         turretPIDF.setP(Globals.turretKP);
         turretPIDF.setI(Globals.turretKI);
@@ -211,7 +231,7 @@ public class subsystems extends OpMode {
 
 
         List<AprilTagDetection> detections = tagProcessor.getDetections();
-        if (autoAimEnabled) {
+        if (autoAimEnabled && !lb ^ rb) {
             visionPortal.setProcessorEnabled(tagProcessor, true);
 
             AprilTagDetection chosen = null;
@@ -230,48 +250,45 @@ public class subsystems extends OpMode {
 
             if (chosen != null) {
 
-                boolean onTarget = Math.abs(chosenBearing) <= Globals.turretTol;
-                aligned = onTarget;
+                double err = chosenBearing
+                        - Globals.turretCamOffset                 // camera not centered
+                        - turretConstants.turretLocationError;    // mechanical mount offset
 
-                double ctrlErr = onTarget ? Globals.turretCamOffset : chosenBearing;
-                double raw = turretPIDF.calculate(ctrlErr, Globals.turretCamOffset); // replace 5.0 with the amount of error bc the camera is on the left side
-                double out = applyMinEffort(raw, Globals.turretMin);
-                turretPower = -clamp(out, -Globals.turretMax, +Globals.turretMax); //THIS IS NEGATIVE
+                aligned = Math.abs(err) <= Globals.turretTol;
+
+                // PID output is a delta-angle; setpoint is 0 (we want zero error)
+                double delta = aligned ? 0.0 : turretPIDF.calculate(err, 0.0);
+
+                // Limit how much we move the target this loop (smooths big swings)
+                if (delta >  turretConstants.maxStep) delta =  turretConstants.maxStep;
+                if (delta < -turretConstants.maxStep) delta = -turretConstants.maxStep;
+
+                turretTarget -= delta; //THIS IS NEGATIVE
             } else {
                 aligned = false;
-                turretPower = 0.0;
+
             }
 
         } else if (!autoAimEnabled && !patternDetected) {
-                visionPortal.setProcessorEnabled(tagProcessor, false);
+            visionPortal.setProcessorEnabled(tagProcessor, false);
         }
 
-
-        if (lb ^ rb && !autoAimEnabled) {
+        if (lb ^ rb) {
             aligned = false;
-            turretPower = lb ? -Globals.turretMax : +Globals.turretMax;
+            turretTarget += lb ? +turretConstants.nudge : -turretConstants.nudge;
 
         }
+        if (turretTarget > 300) {
+            turretTarget = 300;
+        } else if (turretTarget < 0) {
+            turretTarget = 0;
+        }
 
-        rotate.set(turretPower);
+        rotate.turnToAngle(turretTarget);
 
     }
     // ----------------- Launcher utilities (unchanged logic) -----------------
-    private void calculateRPM() {
-        double currentTime = getRuntime();
-        int currentPosition = launcher.getCurrentPosition();
 
-        double deltaTime = currentTime - lastTime;
-        int deltaTicks = currentPosition - lastPosition;
-
-        if (deltaTime > 0.1) {
-            double revs = (double) deltaTicks / 28.0; // GoBILDA CPR
-            RPM = (revs / deltaTime) * 60.0;
-
-            lastTime = currentTime;
-            lastPosition = currentPosition;
-        }
-    }
 
 
     private void launcherawe() {
