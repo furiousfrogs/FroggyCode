@@ -52,10 +52,10 @@ public class subsystems extends OpMode {
     private AprilTagProcessor tagProcessor;
     private double distance;
     private double power;
-    private PIDFController turretPIDF;
+    private PIDFController turretPIDF, ff;
     private double turretPower = 0.0;
 
-    private Motor launcher, revolver,fl,bl,fr,br;
+    private Motor launcher1, launcher2, revolver,fl,bl,fr,br;
     private SimpleServo set, rotate;
 
     private double RPM;
@@ -80,6 +80,8 @@ public class subsystems extends OpMode {
     pattern currentPattern = pattern.PPG;
     @Override
     public void init() {
+
+        ff = new PIDFController(turretConstants.flykP, turretConstants.flykI, turretConstants.flykD, turretConstants.flykF);
 
         //colour = (NormalizedColorSensor) hardwareMap.get(ColorSensor.class, "color");
         //dist = hardwareMap.get(DistanceSensor.class, "colour");
@@ -115,15 +117,17 @@ public class subsystems extends OpMode {
         br.setRunMode(Motor.RunMode.RawPower);
 
 
-        launcher = new Motor(hardwareMap, "l1", 28, 6000);
-        launcher.setRunMode(Motor.RunMode.RawPower);
+        launcher1 = new Motor(hardwareMap, "l1", 28, 6000);
+        launcher1.setRunMode(Motor.RunMode.RawPower);
+        launcher2 = new Motor(hardwareMap, "l2", 28, 6000);
+        launcher2.setRunMode(Motor.RunMode.RawPower);
 
         set = new SimpleServo(hardwareMap, "set", 0, 180, AngleUnit.DEGREES);
         rotate = new SimpleServo(hardwareMap, "turret", 0, 300, AngleUnit.DEGREES);
         rotate.turnToAngle(turretTarget);
 
         lastTime = getRuntime();
-        lastPosition = launcher.getCurrentPosition();
+        lastPosition = launcher1.getCurrentPosition();
         gamepadEx = new GamepadEx(gamepad1);
 
 
@@ -225,7 +229,7 @@ public class subsystems extends OpMode {
     // ----------------- Launcher utilities (unchanged logic) -----------------
     private void calculateRPM() {
         double currentTime = getRuntime();
-        int currentPosition = launcher.getCurrentPosition();
+        int currentPosition = launcher1.getCurrentPosition();
 
         double deltaTime = currentTime - lastTime;
         int deltaTicks = currentPosition - lastPosition;
@@ -320,6 +324,13 @@ public class subsystems extends OpMode {
 
 
     private void launcherawe() {
+        ff.setP(turretConstants.flykP);
+        ff.setI(turretConstants.flykI);
+        ff.setD(turretConstants.flykD);
+        ff.setF(turretConstants.flykF);
+
+
+
         List<AprilTagDetection> detections = tagProcessor.getDetections();
         if (detections != null && !detections.isEmpty() && aligned) {
             for (AprilTagDetection d : detections) {
@@ -333,16 +344,20 @@ public class subsystems extends OpMode {
             speed = false;
         }
 
-        SimpleMotorFeedforward ff = new SimpleMotorFeedforward(Globals.fwKs, Globals.fwKv, Globals.fwKa);
-        double feedforwardPower = ff.calculate(power, 0.0);
+        double feedforwardPower = ff.calculate(RPM, power);
+
+        //SimpleMotorFeedforward ff = new SimpleMotorFeedforward(Globals.fwKs, Globals.fwKv, Globals.fwKa);
+        //double feedforwardPower = ff.calculate(power, 0.0);
 
         if (gamepadEx.getButton(GamepadKeys.Button.CROSS) && aligned) {
-            launcher.set(feedforwardPower);
+            launcher1.set(feedforwardPower);
+            launcher2.set(feedforwardPower);
             if (Math.abs(Globals.targetrpm - RPM) < Globals.launcherTol) { // TODO replace targetrpm with power
                 set.turnToAngle(Globals.upset);
             }
         } else {
-            launcher.set(0);
+            launcher1.set(0);
+            launcher2.set(0);
             set.turnToAngle(Globals.downset);
         }
 

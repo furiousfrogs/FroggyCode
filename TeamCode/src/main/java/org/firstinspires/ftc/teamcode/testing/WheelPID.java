@@ -17,6 +17,7 @@ import com.seattlesolvers.solverslib.hardware.motors.Motor;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.teamcode.hardware.Globals;
+import org.firstinspires.ftc.teamcode.hardware.turretConstants;
 
 @TeleOp
 public class WheelPID extends OpMode {
@@ -97,8 +98,8 @@ public class WheelPID extends OpMode {
 
 
     public void PIDF(){
-        PIDFController pidf = new PIDFController(flykP, flykI, flykD, flykF);
-        double PIDFPower=pidf.calculate(Globals.targetrpm,0.0);
+        PIDFController pidf = new PIDFController(turretConstants.flykP, turretConstants.flykI, turretConstants.flykD, turretConstants.flykF);
+        double PIDFPower=pidf.calculate(Globals.targetrpm - RPM,0.0);
         if(gamepadEx.getButton(GamepadKeys.Button.CIRCLE)){
             launcher1.set(PIDFPower);
             launcher2.set(PIDFPower);
