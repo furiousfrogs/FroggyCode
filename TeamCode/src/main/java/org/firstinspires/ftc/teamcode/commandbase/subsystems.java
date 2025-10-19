@@ -370,7 +370,7 @@ public class subsystems extends OpMode {
     private void drive(){
         double y = -gamepad1.left_stick_y; // Remember, Y stick value is reversed
         double x = gamepad1.left_stick_x * 1.1; // Counteract imperfect strafing
-        double rx = gamepad1.left_trigger - gamepad1.right_trigger;
+        double rx = gamepad1.right_trigger - gamepad1.left_trigger;
         if (Math.abs(y)<0.2){
             y=0.0;
         }
