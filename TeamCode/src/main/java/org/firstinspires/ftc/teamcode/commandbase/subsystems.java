@@ -9,6 +9,8 @@ import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
 import com.qualcomm.robotcore.hardware.ColorSensor;
+import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.DistanceSensor;
 import com.qualcomm.robotcore.hardware.NormalizedColorSensor;
 import com.seattlesolvers.solverslib.command.button.GamepadButton;
@@ -50,10 +52,10 @@ public class subsystems extends OpMode {
     private AprilTagProcessor tagProcessor;
     private double distance;
     private double power;
-    private PIDFController turretPIDF;
+    private PIDFController turretPIDF, ff;
     private double turretPower = 0.0;
 
-    private Motor launcher, revolver;
+    private Motor launcher1, launcher2, revolver,fl,bl,fr,br;
     private SimpleServo set, rotate;
 
     private double RPM;
@@ -79,6 +81,8 @@ public class subsystems extends OpMode {
     @Override
     public void init() {
 
+        ff = new PIDFController(turretConstants.flykP, turretConstants.flykI, turretConstants.flykD, turretConstants.flykF);
+
         //colour = (NormalizedColorSensor) hardwareMap.get(ColorSensor.class, "color");
         //dist = hardwareMap.get(DistanceSensor.class, "colour");
 
@@ -91,15 +95,39 @@ public class subsystems extends OpMode {
         //revolver.stopMotor();
 
 
-        launcher = new Motor(hardwareMap, "l1", 28, 6000);
-        launcher.setRunMode(Motor.RunMode.RawPower);
+
+        // Reverse the right side motors. This may be wrong for your setup.
+        // If your robot moves backwards when commanded to go forwards,
+        // reverse the left side instead.
+        // See the note about this earlier on this page.
+
+
+        fl = new Motor(hardwareMap,"fl");
+        fl.setRunMode(Motor.RunMode.RawPower);
+        fl.setInverted(true);
+
+        bl = new Motor(hardwareMap,"bl");
+        bl.setRunMode(Motor.RunMode.RawPower);
+        bl.setInverted(true);
+
+        fr = new Motor(hardwareMap,"fr");
+        fr.setRunMode(Motor.RunMode.RawPower);
+
+        br = new Motor(hardwareMap,"br");
+        br.setRunMode(Motor.RunMode.RawPower);
+
+
+        launcher1 = new Motor(hardwareMap, "l1", 28, 6000);
+        launcher1.setRunMode(Motor.RunMode.RawPower);
+        launcher2 = new Motor(hardwareMap, "l2", 28, 6000);
+        launcher2.setRunMode(Motor.RunMode.RawPower);
 
         set = new SimpleServo(hardwareMap, "set", 0, 180, AngleUnit.DEGREES);
         rotate = new SimpleServo(hardwareMap, "turret", 0, 300, AngleUnit.DEGREES);
         rotate.turnToAngle(turretTarget);
 
         lastTime = getRuntime();
-        lastPosition = launcher.getCurrentPosition();
+        lastPosition = launcher1.getCurrentPosition();
         gamepadEx = new GamepadEx(gamepad1);
 
 
@@ -121,18 +149,22 @@ public class subsystems extends OpMode {
                 .setCameraResolution(new android.util.Size(1280, 720))
                 .build();
 
+
+
+
         telemetry.addLine("Initialized. Press START.");
         telemetry.update();
     }
 
     @Override
     public void loop() { // TODO add revolver sequence logic
-        //calculateRPM();
-        //launcherawe();
+        calculateRPM();
+        launcherawe();
         autoAimServoMode();      // now only reads/controls; does NOT rebuild vision
-        //doTelemetry();
+        doTelemetry();
         //findPattern();
         //revolverRotate();
+        drive();
     }
 
     private void rotate(boolean clockwise) {
@@ -197,7 +229,7 @@ public class subsystems extends OpMode {
     // ----------------- Launcher utilities (unchanged logic) -----------------
     private void calculateRPM() {
         double currentTime = getRuntime();
-        int currentPosition = launcher.getCurrentPosition();
+        int currentPosition = launcher1.getCurrentPosition();
 
         double deltaTime = currentTime - lastTime;
         int deltaTicks = currentPosition - lastPosition;
@@ -292,12 +324,19 @@ public class subsystems extends OpMode {
 
 
     private void launcherawe() {
+        ff.setP(turretConstants.flykP);
+        ff.setI(turretConstants.flykI);
+        ff.setD(turretConstants.flykD);
+        ff.setF(turretConstants.flykF);
+
+
+
         List<AprilTagDetection> detections = tagProcessor.getDetections();
         if (detections != null && !detections.isEmpty() && aligned) {
             for (AprilTagDetection d : detections) {
                 distance = d.ftcPose.range;
 
-                power = (2358.7* pow(2.71828, 0.008*distance)); // TODO FORMULA FOR POWER. replace targetrpm with the formula
+                power = Globals.targetrpm; // TODO FORMULA FOR POWER. replace targetrpm with the formula
                 speed = true;
             }
         } else {
@@ -305,16 +344,20 @@ public class subsystems extends OpMode {
             speed = false;
         }
 
-        SimpleMotorFeedforward ff = new SimpleMotorFeedforward(Globals.fwKs, Globals.fwKv, Globals.fwKa);
-        double feedforwardPower = ff.calculate(power, 0.0);
+        double feedforwardPower = ff.calculate(RPM, power);
+
+        //SimpleMotorFeedforward ff = new SimpleMotorFeedforward(Globals.fwKs, Globals.fwKv, Globals.fwKa);
+        //double feedforwardPower = ff.calculate(power, 0.0);
 
         if (gamepadEx.getButton(GamepadKeys.Button.CROSS) && aligned) {
-            launcher.set(feedforwardPower);
-            if (power > 1000 && Math.abs(power - RPM) < Globals.launcherTol) { // TODO replace targetrpm with power
+            launcher1.set(feedforwardPower);
+            launcher2.set(feedforwardPower);
+            if (Math.abs(Globals.targetrpm - RPM) < Globals.launcherTol) { // TODO replace targetrpm with power
                 set.turnToAngle(Globals.upset);
             }
         } else {
-            launcher.set(0);
+            launcher1.set(0);
+            launcher2.set(0);
             set.turnToAngle(Globals.downset);
         }
 
@@ -336,15 +379,39 @@ public class subsystems extends OpMode {
     }
 
     // ----------------- Helpers -----------------
-    private static double clamp(double v, double lo, double hi) {
-        return Math.max(lo, Math.min(hi, v));
-    }
 
-    private static double applyMinEffort(double v, double minEffort) {
-        if (v == 0.0) return 0.0;
-        double sign = Math.signum(v);
-        double mag = Math.abs(v);
-        if (mag < minEffort) mag = minEffort;
-        return sign * mag;
+
+
+    private void drive(){
+        double y = -gamepad1.left_stick_y; // Remember, Y stick value is reversed
+        double x = gamepad1.left_stick_x * 1.1; // Counteract imperfect strafing
+        double rx = gamepad1.right_trigger - gamepad1.left_trigger;
+        if (Math.abs(y)<0.2){
+            y=0.0;
+        }
+        if (Math.abs(x)<0.2){
+            x=0.0;
+        }
+
+        // Denominator is the largest motor power (absolute value) or 1
+        // This ensures all the powers maintain the same ratio,
+        // but only if at least one is out of the range [-1, 1]
+        double denominator = Math.max(Math.abs(y) + Math.abs(x) + Math.abs(rx), 1);
+        double frontLeftPower = (y + x + rx) / denominator;
+        double backLeftPower = (y - x + rx) / denominator;
+        double frontRightPower = (y - x - rx) / denominator;
+        double backRightPower = (y + x - rx) / denominator;
+
+        fl.set(frontLeftPower);
+        bl.set(backLeftPower);
+        fr.set(frontRightPower);
+        br.set(backRightPower);
+
+        telemetry.addData("y",y);
+        telemetry.addData("x",x);
+        telemetry.addData("frontleftPower",frontLeftPower);
+        telemetry.addData("backleftPower",backLeftPower);
+        telemetry.addData("frontRightPower",frontRightPower);
+        telemetry.addData("backrightPower",backRightPower);
     }
 }

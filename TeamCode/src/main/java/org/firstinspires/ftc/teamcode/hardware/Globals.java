@@ -5,19 +5,19 @@ import com.acmerobotics.dashboard.config.Config;
 
 @Config
 public class Globals {
-    public static float fwKa = 0.01F; //basically does nothing
-    public static float fwKs = 0.2F; //small change
-    public static float fwKv = 0.00014F; //main change
+    public static float fwKa = 0.1F; //basically does nothing
+    public static float fwKs = 0.07F; //small change
+    public static float fwKv = 0.00019875F; //main change
 
 
     public static float launcherTol = 5F;
     public static float launcherPower = 0.01F;
 
 
-    public static float turretKP = 0.018F;
-    public static float turretKI = 0.000F;
-    public static float turretKD = 0.013F;
-    public static float turretKF = 0.000F;
+    public static double turretKP = 0.018F;
+    public static double turretKI = 0.000F;
+    public static double turretKD = 0.013F;
+    public static double turretKF = 0.000F;
 
     public static float turretTol = 2F;
     public static float turretMin = 0.11F;
@@ -31,7 +31,7 @@ public class Globals {
     public static float targetrpm = 6000F;
 
     public static double downset=0.0F;
-    public static double upset=170F;
+    public static double upset=260.0F;
 
     public static double kPturn = 0.6F;        // scale turn power by angle error
     public static double minPower = 0.08;
@@ -40,4 +40,7 @@ public class Globals {
     public static double minDecisionMargin = 15.0; // ignore sketchy detections
     public static double cpr=384.5;
     public static double rpm=435.0;
+
+
+
 }
