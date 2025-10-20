@@ -20,7 +20,7 @@ public class rotatetest extends OpMode {
 
     @Override
     public void init() {
-        revolver = new Motor(hardwareMap, "revolver", Globals.cpr, Globals.rpm);
+        revolver = new Motor(hardwareMap, "revolver", 384.5, 435);
         revolver.setRunMode(Motor.RunMode.PositionControl);
         revolver.setPositionCoefficient(Globals.revolverKP);
         revolver.setPositionTolerance(Globals.revolverTol);

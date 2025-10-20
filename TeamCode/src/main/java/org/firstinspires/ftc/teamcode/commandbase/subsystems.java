@@ -4,34 +4,22 @@ import static java.lang.Math.pow;
 
 import com.acmerobotics.dashboard.FtcDashboard;
 import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
-import com.qualcomm.hardware.motors.GoBILDA5202Series;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
-import com.qualcomm.robotcore.hardware.ColorSensor;
-import com.qualcomm.robotcore.hardware.DcMotor;
-import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.DistanceSensor;
 import com.qualcomm.robotcore.hardware.NormalizedColorSensor;
-import com.seattlesolvers.solverslib.command.button.GamepadButton;
 import com.seattlesolvers.solverslib.controller.PIDFController;
-import com.seattlesolvers.solverslib.controller.wpilibcontroller.SimpleMotorFeedforward;
 import com.seattlesolvers.solverslib.gamepad.GamepadEx;
 import com.seattlesolvers.solverslib.gamepad.GamepadKeys;
-import com.seattlesolvers.solverslib.hardware.SensorColor;
 import com.seattlesolvers.solverslib.hardware.SimpleServo;
-import com.seattlesolvers.solverslib.hardware.motors.CRServo;
 import com.seattlesolvers.solverslib.hardware.motors.Motor;
 
 import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
-import org.firstinspires.ftc.teamcode.hardware.turretConstants;
 import org.firstinspires.ftc.vision.VisionPortal;
-import org.firstinspires.ftc.vision.VisionProcessor;
 import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
 import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
-
-import android.util.Size;
 
 import org.firstinspires.ftc.teamcode.hardware.Globals;
 
@@ -81,7 +69,7 @@ public class subsystems extends OpMode {
     @Override
     public void init() {
 
-        ff = new PIDFController(turretConstants.flykP, turretConstants.flykI, turretConstants.flykD, turretConstants.flykF);
+        ff = new PIDFController(Globals.launcher.flykP, Globals.launcher.flykI, Globals.launcher.flykD, Globals.launcher.flykF);
 
         //colour = (NormalizedColorSensor) hardwareMap.get(ColorSensor.class, "color");
         //dist = hardwareMap.get(DistanceSensor.class, "colour");
@@ -131,7 +119,7 @@ public class subsystems extends OpMode {
         gamepadEx = new GamepadEx(gamepad1);
 
 
-        turretPIDF = new PIDFController(Globals.turretKP, Globals.turretKI, Globals.turretKD, Globals.turretKF);
+        turretPIDF = new PIDFController(Globals.turret.turretKP, Globals.turret.turretKI, Globals.turret.turretKD, Globals.turret.turretKF);
 
 
         tagProcessor = new AprilTagProcessor.Builder()
@@ -180,7 +168,7 @@ public class subsystems extends OpMode {
         }
 
         // Start a new step
-        double step = clockwise ? Globals.oneRotation : -Globals.oneRotation;
+        double step = clockwise ? Globals.revolver.oneRotation : -Globals.revolver.oneRotation;
         revolverTarget += step;
         revolver.setTargetPosition(revolverTarget);
         revolver.set(0.8);
@@ -245,10 +233,10 @@ public class subsystems extends OpMode {
 
     private void autoAimServoMode() {
         // Pull live gains (Dashboard)
-        turretPIDF.setP(Globals.turretKP);
-        turretPIDF.setI(Globals.turretKI);
-        turretPIDF.setD(Globals.turretKD);
-        turretPIDF.setF(Globals.turretKF);
+        turretPIDF.setP(Globals.turret.turretKP);
+        turretPIDF.setI(Globals.turret.turretKI);
+        turretPIDF.setD(Globals.turret.turretKD);
+        turretPIDF.setF(Globals.turret.turretKF);
 
         // Toggle with TRIANGLE (edge)
         boolean tri = gamepadEx.getButton(GamepadKeys.Button.TRIANGLE);
@@ -282,18 +270,15 @@ public class subsystems extends OpMode {
 
             if (chosen != null) {
 
-                double err = chosenBearing
-                        - Globals.turretCamOffset                 // camera not centered
-                        - turretConstants.turretLocationError;    // mechanical mount offset
+                double err = chosenBearing// camera not centered
+                        - Globals.turret.turretLocationError;    // mechanical mount offset
 
-                aligned = Math.abs(err) <= Globals.turretTol;
+                aligned = Math.abs(err) <= Globals.turret.turretTol;
 
                 // PID output is a delta-angle; setpoint is 0 (we want zero error)
                 double delta = aligned ? 0.0 : turretPIDF.calculate(err, 0.0);
 
                 // Limit how much we move the target this loop (smooths big swings)
-                if (delta >  turretConstants.maxStep) delta =  turretConstants.maxStep;
-                if (delta < -turretConstants.maxStep) delta = -turretConstants.maxStep;
 
                 turretTarget -= delta; //THIS IS NEGATIVE
             } else {
@@ -307,7 +292,7 @@ public class subsystems extends OpMode {
 
         if (lb ^ rb) {
             aligned = false;
-            turretTarget += lb ? +turretConstants.nudge : -turretConstants.nudge;
+            turretTarget += lb ? +Globals.turret.nudge : -Globals.turret.nudge;
 
         }
         if (turretTarget > 300) {
@@ -324,10 +309,10 @@ public class subsystems extends OpMode {
 
 
     private void launcherawe() {
-        ff.setP(turretConstants.flykP);
-        ff.setI(turretConstants.flykI);
-        ff.setD(turretConstants.flykD);
-        ff.setF(turretConstants.flykF);
+        ff.setP(Globals.launcher.flykP);
+        ff.setI(Globals.launcher.flykI);
+        ff.setD(Globals.launcher.flykD);
+        ff.setF(Globals.launcher.flykF);
 
 
 
@@ -336,7 +321,7 @@ public class subsystems extends OpMode {
             for (AprilTagDetection d : detections) {
                 distance = d.ftcPose.range;
 
-                power = Globals.targetrpm; // TODO FORMULA FOR POWER. replace targetrpm with the formula
+                power = (2547.5 * pow(2.718281828459045, (0.0078 * distance))); // here
                 speed = true;
             }
         } else {
@@ -346,19 +331,17 @@ public class subsystems extends OpMode {
 
         double feedforwardPower = ff.calculate(RPM, power);
 
-        //SimpleMotorFeedforward ff = new SimpleMotorFeedforward(Globals.fwKs, Globals.fwKv, Globals.fwKa);
-        //double feedforwardPower = ff.calculate(power, 0.0);
 
         if (gamepadEx.getButton(GamepadKeys.Button.CROSS) && aligned) {
             launcher1.set(feedforwardPower);
             launcher2.set(feedforwardPower);
-            if (Math.abs(Globals.targetrpm - RPM) < Globals.launcherTol) { // TODO replace targetrpm with power
-                set.turnToAngle(Globals.upset);
+            if (Math.abs(power - RPM) < Globals.launcher.launcherTol) { // there
+                set.turnToAngle(Globals.launcher.upset);
             }
         } else {
             launcher1.set(0);
             launcher2.set(0);
-            set.turnToAngle(Globals.downset);
+            set.turnToAngle(Globals.launcher.downset);
         }
 
     }
@@ -386,6 +369,7 @@ public class subsystems extends OpMode {
         double y = -gamepad1.left_stick_y; // Remember, Y stick value is reversed
         double x = gamepad1.left_stick_x * 1.1; // Counteract imperfect strafing
         double rx = gamepad1.right_trigger - gamepad1.left_trigger;
+        double slowdown = 0.6;
         if (Math.abs(y)<0.2){
             y=0.0;
         }
@@ -402,10 +386,10 @@ public class subsystems extends OpMode {
         double frontRightPower = (y - x - rx) / denominator;
         double backRightPower = (y + x - rx) / denominator;
 
-        fl.set(frontLeftPower);
-        bl.set(backLeftPower);
-        fr.set(frontRightPower);
-        br.set(backRightPower);
+        fl.set(frontLeftPower * slowdown);
+        bl.set(backLeftPower * slowdown);
+        fr.set(frontRightPower * slowdown);
+        br.set(backRightPower * slowdown);
 
         telemetry.addData("y",y);
         telemetry.addData("x",x);
