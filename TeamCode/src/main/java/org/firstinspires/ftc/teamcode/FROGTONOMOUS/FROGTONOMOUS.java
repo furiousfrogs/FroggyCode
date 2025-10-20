@@ -1,11 +1,12 @@
-package org.firstinspires.ftc.teamcode.pedroPathing;
+package org.firstinspires.ftc.teamcode.FROGTONOMOUS;
+
+import android.util.Size;
 
 import com.pedropathing.follower.Follower;
 import com.pedropathing.geometry.BezierCurve;
 import com.pedropathing.geometry.BezierLine;
 import com.pedropathing.geometry.Pose;
 import com.pedropathing.paths.PathChain;
-import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.seattlesolvers.solverslib.command.CommandOpMode;
 import com.seattlesolvers.solverslib.command.InstantCommand;
 import com.seattlesolvers.solverslib.command.SequentialCommandGroup;
@@ -13,20 +14,25 @@ import com.seattlesolvers.solverslib.command.WaitCommand;
 import com.seattlesolvers.solverslib.pedroCommand.FollowPathCommand;
 import com.seattlesolvers.solverslib.util.TelemetryData;
 
-@Autonomous
-public class PedroAutoSample extends CommandOpMode {
+import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
+
+import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
+import org.firstinspires.ftc.vision.VisionPortal;
+import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
+import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
+
+import java.util.List;
+
+public class FROGTONOMOUS extends CommandOpMode {
     private Follower follower;
     TelemetryData telemetryData = new TelemetryData(telemetry);
-
-    // Poses
+    private boolean patternDetected = false;
     private final Pose startPose = new Pose(9, 111, Math.toRadians(-90));
     private final Pose scorePose = new Pose(16, 128, Math.toRadians(-45));
     private final Pose pickup1Pose = new Pose(30, 121, Math.toRadians(0));
     private final Pose pickup2Pose = new Pose(30, 131, Math.toRadians(0));
     private final Pose pickup3Pose = new Pose(45, 128, Math.toRadians(90));
     private final Pose parkPose = new Pose(68, 96, Math.toRadians(-90));
-
-    // Path chains
     private PathChain scorePreload, grabPickup1, grabPickup2, grabPickup3;
     private PathChain scorePickup1, scorePickup2, scorePickup3, park;
 
@@ -112,13 +118,27 @@ public class PedroAutoSample extends CommandOpMode {
     public void initialize() {
         super.reset();
 
-        // Initialize follower
+        AprilTagProcessor tagProcessor = new AprilTagProcessor.Builder()
+                .setDrawAxes(true)
+                .setDrawTagID(true)
+                .setDrawTagOutline(true)
+                .setDrawCubeProjection(true)
+                .setLensIntrinsics(914.101, 914.101, 645.664, 342.333)
+                .build();
+
+        VisionPortal visionPortal = new VisionPortal.Builder()
+                .addProcessor(tagProcessor)
+                .setCamera(hardwareMap.get(WebcamName.class, "ov9281"))
+                .setStreamFormat(VisionPortal.StreamFormat.MJPEG)
+                .setCameraResolution(new Size(1280, 720))
+                .build();
+
         follower = Constants.createFollower(hardwareMap);
         follower.setStartingPose(startPose);
         buildPaths();
 
-        // Create the autonomous command sequence
-        SequentialCommandGroup autonomousSequence = new SequentialCommandGroup(
+
+        SequentialCommandGroup GPP = new SequentialCommandGroup(
                 // Score preload
                 new FollowPathCommand(follower, scorePreload),
                 openOuttakeClaw(),
@@ -126,7 +146,7 @@ public class PedroAutoSample extends CommandOpMode {
 
                 // First pickup cycle
                 new FollowPathCommand(follower, grabPickup1).setGlobalMaxPower(0.5), // Sets globalMaxPower to 50% for all future paths
-                                                                                     // (unless a custom maxPower is given)
+                // (unless a custom maxPower is given)
                 grabSample(),
                 new FollowPathCommand(follower, scorePickup1),
                 scoreSample(),
@@ -148,8 +168,84 @@ public class PedroAutoSample extends CommandOpMode {
                 level1Ascent()
         );
 
-        // Schedule the autonomous sequence
-        schedule(autonomousSequence);
+        SequentialCommandGroup PGP = new SequentialCommandGroup(
+                // Score preload
+                new FollowPathCommand(follower, scorePreload),
+                openOuttakeClaw(),
+                new WaitCommand(1000), // Wait 1 second
+
+                // First pickup cycle
+                new FollowPathCommand(follower, grabPickup1).setGlobalMaxPower(0.5), // Sets globalMaxPower to 50% for all future paths
+                // (unless a custom maxPower is given)
+                grabSample(),
+                new FollowPathCommand(follower, scorePickup1),
+                scoreSample(),
+
+                // Second pickup cycle
+                new FollowPathCommand(follower, grabPickup2),
+                grabSample(),
+                new FollowPathCommand(follower, scorePickup2, 1.0), // Overrides maxPower to 100% for this path only
+                scoreSample(),
+
+                // Third pickup cycle
+                new FollowPathCommand(follower, grabPickup3),
+                grabSample(),
+                new FollowPathCommand(follower, scorePickup3),
+                scoreSample(),
+
+                // Park
+                new FollowPathCommand(follower, park, false), // park with holdEnd false
+                level1Ascent()
+        );
+
+        SequentialCommandGroup PPG = new SequentialCommandGroup(
+                // Score preload
+                new FollowPathCommand(follower, scorePreload),
+                openOuttakeClaw(),
+                new WaitCommand(1000), // Wait 1 second
+
+                // First pickup cycle
+                new FollowPathCommand(follower, grabPickup1).setGlobalMaxPower(0.5), // Sets globalMaxPower to 50% for all future paths
+                // (unless a custom maxPower is given)
+                grabSample(),
+                new FollowPathCommand(follower, scorePickup1),
+                scoreSample(),
+
+                // Second pickup cycle
+                new FollowPathCommand(follower, grabPickup2),
+                grabSample(),
+                new FollowPathCommand(follower, scorePickup2, 1.0), // Overrides maxPower to 100% for this path only
+                scoreSample(),
+
+                // Third pickup cycle
+                new FollowPathCommand(follower, grabPickup3),
+                grabSample(),
+                new FollowPathCommand(follower, scorePickup3),
+                scoreSample(),
+
+                // Park
+                new FollowPathCommand(follower, park, false), // park with holdEnd false
+                level1Ascent()
+        );
+
+        List<AprilTagDetection> code = tagProcessor.getDetections();
+        if (code!= null && !code.isEmpty() && !patternDetected) {
+            for (AprilTagDetection c : code) {
+                if (c.id == 21) {
+                    schedule(GPP);
+                    patternDetected = true;
+                } else if (c.id == 22) {
+                    schedule(PGP);
+                    patternDetected = true;
+                } else if (c.id == 23) {
+                    schedule(PPG);
+                    patternDetected = true;
+                } else {
+                    patternDetected = false;
+                    telemetry.addLine("NO PATTERN FOUND");
+                }
+            }
+        }
     }
 
     /**
