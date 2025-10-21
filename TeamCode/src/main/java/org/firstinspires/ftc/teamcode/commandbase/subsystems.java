@@ -28,91 +28,89 @@ import java.util.List;
 
 @TeleOp(name = "Subsystem Testing")
 public class subsystems extends OpMode {
+
+    // ----- booleans/toggles
     private boolean aligned = false;
-    private boolean speed = false;
     private boolean patternDetected = false;
-    private boolean sight = false;
     private boolean autoAimEnabled = true;
     private boolean prevTri = false;
 
-    double turretTarget = 150F;
-
-    private VisionPortal visionPortal;
-    private AprilTagProcessor tagProcessor;
+    // ----- doubles -----
     private double distance;
     private double power;
-    private PIDFController turretPIDF, ff;
-    private double turretPower = 0.0;
 
+    // ----- pid's -----
+    private PIDFController turretPIDF, ff;
+    private PIDController revolverPID;
+
+    // ----- Motors, servos, sensors -----
     private Motor launcher1, launcher2, revolver,fl,bl,fr,br;
     private SimpleServo set, rotate;
+    private NormalizedColorSensor colour;
+    private DistanceSensor dist;
 
+    // ----- launcher -----
     private double RPM;
     private double lastTime;
     private int lastPosition;
 
-    private FtcDashboard dashboard = FtcDashboard.getInstance();
-    private GamepadEx gamepadEx;
+    // ----- turret -----
     private double bearing = 0.0;
+    double turretTarget = 150F; // inital turret angle
 
-    private NormalizedColorSensor colour;
-    private DistanceSensor dist;
+    // ----- revolver -----
+    private int revolverTarget = 0;
+    private double revolverPower;
     public enum pattern {
         PPG,
         PGP,
         GPP
-    }
-    private PIDController revolverPID;
-    private int revolverTarget = 0;      // persistent target (ticks or degrees—match your units!)
-    private boolean indexInProgress = false;  // true while a step is underway
-    private double revolverPower;
+    } pattern currentPattern = pattern.PPG;
 
-    pattern currentPattern = pattern.PPG;
+    // ----- misc -----
+    private FtcDashboard dashboard = FtcDashboard.getInstance();
+    private GamepadEx gamepadEx;
+    private VisionPortal visionPortal;
+    private AprilTagProcessor tagProcessor;
     @Override
     public void init() {
-
-        ff = new PIDFController(Globals.launcher.flykP, Globals.launcher.flykI, Globals.launcher.flykD, Globals.launcher.flykF);
-
-
-        revolver = new Motor(hardwareMap, "revolver", 28, 1150);
-        revolver.setRunMode(Motor.RunMode.RawPower);
-        revolver.resetEncoder();
-        revolverPID = new PIDController(Globals.revolver.revolverKP, Globals.revolver.revolverKI, Globals.revolver.revolverKD);
-
+        // ----- drive -----
         fl = new Motor(hardwareMap,"fl");
         fl.setRunMode(Motor.RunMode.RawPower);
         fl.setInverted(true);
-
         bl = new Motor(hardwareMap,"bl");
         bl.setRunMode(Motor.RunMode.RawPower);
         bl.setInverted(true);
-
         fr = new Motor(hardwareMap,"fr");
         fr.setRunMode(Motor.RunMode.RawPower);
-
         br = new Motor(hardwareMap,"br");
         br.setRunMode(Motor.RunMode.RawPower);
 
-
+        // ----- launcher -----
         launcher1 = new Motor(hardwareMap, "l1", 28, 6000);
         launcher1.setRunMode(Motor.RunMode.RawPower);
         launcher2 = new Motor(hardwareMap, "l2", 28, 6000);
         launcher2.setRunMode(Motor.RunMode.RawPower);
         launcher1.setZeroPowerBehavior(Motor.ZeroPowerBehavior.FLOAT);
         launcher2.setZeroPowerBehavior(Motor.ZeroPowerBehavior.FLOAT);
-
+        ff = new PIDFController(Globals.launcher.flykP, Globals.launcher.flykI, Globals.launcher.flykD, Globals.launcher.flykF);
         set = new SimpleServo(hardwareMap, "set", 0, 180, AngleUnit.DEGREES);
-        rotate = new SimpleServo(hardwareMap, "turret", 0, 300, AngleUnit.DEGREES);
-        rotate.turnToAngle(turretTarget);
-
+        // ----- launcher helpers -----
         lastTime = getRuntime();
         lastPosition = launcher1.getCurrentPosition();
-        gamepadEx = new GamepadEx(gamepad1);
 
+        // ----- revolver -----
+        revolver = new Motor(hardwareMap, "revolver", 28, 1150);
+        revolver.setRunMode(Motor.RunMode.RawPower);
+        revolver.resetEncoder();
+        revolverPID = new PIDController(Globals.revolver.revolverKP, Globals.revolver.revolverKI, Globals.revolver.revolverKD);
 
+        // ----- turret -----
+        rotate = new SimpleServo(hardwareMap, "turret", 0, 300, AngleUnit.DEGREES);
+        rotate.turnToAngle(turretTarget);
         turretPIDF = new PIDFController(Globals.turret.turretKP, Globals.turret.turretKI, Globals.turret.turretKD, Globals.turret.turretKF);
 
-
+        // ----- build ov9281 -----
         tagProcessor = new AprilTagProcessor.Builder()
                 .setDrawAxes(true)
                 .setDrawTagID(true)
@@ -128,11 +126,7 @@ public class subsystems extends OpMode {
                 .setCameraResolution(new android.util.Size(1280, 720))
                 .build();
 
-
-
-
-        telemetry.addLine("Initialized. Press START.");
-        telemetry.update();
+        gamepadEx = new GamepadEx(gamepad1);
     }
 
     @Override
@@ -199,7 +193,7 @@ public class subsystems extends OpMode {
         }
     }
 
-    // ----------------- Launcher utilities (unchanged logic) -----------------
+
     private void calculateRPM() {
         double currentTime = getRuntime();
         int currentPosition = launcher1.getCurrentPosition();
@@ -217,17 +211,13 @@ public class subsystems extends OpMode {
     }
 
     private void autoAimServoMode() {
-        // Pull live gains (Dashboard)
-        turretPIDF.setP(Globals.turret.turretKP);
-        turretPIDF.setI(Globals.turret.turretKI);
-        turretPIDF.setD(Globals.turret.turretKD);
-        turretPIDF.setF(Globals.turret.turretKF);
+        turretPIDF.setPIDF(Globals.turret.turretKP, Globals.turret.turretKI, Globals.turret.turretKD, Globals.turret.turretKF);
 
-        // Toggle with TRIANGLE (edge)
+
         boolean tri = gamepadEx.getButton(GamepadKeys.Button.TRIANGLE);
         if (tri && !prevTri) {
             autoAimEnabled = !autoAimEnabled;
-            turretPIDF.reset(); // avoid D/I kick
+            turretPIDF.reset();
         }
         prevTri = tri;
 
@@ -244,7 +234,7 @@ public class subsystems extends OpMode {
             if (detections != null && !detections.isEmpty()) {
                 for (AprilTagDetection d : detections) {
                     if (d.ftcPose != null) {
-                        double bearing = d.ftcPose.bearing; // +- based on red/blue side
+                        double bearing = d.ftcPose.bearing;
                         if (chosen == null || Math.abs(bearing) < Math.abs(chosenBearing)) {
                             chosen = d;
                             chosenBearing = bearing;
@@ -255,15 +245,12 @@ public class subsystems extends OpMode {
 
             if (chosen != null) {
 
-                double err = chosenBearing// camera not centered
-                        - Globals.turret.turretLocationError;    // mechanical mount offset
+                double err = chosenBearing - Globals.turret.turretLocationError;
 
                 aligned = Math.abs(err) <= Globals.turret.turretTol;
 
-                // PID output is a delta-angle; setpoint is 0 (we want zero error)
                 double delta = aligned ? 0.0 : turretPIDF.calculate(err, 0.0);
 
-                // Limit how much we move the target this loop (smooths big swings)
 
                 turretTarget -= delta; //THIS IS NEGATIVE
             } else {
@@ -280,6 +267,7 @@ public class subsystems extends OpMode {
             turretTarget += lb ? +Globals.turret.nudge : -Globals.turret.nudge;
 
         }
+
         if (turretTarget > 300) {
             turretTarget = 300;
         } else if (turretTarget < 0) {
@@ -289,7 +277,7 @@ public class subsystems extends OpMode {
         rotate.turnToAngle(turretTarget);
 
     }
-    // ----------------- Launcher utilities (unchanged logic) -----------------
+
 
 
 
@@ -307,11 +295,11 @@ public class subsystems extends OpMode {
                 distance = d.ftcPose.range;
 
                 power = (2547.5 * pow(2.718281828459045, (0.0078 * distance))); // here
-                speed = true;
+
             }
         } else {
             power = 0;
-            speed = false;
+
         }
 
         double feedforwardPower = ff.calculate(RPM, power);
@@ -342,11 +330,11 @@ public class subsystems extends OpMode {
 
         TelemetryPacket packet = new TelemetryPacket();
         packet.put("RPM", RPM);
-        packet.put("TurretPower", turretPower);
+
         FtcDashboard.getInstance().sendTelemetryPacket(packet);
     }
 
-    // ----------------- Helpers -----------------
+
 
 
 
