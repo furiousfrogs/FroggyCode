@@ -9,6 +9,7 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
 import com.qualcomm.robotcore.hardware.DistanceSensor;
 import com.qualcomm.robotcore.hardware.NormalizedColorSensor;
+import com.seattlesolvers.solverslib.controller.PIDController;
 import com.seattlesolvers.solverslib.controller.PIDFController;
 import com.seattlesolvers.solverslib.gamepad.GamepadEx;
 import com.seattlesolvers.solverslib.gamepad.GamepadKeys;
@@ -61,9 +62,10 @@ public class subsystems extends OpMode {
         PGP,
         GPP
     }
-
+    private PIDController revolverPID;
     private int revolverTarget = 0;      // persistent target (ticks or degrees—match your units!)
     private boolean indexInProgress = false;  // true while a step is underway
+    private double revolverPower;
 
     pattern currentPattern = pattern.PPG;
     @Override
@@ -71,24 +73,11 @@ public class subsystems extends OpMode {
 
         ff = new PIDFController(Globals.launcher.flykP, Globals.launcher.flykI, Globals.launcher.flykD, Globals.launcher.flykF);
 
-        //colour = (NormalizedColorSensor) hardwareMap.get(ColorSensor.class, "color");
-        //dist = hardwareMap.get(DistanceSensor.class, "colour");
 
-        //revolver = new Motor(hardwareMap, "revolver", 28, 1150);
-        //revolver.setRunMode(Motor.RunMode.PositionControl);
-        //revolver.setPositionCoefficient(Globals.revolverKP);
-        //revolver.setPositionTolerance(Globals.revolverTol);
-        //revolverTarget = revolver.getCurrentPosition();
-        //revolver.setTargetPosition(revolverTarget);
-        //revolver.stopMotor();
-
-
-
-        // Reverse the right side motors. This may be wrong for your setup.
-        // If your robot moves backwards when commanded to go forwards,
-        // reverse the left side instead.
-        // See the note about this earlier on this page.
-
+        revolver = new Motor(hardwareMap, "revolver", 28, 1150);
+        revolver.setRunMode(Motor.RunMode.RawPower);
+        revolver.resetEncoder();
+        revolverPID = new PIDController(Globals.revolver.revolverKP, Globals.revolver.revolverKI, Globals.revolver.revolverKD);
 
         fl = new Motor(hardwareMap,"fl");
         fl.setRunMode(Motor.RunMode.RawPower);
@@ -109,6 +98,8 @@ public class subsystems extends OpMode {
         launcher1.setRunMode(Motor.RunMode.RawPower);
         launcher2 = new Motor(hardwareMap, "l2", 28, 6000);
         launcher2.setRunMode(Motor.RunMode.RawPower);
+        launcher1.setZeroPowerBehavior(Motor.ZeroPowerBehavior.FLOAT);
+        launcher2.setZeroPowerBehavior(Motor.ZeroPowerBehavior.FLOAT);
 
         set = new SimpleServo(hardwareMap, "set", 0, 180, AngleUnit.DEGREES);
         rotate = new SimpleServo(hardwareMap, "turret", 0, 300, AngleUnit.DEGREES);
@@ -155,26 +146,20 @@ public class subsystems extends OpMode {
         drive();
     }
 
-    private void rotate(boolean clockwise) {
-        if (indexInProgress) {
 
-            if (revolver.atTargetPosition()) {
-                revolver.stopMotor();
-                indexInProgress = false;
-            } else {
-                revolver.set(0.8);
-            }
-            return;
-        }
 
-        // Start a new step
-        double step = clockwise ? Globals.revolver.oneRotation : -Globals.revolver.oneRotation;
-        revolverTarget += step;
-        revolver.setTargetPosition(revolverTarget);
-        revolver.set(0.8);
-        indexInProgress = true;
+    private void rotate(boolean clockwise) { //TODO IDK IF IT GOES THE RIGHT WAY
+        revolverPID.setTolerance(0);
+        gamepadEx.readButtons();
+        revolverPID.setPID(Globals.revolver.revolverKP, Globals.revolver.revolverKI, Globals.revolver.revolverKD);
+
+        revolverTarget += clockwise ? -Globals.revolver.oneRotation : Globals.revolver.oneRotation;
+
+
+        revolverPower = revolverPID.calculate(revolver.getCurrentPosition(), revolverTarget);
+        revolver.set(revolverPower);
+
     }
-
     private void findPattern() {
         if (!patternDetected && !gamepadEx.getButton(GamepadKeys.Button.OPTIONS)) {
             List<AprilTagDetection> code = tagProcessor.getDetections();
