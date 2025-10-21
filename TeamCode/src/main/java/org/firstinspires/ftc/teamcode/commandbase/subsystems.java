@@ -24,6 +24,9 @@ import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
 
 import org.firstinspires.ftc.teamcode.hardware.Globals;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 
 @TeleOp(name = "Subsystem Testing")
@@ -59,6 +62,10 @@ public class subsystems extends OpMode {
     double turretTarget = 150F; // inital turret angle
 
     // ----- revolver -----
+
+    //VERY IMPORTANT REVOLVER STATE
+    //index 0 is the top, 1 is the left, 2 is the right
+    private List<String> revolverState = new ArrayList<>(Arrays.asList("EMPTY", "EMPTY", "EMPTY"));
     private int revolverTarget = 0;
     private double revolverPower;
     public enum pattern {
@@ -140,58 +147,88 @@ public class subsystems extends OpMode {
         drive();
     }
 
+    public void updateState(String first, String second, String third) {
+        revolverState.set(0, first);
+        revolverState.set(1, second);
+        revolverState.set(2, third);
+    }
 
-
-    private void rotate(boolean clockwise) { //TODO IDK IF IT GOES THE RIGHT WAY
+    private void rotate(boolean clockwise) { // TODO IDK IF IT GOES THE RIGHT WAY
         revolverPID.setTolerance(0);
         gamepadEx.readButtons();
         revolverPID.setPID(Globals.revolver.revolverKP, Globals.revolver.revolverKI, Globals.revolver.revolverKD);
 
         revolverTarget += clockwise ? -Globals.revolver.oneRotation : Globals.revolver.oneRotation;
 
-
         revolverPower = revolverPID.calculate(revolver.getCurrentPosition(), revolverTarget);
         revolver.set(revolverPower);
 
-    }
-    private void findPattern() {
-        if (!patternDetected && !gamepadEx.getButton(GamepadKeys.Button.OPTIONS)) {
-            List<AprilTagDetection> code = tagProcessor.getDetections();
-            if (code != null && !code.isEmpty() && !patternDetected) {
-                for (AprilTagDetection c : code) {
-                    if (c.id == 21) {
+        String s0 = revolverState.get(0);
+        String s1 = revolverState.get(1);
+        String s2 = revolverState.get(2);
 
-                        currentPattern = pattern.GPP;
-                        patternDetected = true;
-                    } else if (c.id == 22) {
-                        currentPattern = pattern.PGP;
-                        patternDetected = true;
-                    } else if (c.id == 23) {
-                        currentPattern = pattern.PPG;
-                        patternDetected = true;
-                    } else {
-                        patternDetected = false;
-                        telemetry.addLine("NO PATTERN FOUND");
-                    }
+        if (clockwise) {
+            updateState(s2, s0, s1);
+        } else {
+            updateState(s1, s2, s0);
+        }
+    }
+
+    private void findPattern() {
+        if (gamepadEx.wasJustPressed(GamepadKeys.Button.OPTIONS)) {
+            List<AprilTagDetection> code = tagProcessor.getDetections();
+            if (code != null && !code.isEmpty()) {
+                code.sort(Comparator.comparingDouble((AprilTagDetection d) -> d.decisionMargin).reversed());
+                AprilTagDetection best = code.get(0);
+
+                if (best.id == 21) {
+                    currentPattern = pattern.GPP; patternDetected = true;
+                } else if (best.id == 22) {
+                    currentPattern = pattern.PGP; patternDetected = true;
+                } else if (best.id == 23) {
+                    currentPattern = pattern.PPG; patternDetected = true;
+                } else {
+                    patternDetected = false;
+                    telemetry.addLine("NO PATTERN FOUND");
                 }
             }
-        } if (gamepadEx.getButton(GamepadKeys.Button.OPTIONS)) {
-            patternDetected = false;
-        }
-
-    } //TODO currently is always on, add a toggle.
-
-    private void patternAlgo() {
-        switch (currentPattern) {
-            case PPG:
-                break;
-            case PGP:
-                break;
-            case GPP:
-                break;
-
         }
     }
+
+    private void patternAlgo() {
+        char[] pat;
+        switch (currentPattern) {
+            case PPG: pat = new char[]{'P','P','G'}; break;
+            case PGP: pat = new char[]{'P','G','P'}; break;
+            case GPP: pat = new char[]{'G','P','P'}; break;
+            default:  pat = new char[]{'P','P','G'}; // safety
+        }
+
+        // Three cycles bring desired color to the top.
+        for (int i = 0; i < 3; i++) {
+            char want = pat[i];
+
+            String top   = revolverState.get(0);
+            String left  = revolverState.get(1);
+            String right = revolverState.get(2);
+
+            if (top.charAt(0) != want) {
+                if (left.charAt(0) == want) {
+                    rotate(false);
+                } else if (right.charAt(0) == want) {
+                    rotate(true);
+                } else {
+                    telemetry.addLine("Wanted color not found");
+                }
+            }
+
+            launcherawe();
+            revolverState.set(0, "EMPTY");
+        }
+
+        telemetry.addLine("Pattern launch complete.");
+    }
+
 
 
     private void calculateRPM() {
