@@ -2,6 +2,8 @@ package org.firstinspires.ftc.teamcode.commandbase;
 
 import static java.lang.Math.pow;
 
+import android.graphics.Color;
+
 import com.acmerobotics.dashboard.FtcDashboard;
 import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
@@ -9,6 +11,7 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
 import com.qualcomm.robotcore.hardware.DistanceSensor;
 import com.qualcomm.robotcore.hardware.NormalizedColorSensor;
+import com.qualcomm.robotcore.hardware.NormalizedRGBA;
 import com.seattlesolvers.solverslib.controller.PIDController;
 import com.seattlesolvers.solverslib.controller.PIDFController;
 import com.seattlesolvers.solverslib.gamepad.GamepadEx;
@@ -18,6 +21,7 @@ import com.seattlesolvers.solverslib.hardware.motors.Motor;
 
 import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.vision.VisionPortal;
 import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
 import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
@@ -49,8 +53,8 @@ public class subsystems extends OpMode {
     // ----- Motors, servos, sensors -----
     private Motor launcher1, launcher2, revolver,fl,bl,fr,br;
     private SimpleServo set, rotate;
-    private NormalizedColorSensor colour;
-    private DistanceSensor dist;
+    private NormalizedColorSensor colourSensor;
+    private DistanceSensor distanceSensor;
 
     // ----- launcher -----
     private double RPM;
@@ -62,6 +66,7 @@ public class subsystems extends OpMode {
     double turretTarget = 150F; // inital turret angle
 
     // ----- revolver -----
+    private final float[] hsv = new float[3];
 
     //VERY IMPORTANT REVOLVER STATE
     //index 0 is the top, 1 is the left, 2 is the right
@@ -111,6 +116,10 @@ public class subsystems extends OpMode {
         revolver.setRunMode(Motor.RunMode.RawPower);
         revolver.resetEncoder();
         revolverPID = new PIDController(Globals.revolver.revolverKP, Globals.revolver.revolverKI, Globals.revolver.revolverKD);
+        // ----- colour sensor -----
+        colourSensor = hardwareMap.get(NormalizedColorSensor.class,"colour1");
+        distanceSensor = hardwareMap.get(DistanceSensor.class, "colour1");
+        colourSensor.setGain(2.0f); //CAMERA SENSITIVITY, increase for darker environemnts
 
         // ----- turret -----
         rotate = new SimpleServo(hardwareMap, "turret", 0, 300, AngleUnit.DEGREES);
@@ -145,6 +154,18 @@ public class subsystems extends OpMode {
         //findPattern();
         //revolverRotate();
         drive();
+    }
+
+    public void senseColour() {
+        NormalizedRGBA rgba = colourSensor.getNormalizedColors();
+        Color.colorToHSV(rgba.toColor(), hsv);
+        if (distanceSensor.getDistance(DistanceUnit.CM) <=2.5) {
+            if ((150 <= hsv[0] && hsv[0] <= 180) && (0.75 <= hsv[1] && hsv[1] <= 1.0) && (0 < hsv[2] && hsv[2] < 0.16)) { //TODO tunable
+                telemetry.addLine("its green");
+            } else if ((220 <= hsv[0] && hsv[0] <= 250) && (0.4 <= hsv[1] && hsv[1] <= 0.6) && (0 < hsv[2] && hsv[2] < 0.16)) {//this too
+                telemetry.addLine("purpel");
+            }
+        }
     }
 
     public void updateState(String first, String second, String third) {
