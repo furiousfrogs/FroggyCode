@@ -160,10 +160,17 @@ public class subsystems extends OpMode {
         NormalizedRGBA rgba = colourSensor.getNormalizedColors();
         Color.colorToHSV(rgba.toColor(), hsv);
         if (distanceSensor.getDistance(DistanceUnit.CM) <=2.5) {
-            if ((150 <= hsv[0] && hsv[0] <= 180) && (0.75 <= hsv[1] && hsv[1] <= 1.0) && (0 < hsv[2] && hsv[2] < 0.16)) { //TODO tunable
+            String s0 = revolverState.get(0);
+            String s1 = revolverState.get(1);
+
+            if ((150 <= hsv[0] && hsv[0] <= 180) && (0.75 <= hsv[1] && hsv[1] <= 1.0) && (0 < hsv[2] && hsv[2] < 0.16)) {
+                updateState(s0, s1, "G");
                 telemetry.addLine("its green");
             } else if ((220 <= hsv[0] && hsv[0] <= 250) && (0.4 <= hsv[1] && hsv[1] <= 0.6) && (0 < hsv[2] && hsv[2] < 0.16)) {//this too
+                updateState(s0, s1, "P");
                 telemetry.addLine("purpel");
+            } else {
+                updateState(s0,s1,"EMPTY");
             }
         }
     }
@@ -188,9 +195,9 @@ public class subsystems extends OpMode {
         String s1 = revolverState.get(1);
         String s2 = revolverState.get(2);
         if (clockwise) {
-            updateState(s2, s0, s1);
-        } else {
             updateState(s1, s2, s0);
+        } else {
+            updateState(s2, s0, s1);
         }
     }
 
