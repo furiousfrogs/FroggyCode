@@ -166,7 +166,6 @@ public class subsystems extends OpMode {
         String s0 = revolverState.get(0);
         String s1 = revolverState.get(1);
         String s2 = revolverState.get(2);
-
         if (clockwise) {
             updateState(s2, s0, s1);
         } else {
@@ -249,7 +248,6 @@ public class subsystems extends OpMode {
 
     private void autoAimServoMode() {
         turretPIDF.setPIDF(Globals.turret.turretKP, Globals.turret.turretKI, Globals.turret.turretKD, Globals.turret.turretKF);
-
 
         boolean tri = gamepadEx.getButton(GamepadKeys.Button.TRIANGLE);
         if (tri && !prevTri) {
