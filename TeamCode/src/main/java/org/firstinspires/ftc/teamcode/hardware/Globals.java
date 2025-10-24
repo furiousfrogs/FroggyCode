@@ -39,7 +39,7 @@ public class Globals {
         public static double upset=270.0F;
 
     }
-
+        public static float intakePower = 0.5F;
 
 
 

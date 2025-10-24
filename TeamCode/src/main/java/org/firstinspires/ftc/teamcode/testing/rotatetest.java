@@ -11,7 +11,7 @@ import com.seattlesolvers.solverslib.hardware.motors.Motor;
 import org.firstinspires.ftc.teamcode.hardware.Globals;
 @TeleOp(name = "rotate test")
 public class rotatetest extends OpMode {
-    private Motor revolver;
+    private Motor revolver, intake;
     private GamepadEx gamepadEx;
 
     private boolean indexInProgress = false;
@@ -28,6 +28,9 @@ public class rotatetest extends OpMode {
         revolver = new Motor(hardwareMap, "revolver", 384.5, 435);
         revolver.setRunMode(Motor.RunMode.RawPower);
 
+        intake = new Motor(hardwareMap, "intake");
+        intake.setRunMode(Motor.RunMode.RawPower);
+        intake.setZeroPowerBehavior(Motor.ZeroPowerBehavior.BRAKE);
 
         revolver.resetEncoder();                     // zero now (or after homing)
 
@@ -40,11 +43,14 @@ public class rotatetest extends OpMode {
     @Override
     public void loop() {
         rotate();
+        intake();
         // (optional) telemetry
         telemetry.addData("currently: ", revolver.getCurrentPosition());
         telemetry.addData("target: ", revolverTarget);
         telemetry.update();
     }
+
+
     public void rotate() {
         revolverPID.setTolerance(0);
         gamepadEx.readButtons();
@@ -59,5 +65,13 @@ public class rotatetest extends OpMode {
         revolverPower = revolverPID.calculate(revolver.getCurrentPosition(), revolverTarget);
         revolver.set(revolverPower);
 
+    }
+    public void intake() {
+
+        if (gamepadEx.getButton(GamepadKeys.Button.TRIANGLE)) {
+            intake.set(Globals.intakePower);
+        } else if (gamepadEx.getButton(GamepadKeys.Button.SQUARE)) {
+            intake.set(-Globals.intakePower);
+        } else { intake.set(0); }
     }
 }
