@@ -2,15 +2,23 @@ package org.firstinspires.ftc.teamcode.FROGTONOMOUS;
 
 import android.util.Size;
 
+import com.bylazar.configurables.annotations.Configurable;
 import com.pedropathing.follower.Follower;
 import com.pedropathing.geometry.BezierCurve;
 import com.pedropathing.geometry.BezierLine;
 import com.pedropathing.geometry.Pose;
 import com.pedropathing.paths.PathChain;
+import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.HardwareMap;
+import com.seattlesolvers.solverslib.command.CommandBase;
+import com.seattlesolvers.solverslib.command.CommandGroupBase;
 import com.seattlesolvers.solverslib.command.CommandOpMode;
 import com.seattlesolvers.solverslib.command.InstantCommand;
+import com.seattlesolvers.solverslib.command.ParallelCommandGroup;
+import com.seattlesolvers.solverslib.command.ParallelDeadlineGroup;
 import com.seattlesolvers.solverslib.command.SequentialCommandGroup;
+import com.seattlesolvers.solverslib.command.SubsystemBase;
 import com.seattlesolvers.solverslib.command.WaitCommand;
 import com.seattlesolvers.solverslib.pedroCommand.FollowPathCommand;
 import com.seattlesolvers.solverslib.util.TelemetryData;
@@ -24,18 +32,15 @@ import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
 
 import java.util.List;
 
+@Autonomous
+@Configurable
 public class FROGTONOMOUS extends CommandOpMode {
     private Follower follower;
     TelemetryData telemetryData = new TelemetryData(telemetry);
     private boolean patternDetected = false;
-    private final Pose startPose = new Pose(9, 111, Math.toRadians(-90));
-    private final Pose scorePose = new Pose(16, 128, Math.toRadians(-45));
-    private final Pose pickup1Pose = new Pose(30, 121, Math.toRadians(0));
-    private final Pose pickup2Pose = new Pose(30, 131, Math.toRadians(0));
-    private final Pose pickup3Pose = new Pose(45, 128, Math.toRadians(90));
-    private final Pose parkPose = new Pose(68, 96, Math.toRadians(-90));
     private DcMotor intake, outtake;
     private PathChain shoot3, eat3, shoot6, eat6, shoot9, eat9, shoot12;
+
 
     public void buildPaths() {
         shoot3 = follower.pathBuilder()
@@ -107,37 +112,37 @@ public class FROGTONOMOUS extends CommandOpMode {
     }
 
     // Mechanism commands - replace these with your actual subsystem commands
-    private InstantCommand openOuttakeClaw() {
-        return new InstantCommand(() -> {
-            // Example: outtakeSubsystem.openClaw();
-        });
+    public class intakesubsys extends SubsystemBase {
+        public void intake(HardwareMap map) {
+            //init intake motor
+        }
+        public void setpower(double power) {
+            //set motor power
+        }
     }
 
-    private InstantCommand grabSample() {
-        return new InstantCommand(() -> {
-            // Example: intakeSubsystem.grabSample();
-        });
+
+
+    public static class froggyeat extends CommandBase {
+        private final intakesubsys intake;
+
+        public froggyeat(intakesubsys intake) {
+            this.intake = intake;
+            addRequirements(intake);
+        }
+
+        @Override
+        public void initialize() {
+            //motor initialization
+            //intake.setpower(1)
+        }
+
+        @Override
+        public void end(boolean interrupted) {
+            //intake.setpower(0)
+        }
     }
 
-    private InstantCommand scoreSample() {
-        return new InstantCommand(() -> {
-            // Example: outtakeSubsystem.scoreSample();
-        });
-    }
-
-    private InstantCommand level1Ascent() {
-        return new InstantCommand(() -> {
-            // Example: hangSubsystem.level1Ascent();
-        });
-    }
-
-    /**
-     * This method is called once when the OpMode is initialized.
-     * It sets up the robot's hardware, initializes the path-following controller,
-     * builds all the autonomous paths, and constructs the command sequence that
-     * the robot will execute during the autonomous period. The command sequence
-     * is then scheduled to run.
-     */
     @Override
     public void initialize() {
         super.reset();
@@ -158,20 +163,24 @@ public class FROGTONOMOUS extends CommandOpMode {
                 .build();
 
         follower = Constants.createFollower(hardwareMap);
-        follower.setStartingPose(startPose);
+        follower.setStartingPose(new Pose(19.300, 119.350));
         buildPaths();
 
 
         SequentialCommandGroup GPP = new SequentialCommandGroup(
                 // Score preload
                 new FollowPathCommand(follower, shoot3),
-                openOuttakeClaw(),
+
                 new WaitCommand(1000), // Wait 1 second
 
                 // First pickup cycle
-                new FollowPathCommand(follower, eat3), // Sets globalMaxPower to 50% for all future paths
+                new FollowPathCommand(follower, eat3),// Sets globalMaxPower to 50% for all future paths
                 // (unless a custom maxPower is given)
-                grabSample()
+                new ParallelDeadlineGroup(
+                        new FollowPathCommand(follower, eat3),
+                        new froggyeat()
+                )
+
 
 
 //                // Second pickup cycle
@@ -206,14 +215,6 @@ public class FROGTONOMOUS extends CommandOpMode {
         }
     }
 
-    /**
-     * This method is called repeatedly in a loop while the OpMode is running.
-     * It handles the main execution of the OpMode's logic after initialization.
-     * In this implementation, it first calls the superclass's run method to
-     * execute scheduled commands. Then, it adds the robot's current position (X, Y)
-     * and heading from the follower to the telemetry and updates the display on the
-     * Driver Station.
-     */
     @Override
     public void run() {
         super.run();
