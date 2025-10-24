@@ -17,6 +17,7 @@ import com.seattlesolvers.solverslib.hardware.SimpleServo;
 import com.seattlesolvers.solverslib.hardware.SimpleServoExtKt;
 import com.seattlesolvers.solverslib.hardware.motors.CRServo;
 import com.seattlesolvers.solverslib.hardware.motors.Motor;
+import com.seattlesolvers.solverslib.hardware.servos.ServoEx;
 
 import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
@@ -50,8 +51,7 @@ public class finalTest extends OpMode {
 
     // ----- Motors, servos, sensors -----
     private Motor launcher1, launcher2, revolver,fl,bl,fr,br, intake;
-    private SimpleServo set, rotate;
-    private CRServo eject;
+    private SimpleServo set, rotate, eject;
     private NormalizedColorSensor colourSensor;
     private DistanceSensor distanceSensor;
 
@@ -146,7 +146,9 @@ public class finalTest extends OpMode {
         intake = new Motor(hardwareMap, "intake");
         intake.setRunMode(Motor.RunMode.RawPower);
         intake.setZeroPowerBehavior(Motor.ZeroPowerBehavior.BRAKE);
-        eject = new CRServo(hardwareMap, "eject");
+        eject = new SimpleServo(hardwareMap, "eject", 0, 70);
+        eject.setInverted(true);
+        eject.turnToAngle(44);
 
     }
 
@@ -163,15 +165,22 @@ public class finalTest extends OpMode {
     }
 
     public void ejection() {
-        eject.set(gamepad1.right_stick_y);
+        if (gamepad1.right_stick_x > 0.5) {
+            eject.turnToAngle(28);
+        } else if (gamepad1.right_stick_x < -0.5) {
+            eject.turnToAngle(51);
+        } else {
+            eject.turnToAngle(44);
+
+        }// eject is 30, default is 44, push is 51
+
     }
 
     public void intake() {
 
         if (gamepadEx.getButton(GamepadKeys.Button.TRIANGLE)) {
             intake.set(Globals.intakePower);
-        } else if (gamepadEx.getButton(GamepadKeys.Button.SQUARE)) {
-            intake.set(-Globals.intakePower);
+
         } else { intake.set(0); }
     }
 

@@ -8,8 +8,8 @@ public class Globals {
 
     @Config
     public static class turret {
-        public static float turretTol = 2F;
-        public static float nudge = 1F;
+        public static float turretTol = 5F;
+        public static float nudge = 2.5F;
         public static double turretKP = 0.018F;
         public static double turretKI = 0.000F;
         public static double turretKD = 0.013F;
@@ -30,17 +30,18 @@ public class Globals {
     @Config
     public static class launcher {
         public static float launcherTol = 5F;
-        public static double flykP =0.0F;
+        public static double flykP =0.007F;
         public static double flykI =0.0F;
-        public static double flykD = 0.0F ;
+        public static double flykD = 0.00005F ;
         public static double flykF = 0.000197F;
 
         public static double downset=0.0F;
-        public static double upset=270.0F;
+        public static double upset=300F;
 
     }
         public static float intakePower = 0.5F;
-
+        public static float eject1 = 0F;
+        public static float eject2 = 10F;
 
 
 

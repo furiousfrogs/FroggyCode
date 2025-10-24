@@ -174,12 +174,12 @@ public class FROGTONOMOUS extends CommandOpMode {
                 new WaitCommand(1000), // Wait 1 second
 
                 // First pickup cycle
-                new FollowPathCommand(follower, eat3),// Sets globalMaxPower to 50% for all future paths
+                new FollowPathCommand(follower, eat3)// Sets globalMaxPower to 50% for all future paths
                 // (unless a custom maxPower is given)
-                new ParallelDeadlineGroup(
-                        new FollowPathCommand(follower, eat3),
-                        new froggyeat()
-                )
+//                new ParallelDeadlineGroup(
+//                        new FollowPathCommand(follower, eat3),
+//                        new froggyeat()
+//                )
 
 
 

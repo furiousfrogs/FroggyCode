@@ -3,11 +3,16 @@ package org.firstinspires.ftc.teamcode.testing;
 import com.pedropathing.control.PIDFController;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
+import com.qualcomm.robotcore.hardware.Servo;
 import com.seattlesolvers.solverslib.controller.PIDController;
 import com.seattlesolvers.solverslib.gamepad.GamepadEx;
 import com.seattlesolvers.solverslib.gamepad.GamepadKeys;
+import com.seattlesolvers.solverslib.hardware.SimpleServo;
+import com.seattlesolvers.solverslib.hardware.SimpleServoExtKt;
 import com.seattlesolvers.solverslib.hardware.motors.Motor;
+import com.seattlesolvers.solverslib.hardware.servos.ServoEx;
 
+import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.teamcode.hardware.Globals;
 @TeleOp(name = "rotate test")
 public class rotatetest extends OpMode {
@@ -20,6 +25,8 @@ public class rotatetest extends OpMode {
     private PIDController revolverPID;
 
     private double revolverPower;
+
+    private SimpleServo eject;
     // tuning
     private static final double DRIVE_POWER = 0.1; // while PositionControl does its job
 
@@ -38,12 +45,23 @@ public class rotatetest extends OpMode {
         gamepadEx = new GamepadEx(gamepad1);
 
         revolverPID = new PIDController(Globals.revolver.revolverKP, Globals.revolver.revolverKI, Globals.revolver.revolverKD);
+        eject = new SimpleServo(hardwareMap, "eject", 0, 70);
+        eject.setInverted(true);
+
+
     }
 
     @Override
     public void loop() {
-        rotate();
-        intake();
+
+        if (gamepadEx.getButton(GamepadKeys.Button.TRIANGLE)) {
+            eject.turnToAngle(Globals.eject1);
+        } else if (gamepadEx.getButton(GamepadKeys.Button.SQUARE)) {
+            eject.turnToAngle(Globals.eject2);
+        }
+        // eject is 30, default is 44, push is 55
+        //rotate();
+        //intake();
         // (optional) telemetry
         telemetry.addData("currently: ", revolver.getCurrentPosition());
         telemetry.addData("target: ", revolverTarget);
