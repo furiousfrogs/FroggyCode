@@ -2,14 +2,23 @@ package org.firstinspires.ftc.teamcode.FROGTONOMOUS;
 
 import android.util.Size;
 
+import com.bylazar.configurables.annotations.Configurable;
 import com.pedropathing.follower.Follower;
 import com.pedropathing.geometry.BezierCurve;
 import com.pedropathing.geometry.BezierLine;
 import com.pedropathing.geometry.Pose;
 import com.pedropathing.paths.PathChain;
+import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
+import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.HardwareMap;
+import com.seattlesolvers.solverslib.command.CommandBase;
+import com.seattlesolvers.solverslib.command.CommandGroupBase;
 import com.seattlesolvers.solverslib.command.CommandOpMode;
 import com.seattlesolvers.solverslib.command.InstantCommand;
+import com.seattlesolvers.solverslib.command.ParallelCommandGroup;
+import com.seattlesolvers.solverslib.command.ParallelDeadlineGroup;
 import com.seattlesolvers.solverslib.command.SequentialCommandGroup;
+import com.seattlesolvers.solverslib.command.SubsystemBase;
 import com.seattlesolvers.solverslib.command.WaitCommand;
 import com.seattlesolvers.solverslib.pedroCommand.FollowPathCommand;
 import com.seattlesolvers.solverslib.util.TelemetryData;
@@ -23,97 +32,117 @@ import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
 
 import java.util.List;
 
+@Autonomous
+@Configurable
 public class FROGTONOMOUS extends CommandOpMode {
     private Follower follower;
     TelemetryData telemetryData = new TelemetryData(telemetry);
     private boolean patternDetected = false;
-    private final Pose startPose = new Pose(9, 111, Math.toRadians(-90));
-    private final Pose scorePose = new Pose(16, 128, Math.toRadians(-45));
-    private final Pose pickup1Pose = new Pose(30, 121, Math.toRadians(0));
-    private final Pose pickup2Pose = new Pose(30, 131, Math.toRadians(0));
-    private final Pose pickup3Pose = new Pose(45, 128, Math.toRadians(90));
-    private final Pose parkPose = new Pose(68, 96, Math.toRadians(-90));
-    private PathChain scorePreload, grabPickup1, grabPickup2, grabPickup3;
-    private PathChain scorePickup1, scorePickup2, scorePickup3, park;
+    private DcMotor intake, outtake;
+    private PathChain shoot3, eat3, shoot6, eat6, shoot9, eat9, shoot12;
+
 
     public void buildPaths() {
-        scorePreload = follower.pathBuilder()
-                .addPath(new BezierLine(startPose, scorePose))
-                .setLinearHeadingInterpolation(startPose.getHeading(), scorePose.getHeading())
-                .build();
-
-        grabPickup1 = follower.pathBuilder()
-                .addPath(new BezierLine(scorePose, pickup1Pose))
-                .setLinearHeadingInterpolation(scorePose.getHeading(), pickup1Pose.getHeading())
-                .build();
-
-        scorePickup1 = follower.pathBuilder()
-                .addPath(new BezierLine(pickup1Pose, scorePose))
-                .setLinearHeadingInterpolation(pickup1Pose.getHeading(), scorePose.getHeading())
-                .build();
-
-        grabPickup2 = follower.pathBuilder()
-                .addPath(new BezierLine(scorePose, pickup2Pose))
-                .setLinearHeadingInterpolation(scorePose.getHeading(), pickup2Pose.getHeading())
-                .build();
-
-        scorePickup2 = follower.pathBuilder()
-                .addPath(new BezierLine(pickup2Pose, scorePose))
-                .setLinearHeadingInterpolation(pickup2Pose.getHeading(), scorePose.getHeading())
-                .build();
-
-        grabPickup3 = follower.pathBuilder()
-                .addPath(new BezierLine(scorePose, pickup3Pose))
-                .setLinearHeadingInterpolation(scorePose.getHeading(), pickup3Pose.getHeading())
-                .build();
-
-        scorePickup3 = follower.pathBuilder()
-                .addPath(new BezierLine(pickup3Pose, scorePose))
-                .setLinearHeadingInterpolation(pickup3Pose.getHeading(), scorePose.getHeading())
-                .build();
-
-        park = follower.pathBuilder()
-                .addPath(new BezierCurve(
-                        scorePose,
-                        new Pose(68, 110), // Control point
-                        parkPose)
+        shoot3 = follower.pathBuilder()
+                .addPath(
+                        new BezierLine(new Pose(19.300, 119.350), new Pose(30.505, 111.925))
                 )
-                .setLinearHeadingInterpolation(scorePose.getHeading(), parkPose.getHeading())
+                .setLinearHeadingInterpolation(Math.toRadians(-36), Math.toRadians(-36))
+                .build();
+
+        eat3 = follower.pathBuilder()
+                .addPath(
+                        new BezierCurve(
+                                new Pose(30.505, 111.925),
+                                new Pose(48.000, 90.617),
+                                new Pose(21.308, 84.785)
+                        )
+                )
+                .setBrakingStart(0.5)
+                .setBrakingStrength(0.2)
+                .setLinearHeadingInterpolation(Math.toRadians(-36), Math.toRadians(-180))
+                .build();
+
+        shoot6 = follower.pathBuilder()
+                .addPath(
+                        new BezierLine(new Pose(21.308, 84.785), new Pose(32.299, 98.243))
+                )
+                .setLinearHeadingInterpolation(Math.toRadians(-180), Math.toRadians(-90))
+                .build();
+
+        eat6 = follower.pathBuilder()
+                .addPath(
+                        new BezierCurve(
+                                new Pose(32.299, 98.243),
+                                new Pose(50.243, 62.804),
+                                new Pose(21.533, 60.561)
+                        )
+                )
+                .setBrakingStart(0.4)
+                .setBrakingStrength(0.2)
+                .setLinearHeadingInterpolation(Math.toRadians(-90), Math.toRadians(-180))
+                .build();
+
+        shoot9 = follower.pathBuilder()
+                .addPath(
+                        new BezierLine(new Pose(21.533, 60.561), new Pose(45.308, 84.785))
+                )
+                .setLinearHeadingInterpolation(Math.toRadians(-180), Math.toRadians(-90))
+                .build();
+
+        eat9 = follower.pathBuilder()
+                .addPath(
+                        new BezierCurve(
+                                new Pose(45.308, 84.785),
+                                new Pose(53.832, 39.477),
+                                new Pose(22.430, 36.561)
+                        )
+                )
+                .setBrakingStart(0.3)
+                .setBrakingStrength(0.2)
+                .setLinearHeadingInterpolation(Math.toRadians(-90), Math.toRadians(-180))
+                .build();
+
+        shoot12 = follower.pathBuilder()
+                .addPath(
+                        new BezierLine(new Pose(22.430, 36.561), new Pose(54.505, 75.140))
+                )
+                .setLinearHeadingInterpolation(Math.toRadians(-180), Math.toRadians(-90))
                 .build();
     }
 
     // Mechanism commands - replace these with your actual subsystem commands
-    private InstantCommand openOuttakeClaw() {
-        return new InstantCommand(() -> {
-            // Example: outtakeSubsystem.openClaw();
-        });
+    public class intakesubsys extends SubsystemBase {
+        public void intake(HardwareMap map) {
+            //init intake motor
+        }
+        public void setpower(double power) {
+            //set motor power
+        }
     }
 
-    private InstantCommand grabSample() {
-        return new InstantCommand(() -> {
-            // Example: intakeSubsystem.grabSample();
-        });
+
+
+    public static class froggyeat extends CommandBase {
+        private final intakesubsys intake;
+
+        public froggyeat(intakesubsys intake) {
+            this.intake = intake;
+            addRequirements(intake);
+        }
+
+        @Override
+        public void initialize() {
+            //motor initialization
+            //intake.setpower(1)
+        }
+
+        @Override
+        public void end(boolean interrupted) {
+            //intake.setpower(0)
+        }
     }
 
-    private InstantCommand scoreSample() {
-        return new InstantCommand(() -> {
-            // Example: outtakeSubsystem.scoreSample();
-        });
-    }
-
-    private InstantCommand level1Ascent() {
-        return new InstantCommand(() -> {
-            // Example: hangSubsystem.level1Ascent();
-        });
-    }
-
-    /**
-     * This method is called once when the OpMode is initialized.
-     * It sets up the robot's hardware, initializes the path-following controller,
-     * builds all the autonomous paths, and constructs the command sequence that
-     * the robot will execute during the autonomous period. The command sequence
-     * is then scheduled to run.
-     */
     @Override
     public void initialize() {
         super.reset();
@@ -134,99 +163,37 @@ public class FROGTONOMOUS extends CommandOpMode {
                 .build();
 
         follower = Constants.createFollower(hardwareMap);
-        follower.setStartingPose(startPose);
+        follower.setStartingPose(new Pose(19.300, 119.350));
         buildPaths();
 
 
         SequentialCommandGroup GPP = new SequentialCommandGroup(
                 // Score preload
-                new FollowPathCommand(follower, scorePreload),
-                openOuttakeClaw(),
+                new FollowPathCommand(follower, shoot3),
+
                 new WaitCommand(1000), // Wait 1 second
 
                 // First pickup cycle
-                new FollowPathCommand(follower, grabPickup1).setGlobalMaxPower(0.5), // Sets globalMaxPower to 50% for all future paths
+                new FollowPathCommand(follower, eat3),// Sets globalMaxPower to 50% for all future paths
                 // (unless a custom maxPower is given)
-                grabSample(),
-                new FollowPathCommand(follower, scorePickup1),
-                scoreSample(),
+                new ParallelDeadlineGroup(
+                        new FollowPathCommand(follower, eat3),
+                        new froggyeat()
+                )
 
-                // Second pickup cycle
-                new FollowPathCommand(follower, grabPickup2),
-                grabSample(),
-                new FollowPathCommand(follower, scorePickup2, 1.0), // Overrides maxPower to 100% for this path only
-                scoreSample(),
 
-                // Third pickup cycle
-                new FollowPathCommand(follower, grabPickup3),
-                grabSample(),
-                new FollowPathCommand(follower, scorePickup3),
-                scoreSample(),
 
-                // Park
-                new FollowPathCommand(follower, park, false), // park with holdEnd false
-                level1Ascent()
+//                // Second pickup cycle
+//                new FollowPathCommand(follower, grabPickup2),
+//                grabSample(),
+//                new FollowPathCommand(follower, scorePickup2, 1.0), // Overrides maxPower to 100% for this path only
+//                scoreSample(),
+//
+//                // Park
+//                new FollowPathCommand(follower, park, false), // park with holdEnd false
+//                level1Ascent()
         );
 
-        SequentialCommandGroup PGP = new SequentialCommandGroup(
-                // Score preload
-                new FollowPathCommand(follower, scorePreload),
-                openOuttakeClaw(),
-                new WaitCommand(1000), // Wait 1 second
-
-                // First pickup cycle
-                new FollowPathCommand(follower, grabPickup1).setGlobalMaxPower(0.5), // Sets globalMaxPower to 50% for all future paths
-                // (unless a custom maxPower is given)
-                grabSample(),
-                new FollowPathCommand(follower, scorePickup1),
-                scoreSample(),
-
-                // Second pickup cycle
-                new FollowPathCommand(follower, grabPickup2),
-                grabSample(),
-                new FollowPathCommand(follower, scorePickup2, 1.0), // Overrides maxPower to 100% for this path only
-                scoreSample(),
-
-                // Third pickup cycle
-                new FollowPathCommand(follower, grabPickup3),
-                grabSample(),
-                new FollowPathCommand(follower, scorePickup3),
-                scoreSample(),
-
-                // Park
-                new FollowPathCommand(follower, park, false), // park with holdEnd false
-                level1Ascent()
-        );
-
-        SequentialCommandGroup PPG = new SequentialCommandGroup(
-                // Score preload
-                new FollowPathCommand(follower, scorePreload),
-                openOuttakeClaw(),
-                new WaitCommand(1000), // Wait 1 second
-
-                // First pickup cycle
-                new FollowPathCommand(follower, grabPickup1).setGlobalMaxPower(0.5), // Sets globalMaxPower to 50% for all future paths
-                // (unless a custom maxPower is given)
-                grabSample(),
-                new FollowPathCommand(follower, scorePickup1),
-                scoreSample(),
-
-                // Second pickup cycle
-                new FollowPathCommand(follower, grabPickup2),
-                grabSample(),
-                new FollowPathCommand(follower, scorePickup2, 1.0), // Overrides maxPower to 100% for this path only
-                scoreSample(),
-
-                // Third pickup cycle
-                new FollowPathCommand(follower, grabPickup3),
-                grabSample(),
-                new FollowPathCommand(follower, scorePickup3),
-                scoreSample(),
-
-                // Park
-                new FollowPathCommand(follower, park, false), // park with holdEnd false
-                level1Ascent()
-        );
 
         List<AprilTagDetection> code = tagProcessor.getDetections();
         if (code!= null && !code.isEmpty() && !patternDetected) {
@@ -235,10 +202,10 @@ public class FROGTONOMOUS extends CommandOpMode {
                     schedule(GPP);
                     patternDetected = true;
                 } else if (c.id == 22) {
-                    schedule(PGP);
+                    schedule(GPP);
                     patternDetected = true;
                 } else if (c.id == 23) {
-                    schedule(PPG);
+                    schedule(GPP);
                     patternDetected = true;
                 } else {
                     patternDetected = false;
@@ -248,14 +215,6 @@ public class FROGTONOMOUS extends CommandOpMode {
         }
     }
 
-    /**
-     * This method is called repeatedly in a loop while the OpMode is running.
-     * It handles the main execution of the OpMode's logic after initialization.
-     * In this implementation, it first calls the superclass's run method to
-     * execute scheduled commands. Then, it adds the robot's current position (X, Y)
-     * and heading from the follower to the telemetry and updates the display on the
-     * Driver Station.
-     */
     @Override
     public void run() {
         super.run();

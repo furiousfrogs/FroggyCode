@@ -342,8 +342,6 @@ public class subsystems extends OpMode {
     }
 
 
-
-
     private void launcherawe() {
         ff.setP(Globals.launcher.flykP);
         ff.setI(Globals.launcher.flykI);
@@ -396,9 +394,6 @@ public class subsystems extends OpMode {
 
         FtcDashboard.getInstance().sendTelemetryPacket(packet);
     }
-
-
-
 
 
     private void drive(){
