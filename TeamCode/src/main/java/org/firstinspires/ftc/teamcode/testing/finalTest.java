@@ -89,13 +89,17 @@ public class finalTest extends OpMode {
         fl = new Motor(hardwareMap,"fl");
         fl.setRunMode(Motor.RunMode.RawPower);
         fl.setInverted(true);
+        fl.setZeroPowerBehavior(Motor.ZeroPowerBehavior.BRAKE);
         bl = new Motor(hardwareMap,"bl");
         bl.setRunMode(Motor.RunMode.RawPower);
         bl.setInverted(true);
+        bl.setZeroPowerBehavior(Motor.ZeroPowerBehavior.BRAKE);
         fr = new Motor(hardwareMap,"fr");
         fr.setRunMode(Motor.RunMode.RawPower);
+        fr.setZeroPowerBehavior(Motor.ZeroPowerBehavior.BRAKE);
         br = new Motor(hardwareMap,"br");
         br.setRunMode(Motor.RunMode.RawPower);
+        br.setZeroPowerBehavior(Motor.ZeroPowerBehavior.BRAKE);
 
         // ----- launcher -----
         launcher1 = new Motor(hardwareMap, "l1", 28, 6000);
@@ -190,13 +194,13 @@ public class finalTest extends OpMode {
         revolverPID.setTolerance(0);
         gamepadEx.readButtons();
         revolverPID.setPID(Globals.revolver.revolverKP, Globals.revolver.revolverKI, Globals.revolver.revolverKD);
-
+        if (eject.getAngle() != 51) {
         if (gamepadEx.wasJustPressed(GamepadKeys.Button.SQUARE)) {
             revolverTarget += Globals.revolver.oneRotation;  // CW
         } else if (gamepadEx.wasJustPressed(GamepadKeys.Button.CIRCLE)) {
             revolverTarget -= Globals.revolver.oneRotation;
         }
-
+}
         revolverPower = revolverPID.calculate(revolver.getCurrentPosition(), revolverTarget);
         revolver.set(revolverPower);
 
@@ -320,7 +324,7 @@ public class finalTest extends OpMode {
 
 
         List<AprilTagDetection> detections = tagProcessor.getDetections();
-        if (detections != null && !detections.isEmpty() && aligned) {
+        if (detections != null && !detections.isEmpty()) {
             for (AprilTagDetection d : detections) {
                 distance = d.ftcPose.range;
 
@@ -335,10 +339,10 @@ public class finalTest extends OpMode {
         double feedforwardPower = ff.calculate(RPM, power);
 
 
-        if (gamepadEx.getButton(GamepadKeys.Button.CROSS) && aligned) {
+        if (gamepadEx.getButton(GamepadKeys.Button.CROSS)) {
             launcher1.set(feedforwardPower);
             launcher2.set(feedforwardPower);
-            if (Math.abs(power - RPM) < Globals.launcher.launcherTol) { // there
+            if (Math.abs(power - RPM) < Globals.launcher.launcherTol && aligned) { // there
                 set.turnToAngle(Globals.launcher.upset);
             }
         } else {

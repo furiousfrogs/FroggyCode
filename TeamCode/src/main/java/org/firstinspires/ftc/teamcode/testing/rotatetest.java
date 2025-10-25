@@ -54,11 +54,7 @@ public class rotatetest extends OpMode {
     @Override
     public void loop() {
 
-        if (gamepadEx.getButton(GamepadKeys.Button.TRIANGLE)) {
-            eject.turnToAngle(Globals.eject1);
-        } else if (gamepadEx.getButton(GamepadKeys.Button.SQUARE)) {
-            eject.turnToAngle(Globals.eject2);
-        }
+
         // eject is 30, default is 44, push is 55
         //rotate();
         //intake();
