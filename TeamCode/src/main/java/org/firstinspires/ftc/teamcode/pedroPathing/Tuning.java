@@ -6,6 +6,8 @@ import static org.firstinspires.ftc.teamcode.pedroPathing.Tuning.draw;
 import static org.firstinspires.ftc.teamcode.pedroPathing.Tuning.follower;
 import static org.firstinspires.ftc.teamcode.pedroPathing.Tuning.stopRobot;
 import static org.firstinspires.ftc.teamcode.pedroPathing.Tuning.telemetryM;
+
+import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
 import com.bylazar.configurables.annotations.Configurable;
 import com.bylazar.configurables.annotations.IgnoreConfigurable;
 import com.bylazar.configurables.PanelsConfigurables;
@@ -1186,10 +1188,11 @@ class Circle extends OpMode {
 }
 
 /**
- * This is the Drawing class. It handles the drawing of stuff on Panels Dashboard, like the robot.
+ * This is the Drawing class. It handles the drawing of stuff on FTC Dashboard, like the robot.
  *
- * @author Lazar - 19234
- * @version 1.1, 5/19/2025
+ * @author Logan Nash
+ * @author Anyi Lin - 10158 Scott's Bots
+ * @version 1.0, 4/22/2024
  */
 /**
  * This is the Drawing class. It handles the drawing of stuff on Panels Dashboard, like the robot.

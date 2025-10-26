@@ -31,7 +31,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 
-@TeleOp(name = "Final")
+@TeleOp(name = "3 ballss")
 public class finalLaunch3 extends OpMode {
 
     // ----- booleans/toggles
