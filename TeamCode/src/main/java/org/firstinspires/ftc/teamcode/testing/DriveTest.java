@@ -15,6 +15,10 @@ public class DriveTest extends LinearOpMode {
         DcMotor bl = hardwareMap.dcMotor.get("bl");
         DcMotor fr = hardwareMap.dcMotor.get("fr");
         DcMotor br = hardwareMap.dcMotor.get("br");
+        fl.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        fr.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        bl.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        br.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
         // Reverse the right side motors. This may be wrong for your setup.
         // If your robot moves backwards when commanded to go forwards,

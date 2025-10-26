@@ -323,7 +323,7 @@ public class finalTest extends OpMode {
             for (AprilTagDetection d : detections) {
                 distance = d.ftcPose.range;
 
-                power = (2547.5 * pow(2.718281828459045, (0.0078 * distance))); // here
+                power = (2547.5 * pow(2.718281828459045, (0.0078 * distance)))/Globals.launcher.launcherTransformation; // here
 
             }
         } else {
@@ -348,19 +348,25 @@ public class finalTest extends OpMode {
 
     }
 
+    public void launch3() {
+
+
+    }
+
 
     private void doTelemetry() {
-        telemetry.addData("RPM", RPM);
-        telemetry.addData("bearing: ", bearing);
-        telemetry.addData("distance: ", distance);
         telemetry.addData("aligned? ", aligned);
         telemetry.addData("pattern?: ", currentPattern);
         telemetry.update();
 
-        TelemetryPacket packet = new TelemetryPacket();
-        packet.put("RPM", RPM);
+        TelemetryPacket rpmPacket = new TelemetryPacket();
+        rpmPacket.put("RPM", RPM);
 
-        FtcDashboard.getInstance().sendTelemetryPacket(packet);
+        TelemetryPacket powerPacket = new TelemetryPacket();
+        powerPacket.put("targetRPM", power);
+
+        FtcDashboard.getInstance().sendTelemetryPacket(powerPacket);
+        FtcDashboard.getInstance().sendTelemetryPacket(rpmPacket);
     }
 
 
@@ -390,11 +396,6 @@ public class finalTest extends OpMode {
         fr.set(frontRightPower * slowdown);
         br.set(backRightPower * slowdown);
 
-        telemetry.addData("y",y);
-        telemetry.addData("x",x);
-        telemetry.addData("frontleftPower",frontLeftPower);
-        telemetry.addData("backleftPower",backLeftPower);
-        telemetry.addData("frontRightPower",frontRightPower);
-        telemetry.addData("backrightPower",backRightPower);
+
     }
 }
