@@ -396,7 +396,7 @@ public class finalLaunch3 extends OpMode {
 
         }
 
-        double feedforwardPower = ff.calculate(RPM, power);
+         feedforwardPower = ff.calculate(RPM, power);
 
 
 
