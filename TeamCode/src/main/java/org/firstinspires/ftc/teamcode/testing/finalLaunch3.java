@@ -31,10 +31,11 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 
-@TeleOp(name = "Final")
+@TeleOp(name = "3 ballss")
 public class finalLaunch3 extends OpMode {
 
     // ----- booleans/toggles
+    private boolean clockwise = false;
     private boolean aligned = false;
     private boolean patternDetected = false;
     private boolean autoAimEnabled = true;
@@ -44,6 +45,7 @@ public class finalLaunch3 extends OpMode {
     private double feedforwardPower = 0;
     private double distance;
     private double power;
+    private int shotsFired = 0;
 
     // ----- pid's -----
     private PIDFController turretPIDF, ff;
@@ -94,6 +96,9 @@ public class finalLaunch3 extends OpMode {
     private double ejectTimer;
     private double shootTimer;
     private boolean shootLoop = false;
+    public boolean rotating = false;
+    private boolean ejectAction = false;
+    public boolean shootAction = false;
     @Override
     public void init() {
         // ----- drive -----
@@ -177,55 +182,115 @@ public class finalLaunch3 extends OpMode {
         rotate();
         drive();
         //ejection();
+        launch3();
     }
 
     public void launch3() {
 
-            if (gamepadEx.getButton(GamepadKeys.Button.CROSS) && power > 0 && !shootLoop) {
-                launcher1.set(feedforwardPower);
-                launcher2.set(feedforwardPower);
-                shootLoop = true;
-                for (int i = 0; i < 3; i++) {
-                    switch (currentShooting) {
-                        case shootIdle:
-                            eject.turnToAngle(44);
-                            currentShooting = shooting.shootRotating;
-                            break;
-                        case shootRotating:
-                            revolverTarget += Globals.revolver.oneRotation;
-                            if (Math.abs(revolverTarget - revolver.getCurrentPosition()) < 10) {
-                                currentShooting = shooting.shootEjecting;
-                                break;
-                            }
 
-                        case shootEjecting:
-                            eject.turnToAngle(51);
-                            ejectTimer = globalTimer.seconds() + 1;
-                            if (globalTimer.seconds() > ejectTimer) {
-                                eject.turnToAngle(44);
-                                currentShooting = shooting.shootFire;
-                                break;
-                            }
-                        case shootFire:
+        // Arm spinner & intake only while we are in a shooting cycle
+        boolean startPressed = gamepadEx.getButton(GamepadKeys.Button.CROSS);
 
-                            if (Math.abs(power - RPM) < Globals.launcher.launcherTol && aligned) { // there
-                                set.turnToAngle(Globals.launcher.upset);
-                                shootTimer = globalTimer.seconds() + 1;
+        // Start a new cycle
+        if (startPressed && power > 0 && !shootLoop) {
+            shootLoop = true;
+            currentShooting = shooting.shootRotating;
+            shootAction = false;
+            ejectAction = false;
+            rotating = false;
+            shotsFired = 0;
+            // spin-up immediately
+            launcher1.set(feedforwardPower);
+            launcher2.set(feedforwardPower);
+            intake.set(0.30);
+        }
 
-                            }
+        if (!shootLoop) {
+            // idle; ensure things are safe
+            launcher1.set(0);
+            launcher2.set(0);
+            intake.set(0);
+            set.turnToAngle(Globals.launcher.downset);
+            return;
+        }
 
-                            if (set.getAngle() == Globals.launcher.upset && globalTimer.seconds() > shootTimer) {
-                                set.turnToAngle(Globals.launcher.downset);
-                                currentShooting = shooting.shootIdle;
-                                break;
-                            }
+        // shooting cycle state machine
+        switch (currentShooting) {
+            case shootRotating: {
+                // only add one rotation once
+                if (!rotating) {
+                    revolverTarget += clockwise ? -Globals.revolver.oneRotation : Globals.revolver.oneRotation;
+                    rotating = true; // lock so we don't add again
+                }
+                // wait until position reached
+                if (Math.abs(revolverTarget - revolver.getCurrentPosition()) < 10) {
+                    rotating = false;
+                    currentShooting = shooting.shootEjecting;
+                    eject.turnToAngle(51);                 // push
+                    if (!ejectAction) {
+                        ejectTimer = globalTimer.seconds() + 1.0; // 1s dwell
+                        ejectAction = true;
                     }
-                } shootLoop = false;
-            } else {
-                launcher1.set(0);
-                launcher2.set(0);
+                }
+                break;
             }
 
+            case shootEjecting: {
+                // hold push until timer expires, then retract
+                if (globalTimer.seconds() > ejectTimer) {
+                    eject.turnToAngle(44); // retract to neutral
+                    currentShooting = shooting.shootFire;
+                    shootAction = false;
+                }
+                break;
+            }
+
+            case shootFire: {
+                // wait for spin-up and aim, then flick
+                boolean atSpeed = Math.abs(power - RPM) < Globals.launcher.launcherTol;
+                if (atSpeed && aligned && !shootAction) {
+                    set.turnToAngle(Globals.launcher.upset);
+                    shootTimer = globalTimer.seconds() + 1.0; // 1s gate-open
+                    shootAction = true;
+                }
+
+                // close gate and finish cycle
+                if (shootAction && globalTimer.seconds() > shootTimer) {
+                    set.turnToAngle(Globals.launcher.downset);
+
+                    shotsFired++;
+
+                    if (shotsFired < 3) {
+                        // Prepare next round: rotate again for the next chamber
+                        currentShooting = shooting.shootRotating;
+                        shootAction = false;
+                        ejectAction = false;
+                        rotating = false;
+                        // (keep launcher + intake running during the burst)
+                    } else {
+                        // Burst done — shut down
+                        currentShooting = shooting.shootIdle;
+                        shootLoop = false;
+                        launcher1.set(0);
+                        launcher2.set(0);
+                        intake.set(0);
+                    }
+
+
+                }
+                break;
+            }
+
+            case shootIdle:
+            default: {
+                // Safety – shouldn’t sit here during an active cycle
+                shootLoop = false;
+                launcher1.set(0);
+                launcher2.set(0);
+                intake.set(0);
+                break;
+            }
+        }
     }
 
     public void ejection() {
