@@ -17,8 +17,6 @@ import com.seattlesolvers.solverslib.hardware.SimpleServo;
 import com.seattlesolvers.solverslib.hardware.SimpleServoExtKt;
 import com.seattlesolvers.solverslib.hardware.motors.CRServo;
 import com.seattlesolvers.solverslib.hardware.motors.Motor;
-import com.seattlesolvers.solverslib.hardware.servos.ServoEx;
-
 import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.vision.VisionPortal;
@@ -228,7 +226,6 @@ public class finalTest extends OpMode {
     }
 
 
-
     private void calculateRPM() {
         double currentTime = getRuntime();
         int currentPosition = launcher1.getCurrentPosition();
@@ -313,8 +310,6 @@ public class finalTest extends OpMode {
     }
 
 
-
-
     private void launcherawe() {
         ff.setP(Globals.launcher.flykP);
         ff.setI(Globals.launcher.flykI);
@@ -367,9 +362,6 @@ public class finalTest extends OpMode {
 
         FtcDashboard.getInstance().sendTelemetryPacket(packet);
     }
-
-
-
 
 
     private void drive(){
