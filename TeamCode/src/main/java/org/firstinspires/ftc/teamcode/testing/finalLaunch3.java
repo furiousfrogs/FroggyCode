@@ -1,8 +1,6 @@
-package org.firstinspires.ftc.teamcode.commandbase;
+package org.firstinspires.ftc.teamcode.testing;
 
 import static java.lang.Math.pow;
-
-import android.graphics.Color;
 
 import com.acmerobotics.dashboard.FtcDashboard;
 import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
@@ -11,18 +9,17 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
 import com.qualcomm.robotcore.hardware.DistanceSensor;
 import com.qualcomm.robotcore.hardware.NormalizedColorSensor;
-import com.qualcomm.robotcore.hardware.NormalizedRGBA;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.seattlesolvers.solverslib.controller.PIDController;
 import com.seattlesolvers.solverslib.controller.PIDFController;
 import com.seattlesolvers.solverslib.gamepad.GamepadEx;
 import com.seattlesolvers.solverslib.gamepad.GamepadKeys;
 import com.seattlesolvers.solverslib.hardware.SimpleServo;
+import com.seattlesolvers.solverslib.hardware.SimpleServoExtKt;
+import com.seattlesolvers.solverslib.hardware.motors.CRServo;
 import com.seattlesolvers.solverslib.hardware.motors.Motor;
-
 import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
-import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.vision.VisionPortal;
 import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
 import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
@@ -34,8 +31,8 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 
-@TeleOp(name = "Subsystem Testing")
-public class subsystems extends OpMode {
+@TeleOp(name = "Final")
+public class finalLaunch3 extends OpMode {
 
     // ----- booleans/toggles
     private boolean aligned = false;
@@ -44,6 +41,7 @@ public class subsystems extends OpMode {
     private boolean prevTri = false;
 
     // ----- doubles -----
+    private double feedforwardPower = 0;
     private double distance;
     private double power;
 
@@ -52,8 +50,8 @@ public class subsystems extends OpMode {
     private PIDController revolverPID;
 
     // ----- Motors, servos, sensors -----
-    private Motor launcher1, launcher2, revolver,fl,bl,fr,br;
-    private SimpleServo set, rotate;
+    private Motor launcher1, launcher2, revolver,fl,bl,fr,br, intake;
+    private SimpleServo set, rotate, eject;
     private NormalizedColorSensor colourSensor;
     private DistanceSensor distanceSensor;
 
@@ -80,6 +78,13 @@ public class subsystems extends OpMode {
         GPP
     } pattern currentPattern = pattern.PPG;
 
+    public enum shooting {
+        shootIdle,
+        shootRotating,
+        shootEjecting,
+        shootFire
+    } shooting currentShooting = shooting.shootIdle;
+
     // ----- misc -----
     private FtcDashboard dashboard = FtcDashboard.getInstance();
     private GamepadEx gamepadEx;
@@ -87,19 +92,25 @@ public class subsystems extends OpMode {
     private AprilTagProcessor tagProcessor;
     private ElapsedTime globalTimer = new ElapsedTime();
     private double ejectTimer;
+    private double shootTimer;
+    private boolean shootLoop = false;
     @Override
     public void init() {
         // ----- drive -----
         fl = new Motor(hardwareMap,"fl");
         fl.setRunMode(Motor.RunMode.RawPower);
         fl.setInverted(true);
+        fl.setZeroPowerBehavior(Motor.ZeroPowerBehavior.BRAKE);
         bl = new Motor(hardwareMap,"bl");
         bl.setRunMode(Motor.RunMode.RawPower);
         bl.setInverted(true);
+        bl.setZeroPowerBehavior(Motor.ZeroPowerBehavior.BRAKE);
         fr = new Motor(hardwareMap,"fr");
         fr.setRunMode(Motor.RunMode.RawPower);
+        fr.setZeroPowerBehavior(Motor.ZeroPowerBehavior.BRAKE);
         br = new Motor(hardwareMap,"br");
         br.setRunMode(Motor.RunMode.RawPower);
+        br.setZeroPowerBehavior(Motor.ZeroPowerBehavior.BRAKE);
 
         // ----- launcher -----
         launcher1 = new Motor(hardwareMap, "l1", 28, 6000);
@@ -146,6 +157,14 @@ public class subsystems extends OpMode {
                 .build();
 
         gamepadEx = new GamepadEx(gamepad1);
+
+        intake = new Motor(hardwareMap, "intake");
+        intake.setRunMode(Motor.RunMode.RawPower);
+        intake.setZeroPowerBehavior(Motor.ZeroPowerBehavior.BRAKE);
+        eject = new SimpleServo(hardwareMap, "eject", 0, 70);
+        eject.setInverted(true);
+        eject.turnToAngle(44);
+
     }
 
     @Override
@@ -154,54 +173,100 @@ public class subsystems extends OpMode {
         launcherawe();
         autoAimServoMode();      // now only reads/controls; does NOT rebuild vision
         doTelemetry();
-        //findPattern();
-        //revolverRotate();
+        intake();
+        rotate();
         drive();
+        //ejection();
     }
 
-    public void senseColour() {
-        NormalizedRGBA rgba = colourSensor.getNormalizedColors();
-        Color.colorToHSV(rgba.toColor(), hsv);
-        if (distanceSensor.getDistance(DistanceUnit.CM) <=2.5) {
-            String s0 = revolverState.get(0);
-            String s1 = revolverState.get(1);
+    public void launch3() {
 
-            if ((150 <= hsv[0] && hsv[0] <= 180) && (0.75 <= hsv[1] && hsv[1] <= 1.0) && (0 < hsv[2] && hsv[2] < 0.16)) {
-                updateState(s0, s1, "G");
-                telemetry.addLine("its green");
-            } else if ((220 <= hsv[0] && hsv[0] <= 250) && (0.4 <= hsv[1] && hsv[1] <= 0.6) && (0 < hsv[2] && hsv[2] < 0.16)) {//this too
-                updateState(s0, s1, "P");
-                telemetry.addLine("purpel");
+            if (gamepadEx.getButton(GamepadKeys.Button.CROSS) && power > 0 && !shootLoop) {
+                launcher1.set(feedforwardPower);
+                launcher2.set(feedforwardPower);
+                shootLoop = true;
+                for (int i = 0; i < 3; i++) {
+                    switch (currentShooting) {
+                        case shootIdle:
+                            eject.turnToAngle(44);
+                            currentShooting = shooting.shootRotating;
+                            break;
+                        case shootRotating:
+                            revolverTarget += Globals.revolver.oneRotation;
+                            if (Math.abs(revolverTarget - revolver.getCurrentPosition()) < 10) {
+                                currentShooting = shooting.shootEjecting;
+                                break;
+                            }
+
+                        case shootEjecting:
+                            eject.turnToAngle(51);
+                            ejectTimer = globalTimer.seconds() + 1;
+                            if (globalTimer.seconds() > ejectTimer) {
+                                eject.turnToAngle(44);
+                                currentShooting = shooting.shootFire;
+                                break;
+                            }
+                        case shootFire:
+
+                            if (Math.abs(power - RPM) < Globals.launcher.launcherTol && aligned) { // there
+                                set.turnToAngle(Globals.launcher.upset);
+                                shootTimer = globalTimer.seconds() + 1;
+
+                            }
+
+                            if (set.getAngle() == Globals.launcher.upset && globalTimer.seconds() > shootTimer) {
+                                set.turnToAngle(Globals.launcher.downset);
+                                currentShooting = shooting.shootIdle;
+                                break;
+                            }
+                    }
+                } shootLoop = false;
             } else {
-                updateState(s0,s1,"EMPTY");
+                launcher1.set(0);
+                launcher2.set(0);
             }
-        }
+
     }
 
-    public void updateState(String first, String second, String third) {
-        revolverState.set(0, first);
-        revolverState.set(1, second);
-        revolverState.set(2, third);
+    public void ejection() {
+
+
+        if (gamepad1.right_stick_x > 0.5) {
+            eject.turnToAngle(28);
+        } else if (gamepad1.right_stick_x < -0.5) {
+            eject.turnToAngle(51);
+        } else {
+            eject.turnToAngle(44);
+
+        }// eject is 30, default is 44, push is 51
+
     }
 
-    private void rotate(boolean clockwise) { // TODO IDK IF IT GOES THE RIGHT WAY
+    public void intake() {
+
+        if (gamepadEx.getButton(GamepadKeys.Button.TRIANGLE)) {
+            intake.set(Globals.intakePower);
+
+        } else { intake.set(0); }
+    }
+
+
+
+    public void rotate() {
         revolverPID.setTolerance(0);
         gamepadEx.readButtons();
         revolverPID.setPID(Globals.revolver.revolverKP, Globals.revolver.revolverKI, Globals.revolver.revolverKD);
 
-        revolverTarget += clockwise ? -Globals.revolver.oneRotation : Globals.revolver.oneRotation;
-
+//        if (eject.getAngle() != 51) {
+//            if (gamepadEx.wasJustPressed(GamepadKeys.Button.SQUARE)) {
+//                revolverTarget += Globals.revolver.oneRotation;  // CW
+//            } else if (gamepadEx.wasJustPressed(GamepadKeys.Button.CIRCLE)) {
+//                revolverTarget -= Globals.revolver.oneRotation;
+//            }
+//        }
         revolverPower = revolverPID.calculate(revolver.getCurrentPosition(), revolverTarget);
         revolver.set(revolverPower);
 
-        String s0 = revolverState.get(0);
-        String s1 = revolverState.get(1);
-        String s2 = revolverState.get(2);
-        if (clockwise) {
-            updateState(s1, s2, s0);
-        } else {
-            updateState(s2, s0, s1);
-        }
     }
 
     private void findPattern() {
@@ -225,41 +290,6 @@ public class subsystems extends OpMode {
         }
     }
 
-    private void patternAlgo() {
-        char[] pat;
-        switch (currentPattern) {
-            case PPG: pat = new char[]{'P','P','G'}; break;
-            case PGP: pat = new char[]{'P','G','P'}; break;
-            case GPP: pat = new char[]{'G','P','P'}; break;
-            default:  pat = new char[]{'P','P','G'}; // safety
-        }
-
-        // Three cycles bring desired color to the top.
-        for (int i = 0; i < 3; i++) {
-            char want = pat[i];
-
-            String top   = revolverState.get(0);
-            String left  = revolverState.get(1);
-            String right = revolverState.get(2);
-
-            if (top.charAt(0) != want) {
-                if (left.charAt(0) == want) {
-                    rotate(false);
-                } else if (right.charAt(0) == want) {
-                    rotate(true);
-                } else {
-                    telemetry.addLine("Wanted color not found");
-                }
-            }
-
-            launcherawe();
-            revolverState.set(0, "EMPTY");
-        }
-
-        telemetry.addLine("Pattern launch complete.");
-    }
-
-
 
     private void calculateRPM() {
         double currentTime = getRuntime();
@@ -280,12 +310,12 @@ public class subsystems extends OpMode {
     private void autoAimServoMode() {
         turretPIDF.setPIDF(Globals.turret.turretKP, Globals.turret.turretKI, Globals.turret.turretKD, Globals.turret.turretKF);
 
-        boolean tri = gamepadEx.getButton(GamepadKeys.Button.TRIANGLE);
-        if (tri && !prevTri) {
-            autoAimEnabled = !autoAimEnabled;
-            turretPIDF.reset();
-        }
-        prevTri = tri;
+//        boolean tri = gamepadEx.getButton(GamepadKeys.Button.TRIANGLE);
+//        if (tri && !prevTri) {
+//            autoAimEnabled = !autoAimEnabled;
+//            turretPIDF.reset();
+//        }
+//        prevTri = tri;
 
         boolean lb = gamepadEx.getButton(GamepadKeys.Button.LEFT_BUMPER);
         boolean rb = gamepadEx.getButton(GamepadKeys.Button.RIGHT_BUMPER);
@@ -354,11 +384,11 @@ public class subsystems extends OpMode {
 
 
         List<AprilTagDetection> detections = tagProcessor.getDetections();
-        if (detections != null && !detections.isEmpty() && aligned) {
+        if (detections != null && !detections.isEmpty()) {
             for (AprilTagDetection d : detections) {
                 distance = d.ftcPose.range;
 
-                power = (2547.5 * pow(2.718281828459045, (0.0078 * distance))); // here
+                power = (2547.5 * pow(2.718281828459045, (0.0078 * distance)))/Globals.launcher.launcherTransformation; // here
 
             }
         } else {
@@ -366,36 +396,40 @@ public class subsystems extends OpMode {
 
         }
 
-        double feedforwardPower = ff.calculate(RPM, power);
+         feedforwardPower = ff.calculate(RPM, power);
 
 
-        if (gamepadEx.getButton(GamepadKeys.Button.CROSS) && aligned) {
-            launcher1.set(feedforwardPower);
-            launcher2.set(feedforwardPower);
-            if (Math.abs(power - RPM) < Globals.launcher.launcherTol) { // there
-                set.turnToAngle(Globals.launcher.upset);
-            }
-        } else {
-            launcher1.set(0);
-            launcher2.set(0);
-            set.turnToAngle(Globals.launcher.downset);
-        }
+
+//        if (gamepadEx.getButton(GamepadKeys.Button.CROSS)) {
+//            launcher1.set(feedforwardPower);
+//            launcher2.set(feedforwardPower);
+//            if (Math.abs(power - RPM) < Globals.launcher.launcherTol && aligned) { // there
+//                set.turnToAngle(Globals.launcher.upset);
+//            }
+//        } else {
+//            launcher1.set(0);
+//            launcher2.set(0);
+//            set.turnToAngle(Globals.launcher.downset);
+//        }
 
     }
 
 
+
+
     private void doTelemetry() {
-        telemetry.addData("RPM", RPM);
-        telemetry.addData("bearing: ", bearing);
-        telemetry.addData("distance: ", distance);
         telemetry.addData("aligned? ", aligned);
         telemetry.addData("pattern?: ", currentPattern);
         telemetry.update();
 
-        TelemetryPacket packet = new TelemetryPacket();
-        packet.put("RPM", RPM);
+        TelemetryPacket rpmPacket = new TelemetryPacket();
+        rpmPacket.put("RPM", RPM);
 
-        FtcDashboard.getInstance().sendTelemetryPacket(packet);
+        TelemetryPacket powerPacket = new TelemetryPacket();
+        powerPacket.put("targetRPM", power);
+
+        FtcDashboard.getInstance().sendTelemetryPacket(powerPacket);
+        FtcDashboard.getInstance().sendTelemetryPacket(rpmPacket);
     }
 
 
@@ -425,11 +459,6 @@ public class subsystems extends OpMode {
         fr.set(frontRightPower * slowdown);
         br.set(backRightPower * slowdown);
 
-        telemetry.addData("y",y);
-        telemetry.addData("x",x);
-        telemetry.addData("frontleftPower",frontLeftPower);
-        telemetry.addData("backleftPower",backLeftPower);
-        telemetry.addData("frontRightPower",frontRightPower);
-        telemetry.addData("backrightPower",backRightPower);
+
     }
 }
