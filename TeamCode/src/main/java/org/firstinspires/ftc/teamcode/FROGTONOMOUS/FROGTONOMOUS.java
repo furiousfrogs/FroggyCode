@@ -20,6 +20,7 @@ import com.seattlesolvers.solverslib.command.ParallelDeadlineGroup;
 import com.seattlesolvers.solverslib.command.SequentialCommandGroup;
 import com.seattlesolvers.solverslib.command.SubsystemBase;
 import com.seattlesolvers.solverslib.command.WaitCommand;
+import com.seattlesolvers.solverslib.hardware.motors.Motor;
 import com.seattlesolvers.solverslib.pedroCommand.FollowPathCommand;
 import com.seattlesolvers.solverslib.util.TelemetryData;
 
@@ -38,7 +39,6 @@ public class FROGTONOMOUS extends CommandOpMode {
     private Follower follower;
     TelemetryData telemetryData = new TelemetryData(telemetry);
     private boolean patternDetected = false;
-    private DcMotor intake, outtake;
     private PathChain shoot3, eat3, shoot6, eat6, shoot9, eat9, shoot12;
 
 
@@ -113,19 +113,23 @@ public class FROGTONOMOUS extends CommandOpMode {
 
     // Mechanism commands - replace these with your actual subsystem commands
     public class intakesubsys extends SubsystemBase {
-        public void intake(HardwareMap map) {
-            //init intake motor
+        private final Motor intake;
+        public intakesubsys(HardwareMap map) {
+            intake = new Motor(map, "intake");
+            intake.setRunMode(Motor.RunMode.RawPower);
+            intake.setZeroPowerBehavior(Motor.ZeroPowerBehavior.BRAKE);
+            intake.set(0.0);
         }
-        public void setpower(double power) {
-            //set motor power
+        public void increasepower() {
+            intake.set(0.7);
+        }
+
+        public void decreasepower() {
+            intake.set(0.0);
         }
     }
-
-
-
     public static class froggyeat extends CommandBase {
         private final intakesubsys intake;
-
         public froggyeat(intakesubsys intake) {
             this.intake = intake;
             addRequirements(intake);
@@ -133,15 +137,24 @@ public class FROGTONOMOUS extends CommandOpMode {
 
         @Override
         public void initialize() {
-            //motor initialization
-            //intake.setpower(1)
+            intake.increasepower();
         }
 
         @Override
         public void end(boolean interrupted) {
-            //intake.setpower(0)
+            intake.decreasepower();
         }
     }
+
+    public class outtakesubsys extends SubsystemBase {
+
+        public void outtakesubsys(HardwareMap map) {
+
+        }
+
+
+    }
+
 
     @Override
     public void initialize() {
