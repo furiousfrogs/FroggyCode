@@ -42,7 +42,19 @@ public class Globals {
     }
         public static float intakePower = 0.7F;
 
+    @Config
+    public static class timers {
+        public static float servoPushTime = 0.5F;
+        public static float oneRotationTime = 0.5F;
+        public static float pushUpTime = 0.5F;
+    }
 
+    @Config // eject is 30, default is 44, push is 51
+    public static class pushServo {
+        public static float push = 51F;
+        public static float defualt = 44F;
+        public static float eject = 30F;
+    }
 
 
 
