@@ -2,6 +2,8 @@ package org.firstinspires.ftc.teamcode.testing;
 
 import static java.lang.Math.pow;
 
+import android.graphics.Color;
+
 import com.acmerobotics.dashboard.FtcDashboard;
 import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
@@ -9,6 +11,7 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
 import com.qualcomm.robotcore.hardware.DistanceSensor;
 import com.qualcomm.robotcore.hardware.NormalizedColorSensor;
+import com.qualcomm.robotcore.hardware.NormalizedRGBA;
 import com.seattlesolvers.solverslib.controller.PIDController;
 import com.seattlesolvers.solverslib.controller.PIDFController;
 import com.seattlesolvers.solverslib.gamepad.GamepadEx;
@@ -19,6 +22,7 @@ import com.seattlesolvers.solverslib.hardware.motors.CRServo;
 import com.seattlesolvers.solverslib.hardware.motors.Motor;
 import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.vision.VisionPortal;
 import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
 import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
@@ -29,6 +33,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
+
+import java.util.Collections;
+
+
 
 @TeleOp(name = "Final")
 public class finalTest extends OpMode {
@@ -65,8 +73,8 @@ public class finalTest extends OpMode {
     // ----- revolver -----
     private final float[] hsv = new float[3];
 
-    //VERY IMPORTANT REVOLVER STATE
-    //index 0 is the top, 1 is the left, 2 is the right
+
+    //index 0 is the top, 1 is the left, 2 is the right when looking from the front view
     private List<String> revolverState = new ArrayList<>(Arrays.asList("EMPTY", "EMPTY", "EMPTY"));
     private int revolverTarget = 0;
     private double revolverPower;
@@ -161,10 +169,42 @@ public class finalTest extends OpMode {
         autoAimServoMode();      // now only reads/controls; does NOT rebuild vision
         doTelemetry();
         intake();
-        rotate();
         drive();
         ejection();
     }
+
+    private String[] desiredByPattern() {
+        // Order: [top (0), left (1), right (2)]
+        switch (currentPattern) {
+            case PPG: return new String[]{"P","P","G"};
+            case PGP: return new String[]{"P","G","P"};
+            case GPP: return new String[]{"G","P","P"};
+            default:  return new String[]{"EMPTY","EMPTY","EMPTY"};
+        }
+    }
+
+
+    private String senseColour() {
+        if (distanceSensor.getDistance(DistanceUnit.CM) > 2.5) return "EMPTY";
+
+        NormalizedRGBA rgba = colourSensor.getNormalizedColors();
+        Color.colorToHSV(rgba.toColor(), hsv); // hsv[0]=H, hsv[1]=S, hsv[2]=V
+
+        if (hsv[0] >= 150 && hsv[0] <= 180 &&
+                hsv[1] >= 0.75 && hsv[1] <= 1.00 &&
+                hsv[2] > 0.00 && hsv[2] < 0.16) {
+            return "G";
+        }
+
+        if (hsv[0] >= 220 && hsv[0] <= 250 &&
+                hsv[1] >= 0.40 && hsv[1] <= 0.60 &&
+                hsv[2] > 0.00 && hsv[2] < 0.16) {
+            return "P";
+        }
+
+        return "EMPTY";
+    }
+
 
     public void ejection() {
         if (gamepad1.right_stick_x > 0.5) {
@@ -179,30 +219,92 @@ public class finalTest extends OpMode {
     }
 
     public void intake() {
-
         if (gamepadEx.getButton(GamepadKeys.Button.TRIANGLE)) {
+            int filled = revolverState.size() - Collections.frequency(revolverState, "EMPTY");
+            String color = senseColour(); // "G", "P", or "EMPTY"
             intake.set(Globals.intakePower);
 
-        } else { intake.set(0); }
+            if (!"EMPTY".equals(color)) {
+                switch (filled) {
+                    case 3:
+                        intake.set(0);
+                        break;
+
+                    case 2:
+                        revolverState.set(2, color);
+                        intake.set(0);
+                        break;
+
+                    case 1:
+                        revolverState.set(2, color);
+                        if (revolverState.get(1).equals("EMPTY")) {
+                            rotate(false);
+                        } else {
+                            rotate(true);
+                        }
+                        intake.set(0);
+                        break;
+
+                    case 0:
+                    default:
+                        revolverState.set(2,color);
+                        String[] desired = desiredByPattern();
+                        String wantTop  = desired[0];
+                        String wantLeft = desired[1];
+                        String wantRight= desired[2];
+
+                        if (color.equals(wantTop)) {
+                            // Move right -> top
+                            rotate(false); // right rotation
+                        } else if (color.equals(wantLeft)) {
+                            // Move right -> left
+                            rotate(true);  // left rotation
+                        } else {
+                            // color already belongs on right; no rotation
+                        }
+
+                        intake.set(0);
+                        break;
+                }
+            }
+        } else {
+            intake.set(0);
+        }
     }
 
 
 
-    public void rotate() {
+
+
+    public void rotate(boolean left) {
+        // PID setup
         revolverPID.setTolerance(0);
-        gamepadEx.readButtons();
         revolverPID.setPID(Globals.revolver.revolverKP, Globals.revolver.revolverKI, Globals.revolver.revolverKD);
+
         if (eject.getAngle() != 51) {
-        if (gamepadEx.wasJustPressed(GamepadKeys.Button.SQUARE)) {
-            revolverTarget += Globals.revolver.oneRotation;  // CW
-        } else if (gamepadEx.wasJustPressed(GamepadKeys.Button.CIRCLE)) {
-            revolverTarget -= Globals.revolver.oneRotation;
+            String t = revolverState.get(0);
+            String l = revolverState.get(1);
+            String r = revolverState.get(2);
+
+            if (left) {
+                revolverTarget += Globals.revolver.oneRotation;
+                //t,l,r -> l,r,t
+                revolverState.set(0, l);
+                revolverState.set(1, r);
+                revolverState.set(2, t);
+            } else {
+                revolverTarget -= Globals.revolver.oneRotation;
+                //t,l,r -> r,t,l
+                revolverState.set(0, r);
+                revolverState.set(1, t);
+                revolverState.set(2, l);
+            }
         }
-}
+
         revolverPower = revolverPID.calculate(revolver.getCurrentPosition(), revolverTarget);
         revolver.set(revolverPower);
-
     }
+
 
     private void findPattern() {
         if (gamepadEx.wasJustPressed(GamepadKeys.Button.OPTIONS)) {
