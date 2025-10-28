@@ -10,7 +10,9 @@ import com.pedropathing.geometry.Pose;
 import com.pedropathing.paths.PathChain;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.hardware.DcMotor;
+import com.qualcomm.robotcore.hardware.DistanceSensor;
 import com.qualcomm.robotcore.hardware.HardwareMap;
+import com.qualcomm.robotcore.hardware.NormalizedColorSensor;
 import com.seattlesolvers.solverslib.command.CommandBase;
 import com.seattlesolvers.solverslib.command.CommandGroupBase;
 import com.seattlesolvers.solverslib.command.CommandOpMode;
@@ -20,17 +22,22 @@ import com.seattlesolvers.solverslib.command.ParallelDeadlineGroup;
 import com.seattlesolvers.solverslib.command.SequentialCommandGroup;
 import com.seattlesolvers.solverslib.command.SubsystemBase;
 import com.seattlesolvers.solverslib.command.WaitCommand;
+import com.seattlesolvers.solverslib.controller.PIDController;
 import com.seattlesolvers.solverslib.hardware.motors.Motor;
 import com.seattlesolvers.solverslib.pedroCommand.FollowPathCommand;
 import com.seattlesolvers.solverslib.util.TelemetryData;
 
 import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
 
+import org.firstinspires.ftc.teamcode.hardware.Globals;
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
+import org.firstinspires.ftc.teamcode.testing.finalLaunch3;
 import org.firstinspires.ftc.vision.VisionPortal;
 import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
 import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 @Autonomous
@@ -147,9 +154,30 @@ public class FROGTONOMOUS extends CommandOpMode {
     }
 
     public class outtakesubsys extends SubsystemBase {
+        private final Motor revolver;
+        private PIDController revolverPID;
+        private NormalizedColorSensor colourSensor;
+        private DistanceSensor distanceSensor;
+        private List<String> revolverState = new ArrayList<>(Arrays.asList("EMPTY", "EMPTY", "EMPTY"));
+        private int revolverTarget = 0;
+        private double revolverPower;
+        private final float[] hsv = new float[3];
+        public outtakesubsys(HardwareMap map) {
+            revolver = new Motor(hardwareMap, "revolver", 28, 1150);
+            revolver.setRunMode(Motor.RunMode.RawPower);
+            revolver.resetEncoder();
+            revolverPID = new PIDController(Globals.revolver.revolverKP, Globals.revolver.revolverKI, Globals.revolver.revolverKD);
+            // ----- colour sensor -----
+            colourSensor = hardwareMap.get(NormalizedColorSensor.class,"colour1");
+            distanceSensor = hardwareMap.get(DistanceSensor.class, "colour1");
+            colourSensor.setGain(2.0f); //CAMERA SENSITIVITY, increase for darker environemnts
+        }
+        public void increasepower() {
+            revolver.set(0.7);
+        }
 
-        public void outtakesubsys(HardwareMap map) {
-
+        public void decreasepower() {
+            revolver.set(0.0);
         }
 
 
