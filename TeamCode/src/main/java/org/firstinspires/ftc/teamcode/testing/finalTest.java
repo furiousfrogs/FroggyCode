@@ -183,6 +183,52 @@ public class finalTest extends OpMode {
         }
     }
 
+    private void froggystomach(int pattern1234) {
+        // 0 is intake bottom, 1 is top, 2 is non intake side.
+        // pattern 0 = ppg, 1 = pgp, 2 = gpp
+        ArrayList<String> balls = new ArrayList<String>(3);
+        balls.add("empty");
+        balls.add("empty");
+        balls.add("empty");
+
+        // COLLECTIONS.ROTATE EXAMPLE LIST1 = [1,2,3]
+        // Collections.rotate(list1, 1) => [2,3,1]
+
+        //intake function needed
+        balls.set(0, senseColour());
+        Collections.rotate(balls, 1);//rotates so intake side is now at top
+        balls.set(0, senseColour());;
+        Collections.rotate(balls, 1);//rotates so intake side is now at top
+        balls.set(0, senseColour());
+        Collections.rotate(balls, 1);
+
+        //outttake
+        if (pattern1234 == 0){
+            if (balls.get(1) == "p"){
+                if (balls.get(0) == "g"){
+                    //shoot
+                    //rotate clockwise
+                    //shoot
+                    //rotate clockwise
+                    //shoot
+                } else {
+                    //shoot
+                    //rotate clockwise
+                    //shoot
+                    //rotate clockwise
+                    //shoot
+                }
+            } else {
+                //rotateclockwise
+                //shoot
+                //rotate clockwise
+                //shoot
+                //rotate clockwise
+                //shoot
+            }
+        }
+    }
+
 
     private String senseColour() {
         if (distanceSensor.getDistance(DistanceUnit.CM) > 2.5) return "EMPTY";
