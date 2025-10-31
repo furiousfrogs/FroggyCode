@@ -297,6 +297,8 @@ public class finalTest extends OpMode {
                 switch (currentShooting) {
                     case shootRotating: {
 
+
+
                         // only add one rotation once
                         if (!rotating && shotsFired > 0) {
                             revolverTarget += clockwise ? Globals.revolver.oneRotation : -Globals.revolver.oneRotation;
@@ -630,7 +632,7 @@ public class finalTest extends OpMode {
         if (detections != null && !detections.isEmpty()) {
             for (AprilTagDetection d : detections) {
 
-                    distance = d.ftcPose.range;
+                distance = d.ftcPose.range;
 
                 power = (2547.5 * pow(2.718281828459045, (0.0078 * distance)))/Globals.launcher.launcherTransformation; // here
 
@@ -685,6 +687,7 @@ public class finalTest extends OpMode {
         telemetry.addData("revolverready?", revolverReady);
         telemetry.addData("color?", color);
         telemetry.addData("shootloop", shootLoop);
+        telemetry.addData("shot rotation?: ", currentShooting);
         telemetry.update();
 
         TelemetryPacket rpmPacket = new TelemetryPacket();
