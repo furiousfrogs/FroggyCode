@@ -39,6 +39,9 @@ import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.*;
 
 @Autonomous
 @Configurable
@@ -153,34 +156,30 @@ public class FROGTONOMOUS extends CommandOpMode {
         }
     }
 
-    public class outtakesubsys extends SubsystemBase {
+    public class revolversubsys extends SubsystemBase {
         private final Motor revolver;
         private PIDController revolverPID;
-        private NormalizedColorSensor colourSensor;
-        private DistanceSensor distanceSensor;
-        private List<String> revolverState = new ArrayList<>(Arrays.asList("EMPTY", "EMPTY", "EMPTY"));
-        private int revolverTarget = 0;
-        private double revolverPower;
-        private final float[] hsv = new float[3];
-        public outtakesubsys(HardwareMap map) {
+
+        private ArrayList<String> froggystomach = new ArrayList<String>(3);
+        public revolversubsys(HardwareMap map) {
             revolver = new Motor(hardwareMap, "revolver", 28, 1150);
             revolver.setRunMode(Motor.RunMode.RawPower);
             revolver.resetEncoder();
             revolverPID = new PIDController(Globals.revolver.revolverKP, Globals.revolver.revolverKI, Globals.revolver.revolverKD);
-            // ----- colour sensor -----
-            colourSensor = hardwareMap.get(NormalizedColorSensor.class,"colour1");
-            distanceSensor = hardwareMap.get(DistanceSensor.class, "colour1");
-            colourSensor.setGain(2.0f); //CAMERA SENSITIVITY, increase for darker environemnts
-        }
-        public void increasepower() {
-            revolver.set(0.7);
-        }
 
-        public void decreasepower() {
-            revolver.set(0.0);
+            froggystomach.add("empty");
+            froggystomach.add("empty");
+            froggystomach.add("empty");
         }
+        public void sort(int pattern) {
+            if (pattern == 1) {
 
+            } else if (pattern == 2) {
 
+            } else if (pattern == 3) {
+
+            }
+        }
     }
 
 
