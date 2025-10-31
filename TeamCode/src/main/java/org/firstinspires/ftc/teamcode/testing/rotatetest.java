@@ -15,7 +15,7 @@ import com.seattlesolvers.solverslib.hardware.servos.ServoEx;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.teamcode.hardware.Globals;
-@Disabled
+
 @TeleOp(name = "rotate test")
 public class rotatetest extends OpMode {
     private Motor revolver, intake;
@@ -55,7 +55,7 @@ public class rotatetest extends OpMode {
 
     @Override
     public void loop() {
-
+        rotate();
 
         // eject is 30, default is 44, push is 55
         //rotate();
