@@ -52,6 +52,8 @@ public class finalTest extends OpMode {
     private boolean clockwise;
     private int filled;
     double revolverSetupTimer = Double.MAX_VALUE;
+    private boolean revolverReady = true;
+
 
     // ----- action booleans -----
     private boolean shootLoop = false;
@@ -70,6 +72,7 @@ public class finalTest extends OpMode {
     private double distance;
     private double power;
     private int shotsFired = 0;
+    private double previousRevolverPosition;
 
 
     // ----- pid's -----
@@ -267,8 +270,8 @@ public class finalTest extends OpMode {
             boolean startPressed = gamepadEx.getButton(GamepadKeys.Button.CROSS);
 
             // Start a new cycle
-            if (startPressed && power > 0 && !shootLoop && revolverReadytoLaunch) {
-                revolverReadytoLaunch = false;
+            if (startPressed && power > 0 && !shootLoop) {
+
                 shootLoop = true;
                 currentShooting = shooting.shootRotating;
 
@@ -278,7 +281,6 @@ public class finalTest extends OpMode {
                 shotsFired = 0;
 
             }
-
             if (!shootLoop) {
                 // idle; ensure things are safe
                 launcher1.set(0);
@@ -290,17 +292,17 @@ public class finalTest extends OpMode {
             if (shootLoop) {
                 launcher1.set(feedforwardPower);
                 launcher2.set(feedforwardPower);
-                intake.set(0.30);
+
                 // shooting cycle state machine
                 switch (currentShooting) {
                     case shootRotating: {
 
                         // only add one rotation once
-                        if (rotateTimer > globalTimer.seconds() && !rotating && shotsFired > 0) {
+                        if (!rotating && shotsFired > 0) {
                             revolverTarget += clockwise ? Globals.revolver.oneRotation : -Globals.revolver.oneRotation;
                             rotateTimer = globalTimer.seconds() + Globals.timers.oneRotationTime;
                             rotating = true;
-                        } else if (rotateTimer > globalTimer.seconds() && !rotating && shotsFired == 0) {
+                        } else if (!rotating && shotsFired == 0) {
                             rotating = true;
                             rotateTimer = globalTimer.seconds() - 1;
                         }
@@ -343,12 +345,13 @@ public class finalTest extends OpMode {
                         if (globalTimer.seconds() > shootTimer) {
                             set.turnToAngle(Globals.launcher.downset);
                             shotsFired++;
-                            if (shotsFired < 4) {
+                            if (shotsFired < 3) {
                                 // Prepare next round: rotate again for the next chamber
                                 currentShooting = shooting.shootRotating;
                                 shootAction = false;
                                 ejectAction = false;
                                 rotating = false;
+                                revolverReadytoLaunch = false;
                                 // (keep launcher + intake running during the burst)
                             } else {
                                 // Burst done — shut down
@@ -426,110 +429,84 @@ public class finalTest extends OpMode {
     public void oneRotationRevolver(boolean left) {
         // PID setup
 
-        String t = revolverState.get(0);
-        String l = revolverState.get(1);
-        String r = revolverState.get(2);
-
-
-
-        if (left) {
-            revolverTarget -= Globals.revolver.oneRotation;
-            //t,l,r -> l,r,t
-//            revolverState.set(0, l);
-//            revolverState.set(1, r);
-//            revolverState.set(2, t);
-        } else {
-            revolverTarget += Globals.revolver.oneRotation;
-            //t,l,r -> r,t,l
-//            revolverState.set(0, r);
-//            revolverState.set(1, t);
-//            revolverState.set(2, l);
-        }
-
-
+        // PID setup
+        revolverPID.setTolerance(0);
+        revolverPID.setPID(Globals.revolver.revolverKP, Globals.revolver.revolverKI, Globals.revolver.revolverKD);
+        previousRevolverPosition = revolverTarget;
+        revolverTarget += left ? +Globals.revolver.oneRotation : -Globals.revolver.oneRotation; //TODO Chekc if this is right
 
     }
+
+
+
+
     public void intake() {
+
+        revolverPower = revolverPID.calculate(revolver.getCurrentPosition(), revolverTarget);
+        revolver.set(revolverPower);
+
+        if (!revolverReady && Math.abs(Math.abs(revolver.getCurrentPosition() - previousRevolverPosition) - Globals.revolver.oneRotation)  < 10) {
+            revolverReady = true;
+        }
 
         intake.set(gamepadEx.getButton(GamepadKeys.Button.TRIANGLE) ? Globals.intakePower : 0);
 
-        filled = revolverState.size() - Collections.frequency(revolverState, "EMPTY");
-        // "G", "P", or "EMPTY"
+        int filled = revolverState.size() - Collections.frequency(revolverState, "EMPTY");
+        String color = senseColour(); // "G", "P", or "EMPTY"
 
 
-        if (gamepadEx.getButton(GamepadKeys.Button.SQUARE)) {
-            color = senseColour();
-            if (!"EMPTY".equals(color) && !revolverReadytoLaunch && !shootLoop && patternDetected && !inCycle) {
-                 // "G", "P", or "EMPTY"
-                inCycle = true;
+
+        if (gamepadEx.getButton(GamepadKeys.Button.SQUARE) && patternDetected) {
+            if (!"EMPTY".equals(color) && revolverReady) {
                 switch (filled) {
                     case 3:
-                        String[] launchngPattern = desiredByPattern();
-                        String want1 = launchngPattern[1];
-                        if (Objects.equals(finalRevolver.get(1), want1)) {
-                            clockwise = true;
-                        } else { clockwise = false; }
-                        revolverReadytoLaunch = true;
-                        inCycle = false;
-                        color = "EMPTY";
 
                         break;
 
                     case 2:
-
-
+                        revolverReady = false;
                         revolverState.set(2, color);
                         oneRotationRevolver(!previousRotation);
-                        if (previousRotation) {
-                            finalRevolver.set(0, color);
-                        } else {
-                            finalRevolver.set(1, color);
-                        }
+                        Collections.rotate(revolverState, previousRotation ? 1 : -1);
 
-                        color = "EMPTY";
-                        revolverState.set(2,color);
-                        inCycle = false;
+                        revolverReadytoLaunch = true;
+                        String secondBall = desiredByPattern()[1];
+
+
+                        clockwise = Objects.equals(secondBall, revolverState.get(1));
                         break;
 
                     case 1:
+                        revolverReady = false;
                         revolverState.set(2, color);
-                        finalRevolver.set(2, color);
-                        if (revolverState.get(1).equals("EMPTY")) {
+                        if (Objects.equals(revolverState.get(1), "EMPTY")) {
                             oneRotationRevolver(true);
-
                             previousRotation = true;
-
+                            Collections.rotate(revolverState, 1);
                         } else {
                             oneRotationRevolver(false);
-
                             previousRotation = false;
+                            Collections.rotate(revolverState, -1);
                         }
-                        color = "EMPTY";
-
-                        inCycle = false;
                         break;
 
                     case 0:
-                        default:
-                            revolverState.set(2,color);
-                            String[] desired = desiredByPattern();
-                            String wantTop  = desired[0];
-                            if (color.equals(wantTop)) { // if its the right color then store it at the top
-                                oneRotationRevolver(false);
-                                revolverState.set(0, wantTop);
-                            } else {
-                                oneRotationRevolver(true);
-                                revolverState.set(1, color);
-                            } // otherwise store it on the left
-
-
-                            color = "EMPTY";
-                            revolverState.set(2,"EMPTY");
-                            inCycle = false;
-                            break;
+                    default:
+                        revolverReady = false;
+                        revolverState.set(2, color);
+                        String wantTop = desiredByPattern()[0];
+                        if (wantTop.equals(color)) {
+                            oneRotationRevolver(true);
+                            Collections.rotate(revolverState, 1);
+                        } else {
+                            oneRotationRevolver(false);
+                            Collections.rotate(revolverState, -1);
+                        }
+                        break;
                 }
             }
         }
+
     }
 
 
@@ -652,7 +629,8 @@ public class finalTest extends OpMode {
         List<AprilTagDetection> detections = tagProcessor.getDetections();
         if (detections != null && !detections.isEmpty()) {
             for (AprilTagDetection d : detections) {
-                distance = d.ftcPose.range;
+
+                    distance = d.ftcPose.range;
 
                 power = (2547.5 * pow(2.718281828459045, (0.0078 * distance)))/Globals.launcher.launcherTransformation; // here
 
@@ -697,14 +675,16 @@ public class finalTest extends OpMode {
                 .addData("1", revolverState.get(1))
                 .addData("2", revolverState.get(2));
 
-        telemetry.addLine("actual revolver")
-                .addData("0", finalRevolver.get(0))
-                .addData("1", finalRevolver.get(1))
-                .addData("2", finalRevolver.get(2));
+//        telemetry.addLine("actual revolver")
+//                .addData("0", finalRevolver.get(0))
+//                .addData("1", finalRevolver.get(1))
+//                .addData("2", finalRevolver.get(2));
 
 
         telemetry.addData("ready?", revolverReadytoLaunch);
+        telemetry.addData("revolverready?", revolverReady);
         telemetry.addData("color?", color);
+        telemetry.addData("shootloop", shootLoop);
         telemetry.update();
 
         TelemetryPacket rpmPacket = new TelemetryPacket();
