@@ -4,6 +4,7 @@ import static java.lang.Math.pow;
 
 import com.acmerobotics.dashboard.FtcDashboard;
 import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
@@ -30,6 +31,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 
+@Disabled
 @TeleOp(name = "C Final")
 public class tfintest extends OpMode {
 

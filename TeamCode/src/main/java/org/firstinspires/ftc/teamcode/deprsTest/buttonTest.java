@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode.testing;
+package org.firstinspires.ftc.teamcode.deprsTest;
 
 import static java.lang.Math.pow;
 
@@ -18,8 +18,6 @@ import com.seattlesolvers.solverslib.controller.PIDFController;
 import com.seattlesolvers.solverslib.gamepad.GamepadEx;
 import com.seattlesolvers.solverslib.gamepad.GamepadKeys;
 import com.seattlesolvers.solverslib.hardware.SimpleServo;
-import com.seattlesolvers.solverslib.hardware.SimpleServoExtKt;
-import com.seattlesolvers.solverslib.hardware.motors.CRServo;
 import com.seattlesolvers.solverslib.hardware.motors.Motor;
 import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
@@ -39,8 +37,8 @@ import java.util.Collections;
 import java.util.Objects;
 
 
-@TeleOp(name = "Final")
-public class finalTest extends OpMode {
+@TeleOp(name = "buttons")
+public class buttonTest extends OpMode {
 
     // ----- booleans/toggles
     private boolean aligned = false;
@@ -199,66 +197,11 @@ public class finalTest extends OpMode {
 
     @Override
     public void loop() { // TODO add revolver sequence logic
-        calculateRPM();
-        launcherawe();
-        autoAimServoMode();      // now only reads/controls; does NOT rebuild vision
-        doTelemetry();
-        intake();
-        drive();
-        ejection();
-        findPattern();
-        launch3();
-
-        revolverPID.setTolerance(0);
-        revolverPID.setPID(Globals.revolver.revolverKP, Globals.revolver.revolverKI, Globals.revolver.revolverKD);
-        revolverPower = revolverPID.calculate(revolver.getCurrentPosition(), revolverTarget);
-        revolver.set(revolverPower);
-
-    }
-
-    private void froggystomach(int pattern1234) {
-        // 0 is intake bottom, 1 is top, 2 is non intake side.
-        // pattern 0 = ppg, 1 = pgp, 2 = gpp
-        ArrayList<String> balls = new ArrayList<String>(3);
-        balls.add("empty");
-        balls.add("empty");
-        balls.add("empty");
-
-        // COLLECTIONS.ROTATE EXAMPLE LIST1 = [1,2,3]
-        // Collections.rotate(list1, 1) => [2,3,1]
-
-        //intake function needed
-        balls.set(0, senseColour());
-        Collections.rotate(balls, 1);//rotates so intake side is now at top
-        balls.set(0, senseColour());;
-        Collections.rotate(balls, 1);//rotates so intake side is now at top
-        balls.set(0, senseColour());
-        Collections.rotate(balls, 1);
-
-        //outttake
-        if (pattern1234 == 0){
-            if (balls.get(1) == "p"){
-                if (balls.get(0) == "g"){
-                    //shoot
-                    //rotate clockwise
-                    //shoot
-                    //rotate clockwise
-                    //shoot
-                } else {
-                    //shoot
-                    //rotate clockwise
-                    //shoot
-                    //rotate clockwise
-                    //shoot
-                }
-            } else {
-                //rotateclockwise
-                //shoot
-                //rotate clockwise
-                //shoot
-                //rotate clockwise
-                //shoot
-            }
+       if (gamepadEx.wasJustPressed(GamepadKeys.Button.CIRCLE)) {
+           telemetry.addLine("curcle ressed");
+       }
+        if (gamepadEx.wasJustReleased(GamepadKeys.Button.CROSS)) {
+            telemetry.addLine("cross release");
         }
     }
 
@@ -296,40 +239,32 @@ public class finalTest extends OpMode {
                 // shooting cycle state machine
                 switch (currentShooting) {
                     case shootRotating: {
-
-
-
-                        // only add one rotation once
-                        if (!rotating && shotsFired > 0) {
-                            revolverTarget += clockwise ? Globals.revolver.oneRotation : -Globals.revolver.oneRotation;
-                            rotateTimer = globalTimer.seconds() + Globals.timers.oneRotationTime;
-                            rotating = true;
-                        } else if (!rotating && shotsFired == 0) {
-                            rotating = true;
-                            rotateTimer = globalTimer.seconds() - 1;
-                        }
-
-
-                        // wait until position reached
-                        if (Math.abs(revolverTarget - revolver.getCurrentPosition()) < 10 && rotating && globalTimer.seconds() > rotateTimer) {
-                            rotateTimer = Double.MAX_VALUE;
-                            currentShooting = shooting.shootEjecting;
-                            eject.turnToAngle(Globals.pushServo.push);                 // push
-                            if (ejectTimer > globalTimer.seconds()) {
-                                ejectTimer = globalTimer.seconds() + Globals.timers.servoPushTime; // 1s dwell
+                        shootTimer = Double.MAX_VALUE;
+                        if (gamepadEx.wasJustReleased(GamepadKeys.Button.CIRCLE)) { // POTENTIAL ERROR CUZ THE BUTTON COULD CARRY OVER
+                            if (!rotating && shotsFired > 0) {
+                                oneRotationRevolver(!clockwise);
+                                rotating = true;
+                                currentShooting = shooting.shootEjecting;
+                            } else if (!rotating && shotsFired == 0) {
+                                rotating = true;
+                                previousRevolverPosition = revolverTarget;
+                                currentShooting = shooting.shootEjecting;
                             }
                         }
+
                         break;
                     }
 
                     case shootEjecting: {
-
-                        // hold push until timer expires, then retract
-                        if (globalTimer.seconds() > ejectTimer) {
-                            eject.turnToAngle(Globals.pushServo.defualt); // retract to neutral
-                            currentShooting = shooting.shootFire;
-                            ejectTimer = Double.MAX_VALUE;
+                        if (gamepadEx.wasJustPressed(GamepadKeys.Button.CIRCLE)) {
+                            eject.turnToAngle(Globals.pushServo.push);
                         }
+                        if (gamepadEx.wasJustReleased(GamepadKeys.Button.CIRCLE)) {
+                            eject.turnToAngle(Globals.pushServo.defualt);
+                            currentShooting = shooting.shootFire;
+                        }
+                        // hold push until timer expires, then retract
+
                         break;
                     }
 
@@ -364,7 +299,7 @@ public class finalTest extends OpMode {
                                 launcher2.set(0);
                                 intake.set(0);
                             }
-                            shootTimer = Double.MAX_VALUE;
+
 
                         }
                         break;
@@ -543,7 +478,7 @@ public class finalTest extends OpMode {
         double deltaTime = currentTime - lastTime;
         int deltaTicks = currentPosition - lastPosition;
 
-        if (deltaTime > 0.1) {
+        if (deltaTime > 0.05) {
             double revs = (double) deltaTicks / 28.0; // GoBILDA CPR
             RPM = (revs / deltaTime) * 60.0;
 
@@ -644,18 +579,6 @@ public class finalTest extends OpMode {
 
         feedforwardPower = ff.calculate(RPM, power);
 
-
-//        if (gamepadEx.getButton(GamepadKeys.Button.CROSS)) {
-//            launcher1.set(feedforwardPower);
-//            launcher2.set(feedforwardPower);
-//            if (Math.abs(power - RPM) < Globals.launcher.launcherTol && aligned) { // there
-//                set.turnToAngle(Globals.launcher.upset);
-//            }
-//        } else {
-//            launcher1.set(0);
-//            launcher2.set(0);
-//            set.turnToAngle(Globals.launcher.downset);
-//        }
 
     }
 
