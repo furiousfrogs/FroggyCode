@@ -35,8 +35,6 @@ public class RevolverSubsystem extends SubsystemBase {
     public boolean revolverReady = true;
     private double previousRevolverPosition = 0;
     private int revolverTarget = 0;
-    private NormalizedColorSensor colourSensor;
-
 
     private final float[] hsv = new float[3];
 
@@ -70,7 +68,7 @@ public class RevolverSubsystem extends SubsystemBase {
     private String senseColour() {
         if (distanceSensor.getDistance(DistanceUnit.CM) > 3) return "EMPTY";
 
-        NormalizedRGBA rgba = colourSensor.getNormalizedColors();
+        NormalizedRGBA rgba = colorSensor.getNormalizedColors();
         Color.colorToHSV(rgba.toColor(), hsv); // hsv[0]=H, hsv[1]=S, hsv[2]=V
 
         if (hsv[0] >= 150 && hsv[0] <= 180 &&
