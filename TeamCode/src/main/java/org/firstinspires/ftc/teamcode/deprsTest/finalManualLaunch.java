@@ -74,8 +74,8 @@ public class finalManualLaunch extends OpMode {
 
 
     // ----- pid's -----
-    private PIDFController turretPIDF, ff;
-    private PIDController revolverPID;
+    private PIDFController turretPIDF, ff, revolverPID;
+
 
     // ----- Motors, servos, sensors -----
     private Motor launcher1, launcher2, revolver,fl,bl,fr,br, intake;
@@ -161,7 +161,7 @@ public class finalManualLaunch extends OpMode {
         revolver = new Motor(hardwareMap, "revolver", 28, 1150);
         revolver.setRunMode(Motor.RunMode.RawPower);
         revolver.resetEncoder();
-        revolverPID = new PIDController(Globals.revolver.revolverKP, Globals.revolver.revolverKI, Globals.revolver.revolverKD);
+        revolverPID = new PIDFController(Globals.revolver.revolverKP, Globals.revolver.revolverKI, Globals.revolver.revolverKD, Globals.revolver.revolverKF);
         // ----- colour sensor -----
         colourSensor = hardwareMap.get(NormalizedColorSensor.class,"colour1");
         distanceSensor = hardwareMap.get(DistanceSensor.class, "colour1");
@@ -212,7 +212,7 @@ public class finalManualLaunch extends OpMode {
         launch3();
 
         revolverPID.setTolerance(0);
-        revolverPID.setPID(Globals.revolver.revolverKP, Globals.revolver.revolverKI, Globals.revolver.revolverKD);
+        revolverPID.setPIDF(Globals.revolver.revolverKP, Globals.revolver.revolverKI, Globals.revolver.revolverKD, Globals.revolver.revolverKF);
         revolverPower = revolverPID.calculate(revolver.getCurrentPosition(), revolverTarget);
         revolver.set(revolverPower);
 
@@ -302,20 +302,20 @@ public class finalManualLaunch extends OpMode {
                         if (globalTimer.seconds() > shootTimer) {
                             set.turnToAngle(Globals.launcher.downset);
                             shotsFired++;
-                            if (shotsFired < 4) {
+                            if (shotsFired < 3) {
                                 // Prepare next round: rotate again for the next chamber
                                 currentShooting = shooting.shootRotating;
                                 shootAction = false;
                                 ejectAction = false;
                                 rotating = false;
-                                revolverReadytoLaunch = false;
+
                                 shootTimer = Double.MAX_VALUE;
                                 // (keep launcher + intake running during the burst)
                             } else {
                                 // Burst done — shut down
                                 currentShooting = shooting.shootIdle;
                                 shootLoop = false;
-
+                                revolverReadytoLaunch = false;
                                 launcher1.set(0);
                                 launcher2.set(0);
 
@@ -390,7 +390,7 @@ public class finalManualLaunch extends OpMode {
 
         // PID setup
         revolverPID.setTolerance(0);
-        revolverPID.setPID(Globals.revolver.revolverKP, Globals.revolver.revolverKI, Globals.revolver.revolverKD);
+        revolverPID.setPIDF(Globals.revolver.revolverKP, Globals.revolver.revolverKI, Globals.revolver.revolverKD, Globals.revolver.revolverKF);
         previousRevolverPosition = revolverTarget;
         revolverTarget += left ? +Globals.revolver.oneRotation : -Globals.revolver.oneRotation; //TODO Chekc if this is right
 
@@ -419,7 +419,7 @@ public class finalManualLaunch extends OpMode {
             if (!"EMPTY".equals(color) && revolverReady) {
                 switch (filled) {
                     case 3:
-
+                        revolverReadytoLaunch = true;
                         break;
 
                     case 2:
@@ -428,7 +428,7 @@ public class finalManualLaunch extends OpMode {
                         oneRotationRevolver(!previousRotation);
                         Collections.rotate(revolverState, previousRotation ? 1 : -1);
 
-                        revolverReadytoLaunch = true;
+
                         String secondBall = desiredByPattern()[1];
 
 
