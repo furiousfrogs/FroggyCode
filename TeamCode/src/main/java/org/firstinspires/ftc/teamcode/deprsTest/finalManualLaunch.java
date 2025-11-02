@@ -95,6 +95,9 @@ public class finalManualLaunch extends OpMode {
     // ----- revolver -----
     private final float[] hsv = new float[3];
 
+    private boolean shootCounterClockwise = false;
+
+
 
     //index 0 is the top, 1 is the left, 2 is the right when looking from the front view
     private List<String> revolverState = new ArrayList<>(Arrays.asList("EMPTY", "EMPTY", "EMPTY"));
@@ -257,10 +260,10 @@ public class finalManualLaunch extends OpMode {
                         shootTimer = Double.MAX_VALUE;
                         if (!currCircle && prevCircle) { // POTENTIAL ERROR CUZ THE BUTTON COULD CARRY OVER
                             if (!rotating && shotsFired > 0) {
-                                oneRotationRevolver(!clockwise);
+                                // if true -> +1 -> 2->0 (counterclockwise)
+                                oneRotationRevolver(shootCounterClockwise);
                                 rotating = true;
                                 currentShooting = shooting.shootEjecting;
-
                             } else if (!rotating && shotsFired == 0) {
                                 rotating = true;
                                 previousRevolverPosition = revolverTarget;
@@ -400,73 +403,94 @@ public class finalManualLaunch extends OpMode {
 
 
     public void intake() {
-
         revolverPower = revolverPID.calculate(revolver.getCurrentPosition(), revolverTarget);
         revolver.set(revolverPower);
 
-        if (!revolverReady && Math.abs(Math.abs(revolver.getCurrentPosition() - previousRevolverPosition) - Globals.revolver.oneRotation)  < 10) {
+        if (!revolverReady &&
+                Math.abs(Math.abs(revolver.getCurrentPosition() - previousRevolverPosition) - Globals.revolver.oneRotation) < 10) {
             revolverReady = true;
         }
 
         intake.set(gamepadEx.getButton(GamepadKeys.Button.TRIANGLE) ? Globals.intakePower : 0);
 
         int filled = revolverState.size() - Collections.frequency(revolverState, "EMPTY");
-        String color = senseColour(); // "G", "P", or "EMPTY"
-
-
+        String color = senseColour();  // "P", "G", or "EMPTY"
 
         if (gamepadEx.getButton(GamepadKeys.Button.SQUARE) && patternDetected) {
             if (!"EMPTY".equals(color) && revolverReady) {
+
+                String wantTop = desiredByPattern()[0];
+
                 switch (filled) {
-                    case 3:
+                    case 0: {
+                        // put new ball into slot 2, then ALWAYS rotate it to slot 1
+                        revolverReady = false;
+                        revolverState.set(2, color);
+
+                        oneRotationRevolver(false);
+                        Collections.rotate(revolverState, -1);
+
+                        previousRotation = false;
+                        break;
+                    }
+
+                    case 1: {
+                        //same idea just move it into slot 1
+                        revolverReady = false;
+                        revolverState.set(2, color);
+
+                        oneRotationRevolver(false);
+                        Collections.rotate(revolverState, -1);
+                        previousRotation = false;
+
+                        break;
+                    }
+                    case 2: {
+                        revolverState.set(2, color);
+
+                        if (color.equals(wantTop)) {
+                            // new ball IS the one we want on top → bring index 2 -> index 0
+                            revolverReady = false;
+                            oneRotationRevolver(true);
+                            Collections.rotate(revolverState, 1);
+                            previousRotation = true;
+
+                        } else if (revolverState.get(0).equals(wantTop)) {
+                            // already on top → do nothing
+                        } else if (revolverState.get(1).equals(wantTop)) {
+                            // we have it in slot 1 → bring 1 -> 0
+                            revolverReady = false;
+                            oneRotationRevolver(false);
+                            Collections.rotate(revolverState, -1);
+                            previousRotation = false;
+                        } else {
+
+                        }
+
+                        //describes whether to launch clockwise or counter clockwise in launch 3
+                        String[] want = desiredByPattern();
+                        String secondBall = want[1];
+                        if (revolverState.get(1).equals(secondBall)) {
+                            shootCounterClockwise = false;
+                        } else if (revolverState.get(2).equals(secondBall)) {
+                            shootCounterClockwise = true;
+                        }
+
+
+
+                        // now we are full
                         revolverReadytoLaunch = true;
                         break;
-
-                    case 2:
-                        revolverReady = false;
-                        revolverState.set(2, color);
-                        oneRotationRevolver(!previousRotation);
-                        Collections.rotate(revolverState, previousRotation ? 1 : -1);
-
-
-                        String secondBall = desiredByPattern()[1];
-
-
-                        clockwise = Objects.equals(secondBall, revolverState.get(1));
+                    }
+                    case 3:
+                    default: {
                         break;
-
-                    case 1:
-                        revolverReady = false;
-                        revolverState.set(2, color);
-                        if (Objects.equals(revolverState.get(1), "EMPTY")) {
-                            oneRotationRevolver(true);
-                            previousRotation = true;
-                            Collections.rotate(revolverState, 1);
-                        } else {
-                            oneRotationRevolver(false);
-                            previousRotation = false;
-                            Collections.rotate(revolverState, -1);
-                        }
-                        break;
-
-                    case 0:
-                    default:
-                        revolverReady = false;
-                        revolverState.set(2, color);
-                        String wantTop = desiredByPattern()[0];
-                        if (wantTop.equals(color)) {
-                            oneRotationRevolver(true);
-                            Collections.rotate(revolverState, 1);
-                        } else {
-                            oneRotationRevolver(false);
-                            Collections.rotate(revolverState, -1);
-                        }
-                        break;
+                    }
                 }
             }
         }
-
     }
+
 
 
 
