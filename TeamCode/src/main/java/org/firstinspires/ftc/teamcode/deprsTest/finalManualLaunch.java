@@ -116,10 +116,14 @@ public class finalManualLaunch extends OpMode {
 
     // ----- misc -----
     private FtcDashboard dashboard = FtcDashboard.getInstance();
-    private GamepadEx gamepadEx;
+
     private VisionPortal visionPortal;
     private AprilTagProcessor tagProcessor;
 
+    //--gamepad--
+    private boolean prevCircle = false;
+    private boolean currCircle = false;
+    private GamepadEx gamepadEx;
 
     private boolean inCycle = false;
     @Override
@@ -191,7 +195,7 @@ public class finalManualLaunch extends OpMode {
         intake.setZeroPowerBehavior(Motor.ZeroPowerBehavior.BRAKE);
         eject = new SimpleServo(hardwareMap, "eject", 0, 70);
         eject.setInverted(true);
-        eject.turnToAngle(44);
+        eject.turnToAngle(Globals.pushServo.defualt);
 
     }
 
@@ -203,7 +207,7 @@ public class finalManualLaunch extends OpMode {
         doTelemetry();
         intake();
         drive();
-        ejection();
+
         findPattern();
         launch3();
 
@@ -216,13 +220,13 @@ public class finalManualLaunch extends OpMode {
 
 
     public void launch3() {
-
-        if (revolverReadytoLaunch) {
+            gamepadEx.readButtons();
+        //if (revolverReadytoLaunch) {
             // Arm spinner & intake only while we are in a shooting cycle
             boolean startPressed = gamepadEx.getButton(GamepadKeys.Button.CROSS);
 
             // Start a new cycle
-            if (startPressed && power > 0 && !shootLoop) {
+            if (startPressed && !shootLoop) {
 
                 shootLoop = true;
                 currentShooting = shooting.shootRotating;
@@ -237,11 +241,13 @@ public class finalManualLaunch extends OpMode {
                 // idle; ensure things are safe
                 launcher1.set(0);
                 launcher2.set(0);
-                intake.set(0);
+
                 set.turnToAngle(Globals.launcher.downset);
                 return;
             }
             if (shootLoop) {
+                currCircle = gamepadEx.getButton(GamepadKeys.Button.CIRCLE);
+
                 launcher1.set(feedforwardPower);
                 launcher2.set(feedforwardPower);
 
@@ -249,15 +255,17 @@ public class finalManualLaunch extends OpMode {
                 switch (currentShooting) {
                     case shootRotating: {
                         shootTimer = Double.MAX_VALUE;
-                        if (gamepadEx.wasJustReleased(GamepadKeys.Button.CIRCLE)) { // POTENTIAL ERROR CUZ THE BUTTON COULD CARRY OVER
+                        if (!currCircle && prevCircle) { // POTENTIAL ERROR CUZ THE BUTTON COULD CARRY OVER
                             if (!rotating && shotsFired > 0) {
                                 oneRotationRevolver(!clockwise);
                                 rotating = true;
                                 currentShooting = shooting.shootEjecting;
+
                             } else if (!rotating && shotsFired == 0) {
                                 rotating = true;
                                 previousRevolverPosition = revolverTarget;
                                 currentShooting = shooting.shootEjecting;
+
                             }
                         }
 
@@ -265,10 +273,13 @@ public class finalManualLaunch extends OpMode {
                     }
 
                     case shootEjecting: {
-                        if (gamepadEx.wasJustPressed(GamepadKeys.Button.CIRCLE)) {
-                            eject.turnToAngle(Globals.pushServo.push);
+                        if (!ejectAction && (currCircle)) {
+                            eject.turnToAngle(Globals.pushServo.eject);
+                            ejectAction = true;
                         }
-                        if (gamepadEx.wasJustReleased(GamepadKeys.Button.CIRCLE)) {
+
+                        // retract when driver releases the button, then advance state
+                        if (ejectAction && (!currCircle && prevCircle)) {
                             eject.turnToAngle(Globals.pushServo.defualt);
                             currentShooting = shooting.shootFire;
                         }
@@ -291,13 +302,14 @@ public class finalManualLaunch extends OpMode {
                         if (globalTimer.seconds() > shootTimer) {
                             set.turnToAngle(Globals.launcher.downset);
                             shotsFired++;
-                            if (shotsFired < 3) {
+                            if (shotsFired < 4) {
                                 // Prepare next round: rotate again for the next chamber
                                 currentShooting = shooting.shootRotating;
                                 shootAction = false;
                                 ejectAction = false;
                                 rotating = false;
                                 revolverReadytoLaunch = false;
+                                shootTimer = Double.MAX_VALUE;
                                 // (keep launcher + intake running during the burst)
                             } else {
                                 // Burst done — shut down
@@ -306,10 +318,9 @@ public class finalManualLaunch extends OpMode {
 
                                 launcher1.set(0);
                                 launcher2.set(0);
-                                intake.set(0);
+
+                                shootTimer = Double.MAX_VALUE;
                             }
-
-
                         }
                         break;
                     }
@@ -320,11 +331,13 @@ public class finalManualLaunch extends OpMode {
                         shootLoop = false;
                         launcher1.set(0);
                         launcher2.set(0);
-                        intake.set(0);
+
                         break;
                     }
+
                 }
-            }
+                prevCircle = currCircle;
+           // }
         }
 
     }
@@ -576,10 +589,10 @@ public class finalManualLaunch extends OpMode {
         if (detections != null && !detections.isEmpty()) {
             for (AprilTagDetection d : detections) {
 
-                distance = d.ftcPose.range;
-
-                power = (2547.5 * pow(2.718281828459045, (0.0078 * distance)))/Globals.launcher.launcherTransformation; // here
-
+                if (d != null) {
+                    distance = d.ftcPose.range;
+                    power = (2547.5 * pow(2.718281828459045, (0.0078 * distance)))/Globals.launcher.launcherTransformation; // here
+                }
             }
         } else {
             power = 0;

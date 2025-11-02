@@ -21,9 +21,9 @@ public class Globals {
 
     @Config
     public static class revolver {
-        public static int oneRotation = 128; // actually 2 rotations lol  || Minus is counter-clockwise rotation.
+        public static int oneRotation = 128; //|| Minus is counter-clockwise rotation.
         public static float revolverKP = 0.007F;
-        public static float revolverKD= 0.00025F;
+        public static float revolverKD= 0.0003F;
         public static float revolverKI = 0F;
     }
 
@@ -52,8 +52,8 @@ public class Globals {
     @Config // eject is 30, default is 44, push is 51
     public static class pushServo {
         public static float push = 51F;
-        public static float defualt = 44F;
-        public static float eject = 30F;
+        public static float defualt = 40F;
+        public static float eject = 25F;
     }
 
 

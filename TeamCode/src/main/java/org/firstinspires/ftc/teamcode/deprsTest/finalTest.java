@@ -551,7 +551,7 @@ public class finalTest extends OpMode {
     }
 
     private void autoAimServoMode() {
-        turretPIDF.setPIDF(Globals.turret.turretKP, Globals.turret.turretKI, Globals.turret.turretKD, Globals.turret.turretKF);
+
 
 //        boolean tri = gamepadEx.getButton(GamepadKeys.Button.TRIANGLE);
 //        if (tri && !prevTri) {
@@ -562,7 +562,7 @@ public class finalTest extends OpMode {
 
         boolean lb = gamepadEx.getButton(GamepadKeys.Button.LEFT_BUMPER);
         boolean rb = gamepadEx.getButton(GamepadKeys.Button.RIGHT_BUMPER);
-
+        turretPIDF.setPIDF(Globals.turret.turretKP, Globals.turret.turretKI, Globals.turret.turretKD, Globals.turret.turretKF);
 
         List<AprilTagDetection> detections = tagProcessor.getDetections();
         if (autoAimEnabled && !lb ^ rb) {
@@ -630,9 +630,10 @@ public class finalTest extends OpMode {
         if (detections != null && !detections.isEmpty()) {
             for (AprilTagDetection d : detections) {
 
-                distance = d.ftcPose.range;
-
-                power = (2547.5 * pow(2.718281828459045, (0.0078 * distance)))/Globals.launcher.launcherTransformation; // here
+                if (d.metadata != null && d.ftcPose != null) {
+                    distance = d.ftcPose.range;
+                    power = (2547.5 * pow(2.718281828459045, (0.0078 * distance)))/Globals.launcher.launcherTransformation; // here
+                }
 
             }
         } else {
