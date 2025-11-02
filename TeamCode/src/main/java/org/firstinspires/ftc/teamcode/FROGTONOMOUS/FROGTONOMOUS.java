@@ -1,5 +1,7 @@
 package org.firstinspires.ftc.teamcode.FROGTONOMOUS;
 
+import static java.lang.Math.pow;
+
 import android.util.Size;
 
 import com.bylazar.configurables.annotations.Configurable;
@@ -193,6 +195,11 @@ public class FROGTONOMOUS extends CommandOpMode {
         private double RPM;
         private double lastTime;
         private int lastPosition;
+        private boolean aligned = false;
+        double turretTarget = 150F;
+        private double distance;
+        private double power;
+        private double feedforwardPower = 0;
         public outtakesubsys(HardwareMap map) {
             launcher1 = new Motor(hardwareMap, "l1", 28, 6000);
             launcher1.setRunMode(Motor.RunMode.RawPower);
@@ -224,20 +231,71 @@ public class FROGTONOMOUS extends CommandOpMode {
             ff.setF(Globals.launcher.flykF);
         }
 
-        public void launchsetup(){
+        public void launchalign(){
             turretPIDF.setPIDF(Globals.turret.turretKP, Globals.turret.turretKI, Globals.turret.turretKD, Globals.turret.turretKF);
             List<AprilTagDetection> detections = tagProcessor.getDetections();
+            visionPortal.setProcessorEnabled(tagProcessor, true);
+
+            AprilTagDetection chosen = null;
+            double chosenBearing = 0.0;
+            if (detections != null && !detections.isEmpty()) {
+                for (AprilTagDetection d : detections) {
+                    if (d.ftcPose != null) {
+                        double bearing = d.ftcPose.bearing;
+                        if (chosen == null || Math.abs(bearing) < Math.abs(chosenBearing)) {
+                            chosen = d;
+                            chosenBearing = bearing;
+                        }
+                    }
+                }
+            }
+
+            if (chosen != null) {
+
+                double err = chosenBearing - Globals.turret.turretLocationError;
+
+                aligned = Math.abs(err) <= Globals.turret.turretTol;
+
+                double delta = aligned ? 0.0 : turretPIDF.calculate(err, 0.0);
+
+
+                turretTarget -= delta; //THIS IS NEGATIVE
+            } else {
+                aligned = false;
+            }
+
+            if (turretTarget > 300) {
+                turretTarget = 300;
+            } else if (turretTarget < 0) {
+                turretTarget = 0;
+            }
+
+            rotate.turnToAngle(turretTarget);
         }
 
         public void launch(int pattern) {//0 ppg 1 pgp 2 gpp
-
             ff.setP(Globals.launcher.flykP);
             ff.setI(Globals.launcher.flykI);
             ff.setD(Globals.launcher.flykD);
             ff.setF(Globals.launcher.flykF);
+
+            List<AprilTagDetection> detections = tagProcessor.getDetections();
+            if (detections != null && !detections.isEmpty()) {
+                for (AprilTagDetection d : detections) {
+                    distance = d.ftcPose.range;
+
+                    power = (2547.5 * pow(2.718281828459045, (0.0078 * distance)))/Globals.launcher.launcherTransformation; // here
+
+                }
+            } else {
+                power = 0;
+
+            }
+
+            feedforwardPower = ff.calculate(RPM, power);
         }
 
-        private double RPM() {
+        private void RPM() {
             double currentTime = getRuntime();
             int currentPosition = launcher1.getCurrentPosition();
 
@@ -251,7 +309,6 @@ public class FROGTONOMOUS extends CommandOpMode {
                 lastTime = currentTime;
                 lastPosition = currentPosition;
             }
-            return RPM;
         }
 
 
