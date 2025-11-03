@@ -224,7 +224,7 @@ public class finalManualLaunch extends OpMode {
 
     public void launch3() {
             gamepadEx.readButtons();
-        //if (revolverReadytoLaunch) {
+        if (revolverReadytoLaunch) {
             // Arm spinner & intake only while we are in a shooting cycle
             boolean startPressed = gamepadEx.getButton(GamepadKeys.Button.CROSS);
 
@@ -321,7 +321,9 @@ public class finalManualLaunch extends OpMode {
                                 revolverReadytoLaunch = false;
                                 launcher1.set(0);
                                 launcher2.set(0);
-
+                                revolverState.set(0, "EMPTY");
+                                revolverState.set(1, "EMPTY");
+                                revolverState.set(2, "EMPTY");
                                 shootTimer = Double.MAX_VALUE;
                             }
                         }
@@ -340,7 +342,7 @@ public class finalManualLaunch extends OpMode {
 
                 }
                 prevCircle = currCircle;
-           // }
+           }
         }
 
     }

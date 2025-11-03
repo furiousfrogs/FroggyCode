@@ -52,9 +52,9 @@ public class Globals {
 
     @Config // eject is 30, default is 44, push is 51
     public static class pushServo {
-        public static float push = 51F;
-        public static float defualt = 40F;
-        public static float eject = 25F;
+        public static float push = 30F;
+        public static float defualt = 17F;
+        public static float eject = 0F;
     }
 
 
