@@ -2,6 +2,7 @@ package org.firstinspires.ftc.teamcode.FROGTONOMOUS;
 
 import static java.lang.Math.pow;
 
+import android.graphics.Color;
 import android.util.Size;
 
 import com.bylazar.configurables.annotations.Configurable;
@@ -15,6 +16,7 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DistanceSensor;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.NormalizedColorSensor;
+import com.qualcomm.robotcore.hardware.NormalizedRGBA;
 import com.seattlesolvers.solverslib.command.CommandBase;
 import com.seattlesolvers.solverslib.command.CommandGroupBase;
 import com.seattlesolvers.solverslib.command.CommandOpMode;
@@ -34,6 +36,7 @@ import com.seattlesolvers.solverslib.util.TelemetryData;
 import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.teamcode.hardware.Globals;
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 import org.firstinspires.ftc.teamcode.testing.finalLaunch3;
@@ -127,12 +130,27 @@ public class FROGTONOMOUS extends CommandOpMode {
     }
 
     // Mechanism commands - replace these with your actual subsystem commands
-    public class intakesubsys extends SubsystemBase {
+    public class subsystem extends SubsystemBase {
+        private Motor launcher1, launcher2;
+        private PIDFController turretPIDF, ff;
+        private SimpleServo lift, rotate, eject;
+        private VisionPortal visionPortal;
+        private AprilTagProcessor tagProcessor;
+        private double RPM;
+        private double lastTime;
+        private int lastPosition;
+        private boolean aligned = false;
+        double turretTarget = 150F;
+        private double distance;
+        private double power;
+        private double feedforwardPower = 0;
         private final Motor intake, revolver;
         private PIDController revolverPID;
         private NormalizedColorSensor colourSensor;
-        private ArrayList<String> froggystomach = new ArrayList<String>(3);
-        public intakesubsys(HardwareMap map) {
+        private DistanceSensor distanceSensor;
+        private final float[] hsv = new float[3];
+        private ArrayList<String> froggystomach = new ArrayList<String>(3);//2 is intake side 0 is top
+        public subsystem(HardwareMap map) {
             intake = new Motor(map, "intake");
             intake.setRunMode(Motor.RunMode.RawPower);
             intake.setZeroPowerBehavior(Motor.ZeroPowerBehavior.BRAKE);
@@ -150,57 +168,8 @@ public class FROGTONOMOUS extends CommandOpMode {
 
             colourSensor = hardwareMap.get(NormalizedColorSensor.class,"colour1");
             colourSensor.setGain(2.0f);
-        }
-        public void increasepower() {
-            intake.set(0.7);
-        }
+            distanceSensor = hardwareMap.get(DistanceSensor.class, "colour1");
 
-        public void sort(){
-            //if color detected, add to stomach, rotate motor, collections.rotate.
-
-        }
-
-        public void decreasepower() {
-            intake.set(0.0);
-        }
-    }
-    public static class froggyeat extends CommandBase {
-        private final intakesubsys intake;
-        public froggyeat(intakesubsys intake) {
-            this.intake = intake;
-            addRequirements(intake);
-        }
-
-        @Override
-        public void initialize() {
-            intake.increasepower();
-        }
-
-        @Override
-        public void execute() {
-            intake.sort();
-        }
-
-        @Override
-        public void end(boolean interrupted) {
-            intake.decreasepower();
-        }
-    }
-    public class outtakesubsys extends SubsystemBase {
-        private Motor launcher1, launcher2;
-        private PIDFController turretPIDF, ff;
-        private SimpleServo set, rotate;
-        private VisionPortal visionPortal;
-        private AprilTagProcessor tagProcessor;
-        private double RPM;
-        private double lastTime;
-        private int lastPosition;
-        private boolean aligned = false;
-        double turretTarget = 150F;
-        private double distance;
-        private double power;
-        private double feedforwardPower = 0;
-        public outtakesubsys(HardwareMap map) {
             launcher1 = new Motor(hardwareMap, "l1", 28, 6000);
             launcher1.setRunMode(Motor.RunMode.RawPower);
             launcher2 = new Motor(hardwareMap, "l2", 28, 6000);
@@ -208,7 +177,7 @@ public class FROGTONOMOUS extends CommandOpMode {
             launcher1.setZeroPowerBehavior(Motor.ZeroPowerBehavior.FLOAT);
             launcher2.setZeroPowerBehavior(Motor.ZeroPowerBehavior.FLOAT);
             ff = new PIDFController(Globals.launcher.flykP, Globals.launcher.flykI, Globals.launcher.flykD, Globals.launcher.flykF);
-            set = new SimpleServo(hardwareMap, "set", 0, 180, AngleUnit.DEGREES);
+            lift = new SimpleServo(hardwareMap, "set", 0, 180, AngleUnit.DEGREES);
             turretPIDF = new PIDFController(Globals.turret.turretKP, Globals.turret.turretKI, Globals.turret.turretKD, Globals.turret.turretKF);
             tagProcessor = new AprilTagProcessor.Builder()
                     .setDrawAxes(true)
@@ -225,12 +194,35 @@ public class FROGTONOMOUS extends CommandOpMode {
                     .build();
             rotate = new SimpleServo(hardwareMap, "turret", 0, 300, AngleUnit.DEGREES);
             rotate.turnToAngle(0);
-            ff.setP(Globals.launcher.flykP);
-            ff.setI(Globals.launcher.flykI);
-            ff.setD(Globals.launcher.flykD);
-            ff.setF(Globals.launcher.flykF);
-        }
+            eject = new SimpleServo(hardwareMap, "eject", 0, 70);
+            eject.setInverted(true);
+            eject.turnToAngle(Globals.pushServo.defualt);
 
+        }
+        public void intakeon() {
+            intake.set(0.7);
+        }
+        public void intakeoff() {
+            intake.set(0);
+        }
+        public void colorset(){
+            NormalizedRGBA rgba = colourSensor.getNormalizedColors();
+            Color.colorToHSV(rgba.toColor(), hsv); // hsv[0]=H, hsv[1]=S, hsv[2]=V
+
+            if (hsv[0] >= 150 && hsv[0] <= 180 &&
+                    hsv[1] >= 0.75 && hsv[1] <= 1.00 &&
+                    hsv[2] > 0.00 && hsv[2] < 0.3)
+            {
+                froggystomach.set(2, "g");
+            }
+
+            if (hsv[0] >= 220 && hsv[0] <= 250 &&
+                    hsv[1] >= 0.40 && hsv[1] <= 0.60 &&
+                    hsv[2] > 0.00 && hsv[2] < 0.3)
+            {
+                froggystomach.set(2, "p");;
+            }
+        }
         public void launchalign(){
             turretPIDF.setPIDF(Globals.turret.turretKP, Globals.turret.turretKI, Globals.turret.turretKD, Globals.turret.turretKF);
             List<AprilTagDetection> detections = tagProcessor.getDetections();
@@ -271,9 +263,10 @@ public class FROGTONOMOUS extends CommandOpMode {
             }
 
             rotate.turnToAngle(turretTarget);
+
         }
 
-        public void launch(int pattern) {//0 ppg 1 pgp 2 gpp
+        public void powercalc() {//0 ppg 1 pgp 2 gpp
             ff.setP(Globals.launcher.flykP);
             ff.setI(Globals.launcher.flykI);
             ff.setD(Globals.launcher.flykD);
@@ -295,6 +288,16 @@ public class FROGTONOMOUS extends CommandOpMode {
             feedforwardPower = ff.calculate(RPM, power);
         }
 
+        private void launch(String[] revolver, int pattern) {
+            if (pattern == 0) {
+                launcher1.set(feedforwardPower);
+                launcher2.set(feedforwardPower);
+
+
+            }
+        }
+
+
         private void RPM() {
             double currentTime = getRuntime();
             int currentPosition = launcher1.getCurrentPosition();
@@ -311,8 +314,30 @@ public class FROGTONOMOUS extends CommandOpMode {
             }
         }
 
-
     }
+    public static class froggyactions extends CommandBase {
+        private final subsystem intake;
+        public froggyactions(subsystem intake) {
+            this.intake = intake;
+            addRequirements(intake);
+        }
+
+        @Override
+        public void initialize() {
+            intake.intakeon();
+        }
+
+        @Override
+        public void execute() {
+            intake.colorset();
+        }
+
+        @Override
+        public void end(boolean interrupted) {
+            intake.intakeoff();
+        }
+    }
+
 
 
 
@@ -333,7 +358,6 @@ public class FROGTONOMOUS extends CommandOpMode {
                 new FollowPathCommand(follower, shoot3),
 
                 new WaitCommand(1000), // Wait 1 second
-
                 // First pickup cycle
                 new FollowPathCommand(follower, eat3)// Sets globalMaxPower to 50% for all future paths
                 // (unless a custom maxPower is given)
