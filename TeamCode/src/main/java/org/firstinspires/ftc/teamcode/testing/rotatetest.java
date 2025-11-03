@@ -15,7 +15,7 @@ import com.seattlesolvers.solverslib.hardware.servos.ServoEx;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.teamcode.hardware.Globals;
-@Disabled
+
 @TeleOp(name = "rotate test")
 public class rotatetest extends OpMode {
     private Motor revolver, intake;
@@ -55,7 +55,8 @@ public class rotatetest extends OpMode {
 
     @Override
     public void loop() {
-        rotate();
+        //rotate();
+        feedfoward();
 
         // eject is 30, default is 44, push is 55
         //rotate();
@@ -65,7 +66,11 @@ public class rotatetest extends OpMode {
         telemetry.addData("target: ", revolverTarget);
         telemetry.update();
     }
-
+    public void feedfoward() {
+        if (gamepadEx.getButton(GamepadKeys.Button.SQUARE)) {
+            revolver.set(Globals.revolverPower);
+        } else { revolver.set(0); }
+    }
 
     public void rotate() {
         revolverPID.setTolerance(0);
