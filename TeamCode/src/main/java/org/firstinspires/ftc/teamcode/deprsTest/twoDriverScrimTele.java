@@ -111,7 +111,7 @@ public class twoDriverScrimTele extends OpMode {
         PGP,
         GPP
     } pattern currentPattern = pattern.PPG;
-    private enum shooting {
+    public enum shooting {
         shootIdle,
         shootRotating,
         shootEjecting,
@@ -220,10 +220,7 @@ public class twoDriverScrimTele extends OpMode {
         findPattern();
         launch3();
 
-        revolverPID.setTolerance(0);
-        revolverPID.setPIDF(Globals.revolver.revolverKP, Globals.revolver.revolverKI, Globals.revolver.revolverKD, Globals.revolver.revolverKF);
-        revolverPower = revolverPID.calculate(revolver.getCurrentPosition(), revolverTarget);
-        revolver.set(revolverPower);
+
 
     }
 
@@ -423,6 +420,8 @@ public class twoDriverScrimTele extends OpMode {
 
 
     public void intake() {
+        revolverPID.setTolerance(0);
+        revolverPID.setPIDF(Globals.revolver.revolverKP, Globals.revolver.revolverKI, Globals.revolver.revolverKD, Globals.revolver.revolverKF);
         revolverPower = revolverPID.calculate(revolver.getCurrentPosition(), revolverTarget);
         revolver.set(revolverPower);
 
@@ -433,7 +432,8 @@ public class twoDriverScrimTele extends OpMode {
 
         if (gamepadEx1.getButton(GamepadKeys.Button.TRIANGLE) || gamepadEx2.getButton(GamepadKeys.Button.TRIANGLE)) {
             intake.set(Globals.intakePower);
-        } else {
+        } else if (gamepadEx1.getButton(GamepadKeys.Button.SQUARE)) { intake.set(-Globals.intakePower); }
+        else {
             intake.set(0);
         }
 

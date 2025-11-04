@@ -37,6 +37,7 @@ import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
+import org.firstinspires.ftc.teamcode.deprsTest.twoDriverScrimTele;
 import org.firstinspires.ftc.teamcode.hardware.Globals;
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 import org.firstinspires.ftc.teamcode.testing.finalLaunch3;
@@ -59,6 +60,18 @@ public class FROGTONOMOUS extends CommandOpMode {
     private boolean patternDetected = false;
     private static int pattern;
     private PathChain shoot3, eat3, shoot6, eat6, shoot9, eat9, shoot12;
+
+    public enum pattern {
+        PPG,
+        PGP,
+        GPP
+    } twoDriverScrimTele.pattern currentPattern = twoDriverScrimTele.pattern.PPG;
+    public enum shooting {
+        shootIdle,
+        shootRotating,
+        shootEjecting,
+        shootFire
+    } twoDriverScrimTele.shooting currentShooting = twoDriverScrimTele.shooting.shootIdle;
 
 
     public void buildPaths() {
@@ -134,13 +147,16 @@ public class FROGTONOMOUS extends CommandOpMode {
     public class intakesubsys extends SubsystemBase {
         private final Motor intake, revolver;
         private PIDController revolverPID;
-        private NormalizedColorSensor colourSensor;
-        private DistanceSensor distanceSensor;
-        private final float[] hsv = new float[3];
-        private int ballcount = 0;
+        private final float[] hsv2 = new float[3];
+        private NormalizedColorSensor colourSensor, secondColourSensor;
+        private DistanceSensor distanceSensor, secondDistanceSensor;
+        private final float[] hsv1 = new float[3];
         private int revolverTarget = 0;
+        private boolean revolverReady = true;
+        private double previousRevolverPosition;
         private double revolverPower;
-        private ArrayList<String> froggystomach = new ArrayList<String>(3);//2 is intake side 0 is top
+        private List<String> revolverState = new ArrayList<>(Arrays.asList("EMPTY", "EMPTY", "EMPTY"));
+        private List<String> finalRevolver = new ArrayList<>(Arrays.asList("EMPTY", "EMPTY", "EMPTY"));//2 is intake side 0 is top
         public intakesubsys(HardwareMap map) {
             intake = new Motor(map, "intake");
             intake.setRunMode(Motor.RunMode.RawPower);
@@ -153,35 +169,154 @@ public class FROGTONOMOUS extends CommandOpMode {
 
             revolverPID = new PIDController(Globals.revolver.revolverKP, Globals.revolver.revolverKI, Globals.revolver.revolverKD);
 
-            froggystomach.add("empty");
-            froggystomach.add("empty");
-            froggystomach.add("empty");
-
             colourSensor = hardwareMap.get(NormalizedColorSensor.class,"colour1");
             colourSensor.setGain(2.0f);
             distanceSensor = hardwareMap.get(DistanceSensor.class, "colour1");
+
+            secondColourSensor = hardwareMap.get(NormalizedColorSensor.class,"colour2");
+            secondDistanceSensor = hardwareMap.get(DistanceSensor.class, "colour2");
+            secondColourSensor.setGain(2.0f);
         }
         public void intakeon() {
             intake.set(Globals.intakePower);
         }
+        public void oneRotationRevolver(boolean left) {
+            // PID setup
+
+            // PID setup
+            revolverPID.setTolerance(0);
+            revolverPID.setPIDF(Globals.revolver.revolverKP, Globals.revolver.revolverKI, Globals.revolver.revolverKD, Globals.revolver.revolverKF);
+            previousRevolverPosition = revolverTarget;
+            revolverTarget += left ? +Globals.revolver.oneRotation : -Globals.revolver.oneRotation; //TODO Chekc if this is right
+
+        }
         public void intakeoff() {
             intake.set(0);
         }
-        public void colorsort(int pattern){//1 ppg 2 pgp 3 gpp
-            NormalizedRGBA rgba = colourSensor.getNormalizedColors();
-            Color.colorToHSV(rgba.toColor(), hsv);
+        public String senseColour(){//1 ppg 2 pgp 3 gpp
+            if (distanceSensor.getDistance(DistanceUnit.CM) > 3 && secondDistanceSensor.getDistance(DistanceUnit.CM) > 3) return "EMPTY";
+
+            NormalizedRGBA rgba1 = colourSensor.getNormalizedColors();
+            Color.colorToHSV(rgba1.toColor(), hsv1); // hsv[0]=H, hsv[1]=S, hsv[2]=V
+
+            NormalizedRGBA rgba2 = secondColourSensor.getNormalizedColors();
+            Color.colorToHSV(rgba2.toColor(), hsv2); // hsv[0]=H, hsv[1]=S, hsv[2]=V
+            if ( (hsv1[0] >= 150 && hsv1[0] <= 180 &&
+                    hsv1[1] >= 0.75 && hsv1[1] <= 1.00 &&
+                    hsv1[2] > 0.00 && hsv1[2] < 0.3) ||
+
+                    (hsv2[0] >= 150 && hsv2[0] <= 180 &&
+                            hsv2[1] >= 0.75 && hsv2[1] <= 1.00 &&
+                            hsv2[2] > 0.00 && hsv2[2] < 0.3)) {
+                return "G";
+            } // if colour one or colour two return green/purpler
+
+            if ((hsv1[0] >= 220 && hsv1[0] <= 250 &&
+                    hsv1[1] >= 0.40 && hsv1[1] <= 0.60 &&
+                    hsv1[2] > 0.00 && hsv1[2] < 0.3) ||
+
+                    (hsv2[0] >= 220 && hsv2[0] <= 250 &&
+                            hsv2[1] >= 0.40 && hsv2[1] <= 0.60 &&
+                            hsv2[2] > 0.00 && hsv2[2] < 0.3)) {
+                return "P";
+            }
+            return "EMPTY";
+        }
+
+        private String[] desiredByPattern() {
+            // Order: [top (0), left (1), right (2)]
+            switch (currentPattern) {
+                case PPG: return new String[]{"P","P","G"};
+                case PGP: return new String[]{"P","G","P"};
+                case GPP: return new String[]{"G","P","P"};
+                default:  return new String[]{"EMPTY","EMPTY","EMPTY"};
+            }
+        }
+        public void colorsort() {
             revolverPID.setTolerance(0);
             revolverPID.setPIDF(Globals.revolver.revolverKP, Globals.revolver.revolverKI, Globals.revolver.revolverKD, Globals.revolver.revolverKF);
             revolverPower = revolverPID.calculate(revolver.getCurrentPosition(), revolverTarget);
             revolver.set(revolverPower);
 
-            if (hsv[0] >= 150 && hsv[0] <= 180 && hsv[1] >= 0.75 && hsv[1] <= 1.00 && hsv[2] > 0.00 && hsv[2] < 0.3) {
-                    froggystomach.set(2, "g");
+            if (!revolverReady &&
+                    Math.abs(Math.abs(revolver.getCurrentPosition() - previousRevolverPosition) - Globals.revolver.oneRotation) < 10) {
+                revolverReady = true;
             }
-            if (hsv[0] >= 220 && hsv[0] <= 250 && hsv[1] >= 0.40 && hsv[1] <= 0.60 && hsv[2] > 0.00 && hsv[2] < 0.3) {
-                    froggystomach.set(2, "p");
-                    ;
+
+            int filled = revolverState.size() - Collections.frequency(revolverState, "EMPTY");
+            String color = senseColour();
+
+            if (!"EMPTY".equals(color) && revolverReady) {
+
+                String wantTop = desiredByPattern()[0];
+
+                switch (filled) {
+                    case 0: {
+                        // put new ball into slot 2, then ALWAYS rotate it to slot 1
+                        revolverReady = false;
+                        revolverState.set(2, color);
+
+                        oneRotationRevolver(false);
+                        Collections.rotate(revolverState, -1);
+
+                        previousRotation = false;
+                        break;
+                    }
+
+                    case 1: {
+                        //same idea just move it into slot 1
+                        revolverReady = false;
+                        revolverState.set(2, color);
+
+                        oneRotationRevolver(false);
+                        Collections.rotate(revolverState, -1);
+                        previousRotation = false;
+
+                        break;
+                    }
+                    case 2: {
+                        revolverState.set(2, color);
+
+                        if (color.equals(wantTop)) {
+                            // new ball IS the one we want on top → bring index 2 -> index 0
+                            revolverReady = false;
+                            oneRotationRevolver(true);
+                            Collections.rotate(revolverState, 1);
+                            previousRotation = true;
+
+                        } else if (revolverState.get(0).equals(wantTop)) {
+                            // already on top → do nothing
+                        } else if (revolverState.get(1).equals(wantTop)) {
+                            // we have it in slot 1 → bring 1 -> 0
+                            revolverReady = false;
+                            oneRotationRevolver(false);
+                            Collections.rotate(revolverState, -1);
+                            previousRotation = false;
+                        } else {
+
+                        }
+
+                        //describes whether to launch clockwise or counter clockwise in launch 3
+                        String[] want = desiredByPattern();
+                        String secondBall = want[1];
+                        if (revolverState.get(1).equals(secondBall)) {
+                            shootCounterClockwise = false;
+                        } else if (revolverState.get(2).equals(secondBall)) {
+                            shootCounterClockwise = true;
+                        }
+
+
+                        // now we are full
+                        revolverReadytoLaunch = true;
+                        break;
+                    }
+                    case 3:
+                    default: {
+                        break;
+                    }
+                }
             }
+
         }
     }
     public static class froggyactions extends CommandBase {
@@ -198,7 +333,7 @@ public class FROGTONOMOUS extends CommandOpMode {
 
         @Override
         public void execute() {
-            intake.colorsort(pattern);
+            intake.colorsort();
         }
 
         @Override
