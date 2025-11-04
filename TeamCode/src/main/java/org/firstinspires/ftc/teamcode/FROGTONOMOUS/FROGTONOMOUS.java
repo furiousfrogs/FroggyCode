@@ -105,13 +105,13 @@ public class FROGTONOMOUS extends CommandOpMode {
         PPG,
         PGP,
         GPP
-    } twoDriverScrimTele.pattern currentPattern = twoDriverScrimTele.pattern.PPG;
+    } pattern currentPattern = pattern.PPG;
     public enum shooting {
         shootIdle,
         shootRotating,
         shootEjecting,
         shootFire
-    } twoDriverScrimTele.shooting currentShooting = twoDriverScrimTele.shooting.shootIdle;
+    } shooting currentShooting = shooting.shootIdle;
     private FtcDashboard dashboard = FtcDashboard.getInstance();
     private VisionPortal visionPortal;
     private AprilTagProcessor tagProcessor;
@@ -417,7 +417,6 @@ public class FROGTONOMOUS extends CommandOpMode {
             eject.setInverted(true);
             eject.turnToAngle(Globals.pushServo.defualt);
         }
-
         public void oneRotationRevolver(boolean left) {
             revolverPID.setTolerance(0);
             revolverPID.setPIDF(Globals.revolver.revolverKP, Globals.revolver.revolverKI, Globals.revolver.revolverKD, Globals.revolver.revolverKF);
@@ -425,7 +424,6 @@ public class FROGTONOMOUS extends CommandOpMode {
             revolverTarget += left ? +Globals.revolver.oneRotation : -Globals.revolver.oneRotation; //TODO Chekc if this is right
 
         }
-
         private void calculateRPM() {
             double currentTime = getRuntime();
             int currentPosition = launcher1.getCurrentPosition();
@@ -441,7 +439,6 @@ public class FROGTONOMOUS extends CommandOpMode {
                 lastPosition = currentPosition;
             }
         }
-
         private void autoAimServoMode() {
             turretPIDF.setPIDF(Globals.turret.turretKP, Globals.turret.turretKI, Globals.turret.turretKD, Globals.turret.turretKF);
 
@@ -486,7 +483,6 @@ public class FROGTONOMOUS extends CommandOpMode {
             rotate.turnToAngle(turretTarget);
 
         }
-
         private void launcherawe() {
             ff.setP(Globals.launcher.flykP);
             ff.setI(Globals.launcher.flykI);
@@ -514,6 +510,123 @@ public class FROGTONOMOUS extends CommandOpMode {
 
         }
 
+        public void launch3() {
+            revolverReadytoLaunch = true;
+            if (revolverReadytoLaunch) {
+                if (!shootLoop) {
+                    shootLoop = true;
+                    currentShooting = shooting.shootRotating;
+
+                    shootAction = false;
+                    ejectAction = false;
+                    rotating = false;
+                    shotsFired = 0;
+                }
+                if (!shootLoop) {
+                    // idle; ensure things are safe
+                    launcher1.set(0);
+                    launcher2.set(0);
+
+                    set.turnToAngle(Globals.launcher.downset);
+                    return;
+                }
+                if (shootLoop) {
+                    currCircle = gamepadEx2.getButton(GamepadKeys.Button.CIRCLE);
+
+                    launcher1.set(feedforwardPower);
+                    launcher2.set(feedforwardPower);
+
+                    // shooting cycle state machine
+                    switch (currentShooting) {
+                        case shootRotating: {
+                            shootTimer = Double.MAX_VALUE;
+                            if (!currCircle && prevCircle) { // POTENTIAL ERROR CUZ THE BUTTON COULD CARRY OVER
+                                if (!rotating && shotsFired > 0) {
+                                    // if true -> +1 -> 2->0 (counterclockwise)
+                                    oneRotationRevolver(shootCounterClockwise);
+                                    rotating = true;
+                                    currentShooting = shooting.shootEjecting;
+                                } else if (!rotating && shotsFired == 0) {
+                                    rotating = true;
+                                    previousRevolverPosition = revolverTarget;
+                                    currentShooting = shooting.shootEjecting;
+
+                                }
+                            }
+
+                            break;
+                        }
+
+                        case shootEjecting: {
+                            if (!ejectAction && (currCircle)) {
+                                eject.turnToAngle(Globals.pushServo.eject);
+                                ejectAction = true;
+                            }
+
+                            // retract when driver releases the button, then advance state
+                            if (ejectAction && (!currCircle && prevCircle)) {
+                                eject.turnToAngle(Globals.pushServo.defualt);
+                                currentShooting = shooting.shootFire;
+                            }
+                            // hold push until timer expires, then retract
+
+                            break;
+                        }
+
+                        case shootFire: {
+                            // wait for spin-up and aim, then flick
+                            boolean atSpeed = Math.abs(power - RPM) < Globals.launcher.launcherTol;
+
+                            if (atSpeed && aligned && shootTimer > globalTimer.seconds() && !shootAction) {
+                                set.turnToAngle(Globals.launcher.upset);
+                                shootTimer = globalTimer.seconds() + Globals.timers.pushUpTime; // 1s gate-open
+                                shootAction = true;
+                            }
+
+                            // close gate and finish cycle
+                            if (globalTimer.seconds() > shootTimer) {
+                                set.turnToAngle(Globals.launcher.downset);
+                                shotsFired++;
+                                if (shotsFired < 3) {
+                                    // Prepare next round: rotate again for the next chamber
+                                    currentShooting = shooting.shootRotating;
+                                    shootAction = false;
+                                    ejectAction = false;
+                                    rotating = false;
+
+                                    shootTimer = Double.MAX_VALUE;
+                                    // (keep launcher + intake running during the burst)
+                                } else {
+                                    // Burst done — shut down
+                                    currentShooting = shooting.shootIdle;
+                                    shootLoop = false;
+                                    revolverReadytoLaunch = false;
+                                    launcher1.set(0);
+                                    launcher2.set(0);
+                                    revolverState.set(0, "EMPTY");
+                                    revolverState.set(1, "EMPTY");
+                                    revolverState.set(2, "EMPTY");
+                                    shootTimer = Double.MAX_VALUE;
+                                }
+                            }
+                            break;
+                        }
+
+                        case shootIdle:
+                        default: {
+                            // Safety – shouldn’t sit here during an active cycle
+                            shootLoop = false;
+                            launcher1.set(0);
+                            launcher2.set(0);
+
+                            break;
+                        }
+
+                    }
+                }
+            }
+
+        }
     }
 
 
