@@ -37,8 +37,8 @@ import java.util.Collections;
 import java.util.Objects;
 
 
-@TeleOp(name = "finalManualLaunch")
-public class finalManualLaunch extends OpMode {
+@TeleOp(name = "Final Teleop 2 Drivers")
+public class twoDriverScrimTele extends OpMode {
 
     // ----- booleans/toggles
     private boolean aligned = false;
@@ -80,8 +80,8 @@ public class finalManualLaunch extends OpMode {
     // ----- Motors, servos, sensors -----
     private Motor launcher1, launcher2, revolver,fl,bl,fr,br, intake;
     private SimpleServo set, rotate, eject;
-    private NormalizedColorSensor colourSensor;
-    private DistanceSensor distanceSensor;
+    private NormalizedColorSensor colourSensor, secondColourSensor;
+    private DistanceSensor distanceSensor, secondDistanceSensor;
 
     // ----- launcher -----
     private double RPM;
@@ -93,7 +93,8 @@ public class finalManualLaunch extends OpMode {
     double turretTarget = 150F; // inital turret angle
 
     // ----- revolver -----
-    private final float[] hsv = new float[3];
+    private final float[] hsv1 = new float[3];
+    private final float[] hsv2 = new float[3];
 
     private boolean shootCounterClockwise = false;
 
@@ -126,7 +127,7 @@ public class finalManualLaunch extends OpMode {
     //--gamepad--
     private boolean prevCircle = false;
     private boolean currCircle = false;
-    private GamepadEx gamepadEx;
+    private GamepadEx gamepadEx1, gamepadEx2;
 
     private boolean inCycle = false;
     @Override
@@ -170,6 +171,10 @@ public class finalManualLaunch extends OpMode {
         distanceSensor = hardwareMap.get(DistanceSensor.class, "colour1");
         colourSensor.setGain(2.0f); //CAMERA SENSITIVITY, increase for darker environemnts
 
+        secondColourSensor = hardwareMap.get(NormalizedColorSensor.class,"colour2");
+        secondDistanceSensor = hardwareMap.get(DistanceSensor.class, "colour2");
+        secondColourSensor.setGain(2.0f); //CAMERA SENSITIVITY, increase for darker environemnts
+
         // ----- turret -----
         rotate = new SimpleServo(hardwareMap, "turret", 0, 300, AngleUnit.DEGREES);
         rotate.turnToAngle(turretTarget);
@@ -190,8 +195,9 @@ public class finalManualLaunch extends OpMode {
                 .setStreamFormat(VisionPortal.StreamFormat.MJPEG)
                 .setCameraResolution(new android.util.Size(1280, 720))
                 .build();
+        gamepadEx2 = new GamepadEx(gamepad2);
+        gamepadEx1 = new GamepadEx(gamepad1);
 
-        gamepadEx = new GamepadEx(gamepad1);
 
         intake = new Motor(hardwareMap, "intake");
         intake.setRunMode(Motor.RunMode.RawPower);
@@ -223,10 +229,12 @@ public class finalManualLaunch extends OpMode {
 
 
     public void launch3() {
-            gamepadEx.readButtons();
+        gamepadEx2.readButtons();
+        revolverTarget += (int) ((gamepadEx2.getTrigger(GamepadKeys.Trigger.RIGHT_TRIGGER) - gamepadEx2.getTrigger(GamepadKeys.Trigger.LEFT_TRIGGER)) * Globals.revolver.revolverNudge);
+
         if (revolverReadytoLaunch) {
             // Arm spinner & intake only while we are in a shooting cycle
-            boolean startPressed = gamepadEx.getButton(GamepadKeys.Button.CROSS);
+            boolean startPressed = gamepadEx2.getButton(GamepadKeys.Button.CROSS);
 
             // Start a new cycle
             if (startPressed && !shootLoop) {
@@ -249,7 +257,7 @@ public class finalManualLaunch extends OpMode {
                 return;
             }
             if (shootLoop) {
-                currCircle = gamepadEx.getButton(GamepadKeys.Button.CIRCLE);
+                currCircle = gamepadEx2.getButton(GamepadKeys.Button.CIRCLE);
 
                 launcher1.set(feedforwardPower);
                 launcher2.set(feedforwardPower);
@@ -362,20 +370,30 @@ public class finalManualLaunch extends OpMode {
     }
 
     private String senseColour() {
-        if (distanceSensor.getDistance(DistanceUnit.CM) > 3) return "EMPTY";
+        if (distanceSensor.getDistance(DistanceUnit.CM) > 3 && secondDistanceSensor.getDistance(DistanceUnit.CM) > 3) return "EMPTY";
 
-        NormalizedRGBA rgba = colourSensor.getNormalizedColors();
-        Color.colorToHSV(rgba.toColor(), hsv); // hsv[0]=H, hsv[1]=S, hsv[2]=V
+        NormalizedRGBA rgba1 = colourSensor.getNormalizedColors();
+        Color.colorToHSV(rgba1.toColor(), hsv1); // hsv[0]=H, hsv[1]=S, hsv[2]=V
 
-        if (hsv[0] >= 150 && hsv[0] <= 180 &&
-                hsv[1] >= 0.75 && hsv[1] <= 1.00 &&
-                hsv[2] > 0.00 && hsv[2] < 0.3) {
+        NormalizedRGBA rgba2 = secondColourSensor.getNormalizedColors();
+        Color.colorToHSV(rgba2.toColor(), hsv2); // hsv[0]=H, hsv[1]=S, hsv[2]=V
+        if ( (hsv1[0] >= 150 && hsv1[0] <= 180 &&
+                hsv1[1] >= 0.75 && hsv1[1] <= 1.00 &&
+                hsv1[2] > 0.00 && hsv1[2] < 0.3) ||
+
+                (hsv2[0] >= 150 && hsv2[0] <= 180 &&
+                hsv2[1] >= 0.75 && hsv2[1] <= 1.00 &&
+                hsv2[2] > 0.00 && hsv2[2] < 0.3)) {
             return "G";
-        }
+        } // if colour one or colour two return green/purpler
 
-        if (hsv[0] >= 220 && hsv[0] <= 250 &&
-                hsv[1] >= 0.40 && hsv[1] <= 0.60 &&
-                hsv[2] > 0.00 && hsv[2] < 0.3) {
+        if ((hsv1[0] >= 220 && hsv1[0] <= 250 &&
+            hsv1[1] >= 0.40 && hsv1[1] <= 0.60 &&
+            hsv1[2] > 0.00 && hsv1[2] < 0.3) ||
+
+            (hsv2[0] >= 220 && hsv2[0] <= 250 &&
+            hsv2[1] >= 0.40 && hsv2[1] <= 0.60 &&
+            hsv2[2] > 0.00 && hsv2[2] < 0.3)) {
             return "P";
         }
         return "EMPTY";
@@ -413,12 +431,16 @@ public class finalManualLaunch extends OpMode {
             revolverReady = true;
         }
 
-        intake.set(gamepadEx.getButton(GamepadKeys.Button.TRIANGLE) ? Globals.intakePower : 0);
+        if (gamepadEx1.getButton(GamepadKeys.Button.TRIANGLE) || gamepadEx2.getButton(GamepadKeys.Button.TRIANGLE)) {
+            intake.set(Globals.intakePower);
+        } else {
+            intake.set(0);
+        }
 
         int filled = revolverState.size() - Collections.frequency(revolverState, "EMPTY");
         String color = senseColour();  // "P", "G", or "EMPTY"
 
-        if (gamepadEx.getButton(GamepadKeys.Button.SQUARE) && patternDetected) {
+        if (gamepadEx2.getButton(GamepadKeys.Button.SQUARE) && patternDetected) {
             if (!"EMPTY".equals(color) && revolverReady) {
 
                 String wantTop = desiredByPattern()[0];
@@ -495,7 +517,7 @@ public class finalManualLaunch extends OpMode {
 
 
     private void findPattern() {
-        if (gamepadEx.getButton(GamepadKeys.Button.OPTIONS)) {
+        if (gamepadEx2.getButton(GamepadKeys.Button.OPTIONS)) {
             List<AprilTagDetection> code = tagProcessor.getDetections();
             if (code != null && !code.isEmpty()) {
                 code.sort(Comparator.comparingDouble((AprilTagDetection d) -> d.decisionMargin).reversed());
@@ -542,8 +564,8 @@ public class finalManualLaunch extends OpMode {
 //        }
 //        prevTri = tri;
 
-        boolean lb = gamepadEx.getButton(GamepadKeys.Button.LEFT_BUMPER);
-        boolean rb = gamepadEx.getButton(GamepadKeys.Button.RIGHT_BUMPER);
+        boolean lb = gamepadEx2.getButton(GamepadKeys.Button.LEFT_BUMPER);
+        boolean rb = gamepadEx2.getButton(GamepadKeys.Button.RIGHT_BUMPER);
 
 
         List<AprilTagDetection> detections = tagProcessor.getDetections();
@@ -612,7 +634,7 @@ public class finalManualLaunch extends OpMode {
         if (detections != null && !detections.isEmpty()) {
             for (AprilTagDetection d : detections) {
 
-                if (d != null) {
+                if (d != null && d.metadata != null && d.ftcPose != null) {
                     distance = d.ftcPose.range;
                     power = (2547.5 * pow(2.718281828459045, (0.0078 * distance)))/Globals.launcher.launcherTransformation; // here
                 }
@@ -633,9 +655,9 @@ public class finalManualLaunch extends OpMode {
         telemetry.addData("pattern?: ", currentPattern);
 
         telemetry.addLine("HSV")
-                .addData("H (deg)", "%.1f", hsv[0])
-                .addData("S", "%.3f", hsv[1])
-                .addData("V", "%.3f", hsv[2]);
+                .addData("H (deg)", "%.1f", hsv1[0])
+                .addData("S", "%.3f", hsv1[1])
+                .addData("V", "%.3f", hsv1[2]);
 
         telemetry.addData("distance", distanceSensor.getDistance(DistanceUnit.CM));
         telemetry.addData("filled", filled);

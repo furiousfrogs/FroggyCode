@@ -6,6 +6,7 @@ import android.graphics.Color;
 
 import com.acmerobotics.dashboard.FtcDashboard;
 import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
@@ -36,7 +37,7 @@ import java.util.List;
 import java.util.Collections;
 import java.util.Objects;
 
-
+@Disabled
 @TeleOp(name = "finalAutoLaunch")
 public class finalTest extends OpMode {
 

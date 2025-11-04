@@ -10,7 +10,7 @@ public class Globals {
     public static class turret {
         public static float turretTol = 5F;
         public static float nudge = 5F;
-        public static double turretKP = 0.09F;
+        public static double turretKP = 0.17F;
         public static double turretKI = 0.000F;
         public static double turretKD = 0.01F;
         public static double turretKF = 0.000F;
@@ -26,6 +26,7 @@ public class Globals {
         public static float revolverKD= 0.0003F;
         public static float revolverKI = 0F;
         public static float revolverKF = 0;
+        public static float revolverNudge = 3.5F;
     }
 
     @Config
