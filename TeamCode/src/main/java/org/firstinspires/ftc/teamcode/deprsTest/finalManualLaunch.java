@@ -494,9 +494,6 @@ public class finalManualLaunch extends OpMode {
     }
 
 
-
-
-
     private void findPattern() {
         if (gamepadEx.getButton(GamepadKeys.Button.OPTIONS)) {
             List<AprilTagDetection> code = tagProcessor.getDetections();

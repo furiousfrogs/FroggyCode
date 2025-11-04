@@ -57,6 +57,7 @@ public class FROGTONOMOUS extends CommandOpMode {
     private Follower follower;
     TelemetryData telemetryData = new TelemetryData(telemetry);
     private boolean patternDetected = false;
+    private static int pattern;
     private PathChain shoot3, eat3, shoot6, eat6, shoot9, eat9, shoot12;
 
 
@@ -130,27 +131,17 @@ public class FROGTONOMOUS extends CommandOpMode {
     }
 
     // Mechanism commands - replace these with your actual subsystem commands
-    public class subsystem extends SubsystemBase {
-        private Motor launcher1, launcher2;
-        private PIDFController turretPIDF, ff;
-        private SimpleServo lift, rotate, eject;
-        private VisionPortal visionPortal;
-        private AprilTagProcessor tagProcessor;
-        private double RPM;
-        private double lastTime;
-        private int lastPosition;
-        private boolean aligned = false;
-        double turretTarget = 150F;
-        private double distance;
-        private double power;
-        private double feedforwardPower = 0;
+    public class intakesubsys extends SubsystemBase {
         private final Motor intake, revolver;
         private PIDController revolverPID;
         private NormalizedColorSensor colourSensor;
         private DistanceSensor distanceSensor;
         private final float[] hsv = new float[3];
+        private int ballcount = 0;
+        private int revolverTarget = 0;
+        private double revolverPower;
         private ArrayList<String> froggystomach = new ArrayList<String>(3);//2 is intake side 0 is top
-        public subsystem(HardwareMap map) {
+        public intakesubsys(HardwareMap map) {
             intake = new Motor(map, "intake");
             intake.setRunMode(Motor.RunMode.RawPower);
             intake.setZeroPowerBehavior(Motor.ZeroPowerBehavior.BRAKE);
@@ -169,7 +160,68 @@ public class FROGTONOMOUS extends CommandOpMode {
             colourSensor = hardwareMap.get(NormalizedColorSensor.class,"colour1");
             colourSensor.setGain(2.0f);
             distanceSensor = hardwareMap.get(DistanceSensor.class, "colour1");
+        }
+        public void intakeon() {
+            intake.set(Globals.intakePower);
+        }
+        public void intakeoff() {
+            intake.set(0);
+        }
+        public void colorsort(int pattern){//1 ppg 2 pgp 3 gpp
+            NormalizedRGBA rgba = colourSensor.getNormalizedColors();
+            Color.colorToHSV(rgba.toColor(), hsv);
+            revolverPID.setTolerance(0);
+            revolverPID.setPIDF(Globals.revolver.revolverKP, Globals.revolver.revolverKI, Globals.revolver.revolverKD, Globals.revolver.revolverKF);
+            revolverPower = revolverPID.calculate(revolver.getCurrentPosition(), revolverTarget);
+            revolver.set(revolverPower);
 
+            if (hsv[0] >= 150 && hsv[0] <= 180 && hsv[1] >= 0.75 && hsv[1] <= 1.00 && hsv[2] > 0.00 && hsv[2] < 0.3) {
+                    froggystomach.set(2, "g");
+            }
+            if (hsv[0] >= 220 && hsv[0] <= 250 && hsv[1] >= 0.40 && hsv[1] <= 0.60 && hsv[2] > 0.00 && hsv[2] < 0.3) {
+                    froggystomach.set(2, "p");
+                    ;
+            }
+        }
+    }
+    public static class froggyactions extends CommandBase {
+        private final intakesubsys intake;
+        public froggyactions(intakesubsys intake) {
+            this.intake = intake;
+            addRequirements(intake);
+        }
+
+        @Override
+        public void initialize() {
+            intake.intakeon();
+        }
+
+        @Override
+        public void execute() {
+            intake.colorsort(pattern);
+        }
+
+        @Override
+        public void end(boolean interrupted) {
+            intake.intakeoff();
+        }
+    }
+
+    public class outtakesubsys extends SubsystemBase {
+        private Motor launcher1, launcher2;
+        private PIDFController turretPIDF, ff;
+        private SimpleServo lift, rotate, eject;
+        private VisionPortal visionPortal;
+        private AprilTagProcessor tagProcessor;
+        private double RPM;
+        private double lastTime;
+        private int lastPosition;
+        private boolean aligned = false;
+        double turretTarget = 150F;
+        private double distance;
+        private double power;
+        private double feedforwardPower = 0;
+        public outtakesubsys(HardwareMap map) {
             launcher1 = new Motor(hardwareMap, "l1", 28, 6000);
             launcher1.setRunMode(Motor.RunMode.RawPower);
             launcher2 = new Motor(hardwareMap, "l2", 28, 6000);
@@ -197,32 +249,8 @@ public class FROGTONOMOUS extends CommandOpMode {
             eject = new SimpleServo(hardwareMap, "eject", 0, 70);
             eject.setInverted(true);
             eject.turnToAngle(Globals.pushServo.defualt);
+        }
 
-        }
-        public void intakeon() {
-            intake.set(0.7);
-        }
-        public void intakeoff() {
-            intake.set(0);
-        }
-        public void colorset(){
-            NormalizedRGBA rgba = colourSensor.getNormalizedColors();
-            Color.colorToHSV(rgba.toColor(), hsv); // hsv[0]=H, hsv[1]=S, hsv[2]=V
-
-            if (hsv[0] >= 150 && hsv[0] <= 180 &&
-                    hsv[1] >= 0.75 && hsv[1] <= 1.00 &&
-                    hsv[2] > 0.00 && hsv[2] < 0.3)
-            {
-                froggystomach.set(2, "g");
-            }
-
-            if (hsv[0] >= 220 && hsv[0] <= 250 &&
-                    hsv[1] >= 0.40 && hsv[1] <= 0.60 &&
-                    hsv[2] > 0.00 && hsv[2] < 0.3)
-            {
-                froggystomach.set(2, "p");;
-            }
-        }
         public void launchalign(){
             turretPIDF.setPIDF(Globals.turret.turretKP, Globals.turret.turretKI, Globals.turret.turretKD, Globals.turret.turretKF);
             List<AprilTagDetection> detections = tagProcessor.getDetections();
@@ -315,28 +343,7 @@ public class FROGTONOMOUS extends CommandOpMode {
         }
 
     }
-    public static class froggyactions extends CommandBase {
-        private final subsystem intake;
-        public froggyactions(subsystem intake) {
-            this.intake = intake;
-            addRequirements(intake);
-        }
 
-        @Override
-        public void initialize() {
-            intake.intakeon();
-        }
-
-        @Override
-        public void execute() {
-            intake.colorset();
-        }
-
-        @Override
-        public void end(boolean interrupted) {
-            intake.intakeoff();
-        }
-    }
 
 
 
