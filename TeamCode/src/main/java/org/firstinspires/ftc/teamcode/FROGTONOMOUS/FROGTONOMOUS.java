@@ -117,6 +117,7 @@ public class FROGTONOMOUS extends CommandOpMode {
     private AprilTagProcessor tagProcessor;
     private boolean inCycle = false;
 
+    ////////////////////////////////////////////////
 
     public void buildPaths() {
         shoot3 = follower.pathBuilder()
@@ -134,60 +135,79 @@ public class FROGTONOMOUS extends CommandOpMode {
                                 new Pose(21.308, 84.785)
                         )
                 )
-                .setBrakingStart(0.5)
-                .setBrakingStrength(0.2)
                 .setLinearHeadingInterpolation(Math.toRadians(-36), Math.toRadians(-180))
                 .build();
 
         shoot6 = follower.pathBuilder()
                 .addPath(
-                        new BezierLine(new Pose(21.308, 84.785), new Pose(32.299, 98.243))
+                        new BezierLine(new Pose(21.308, 84.785), new Pose(32.075, 97.121))
                 )
-                .setLinearHeadingInterpolation(Math.toRadians(-180), Math.toRadians(-90))
+                .setLinearHeadingInterpolation(Math.toRadians(-180), Math.toRadians(-75))
                 .build();
 
         eat6 = follower.pathBuilder()
                 .addPath(
                         new BezierCurve(
-                                new Pose(32.299, 98.243),
+                                new Pose(32.075, 97.121),
                                 new Pose(50.243, 62.804),
                                 new Pose(21.533, 60.561)
                         )
                 )
-                .setBrakingStart(0.4)
-                .setBrakingStrength(0.2)
-                .setLinearHeadingInterpolation(Math.toRadians(-90), Math.toRadians(-180))
+                .setLinearHeadingInterpolation(Math.toRadians(-75), Math.toRadians(-180))
                 .build();
 
         shoot9 = follower.pathBuilder()
                 .addPath(
-                        new BezierLine(new Pose(21.533, 60.561), new Pose(45.308, 84.785))
+                        new BezierLine(new Pose(21.533, 60.561), new Pose(36.336, 92.636))
                 )
-                .setLinearHeadingInterpolation(Math.toRadians(-180), Math.toRadians(-90))
+                .setLinearHeadingInterpolation(Math.toRadians(-180), Math.toRadians(-75))
                 .build();
 
         eat9 = follower.pathBuilder()
                 .addPath(
                         new BezierCurve(
-                                new Pose(45.308, 84.785),
+                                new Pose(36.336, 92.636),
                                 new Pose(53.832, 39.477),
                                 new Pose(22.430, 36.561)
                         )
                 )
-                .setBrakingStart(0.3)
-                .setBrakingStrength(0.2)
-                .setLinearHeadingInterpolation(Math.toRadians(-90), Math.toRadians(-180))
+                .setLinearHeadingInterpolation(Math.toRadians(-75), Math.toRadians(-180))
                 .build();
 
         shoot12 = follower.pathBuilder()
                 .addPath(
-                        new BezierLine(new Pose(22.430, 36.561), new Pose(54.505, 75.140))
+                        new BezierLine(new Pose(22.430, 36.561), new Pose(40.598, 88.598))
                 )
-                .setLinearHeadingInterpolation(Math.toRadians(-180), Math.toRadians(-90))
+                .setLinearHeadingInterpolation(Math.toRadians(-180), Math.toRadians(-75))
                 .build();
     }
+    public void oneRotationRevolver(boolean left) {
+        revolverPID.setTolerance(0);
+        revolverPID.setPIDF(Globals.revolver.revolverKP, Globals.revolver.revolverKI, Globals.revolver.revolverKD, Globals.revolver.revolverKF);
+        previousRevolverPosition = revolverTarget;
+        revolverTarget += left ? +Globals.revolver.oneRotation : -Globals.revolver.oneRotation; //TODO Chekc if this is right
+    }
+    private void findPattern() {
+        List<AprilTagDetection> code = tagProcessor.getDetections();
+        if (code != null && !code.isEmpty()) {
+            code.sort(Comparator.comparingDouble((AprilTagDetection d) -> d.decisionMargin).reversed());
+            AprilTagDetection best = code.get(0);
 
-    // Mechanism commands - replace these with your actual subsystem commands
+            if (best.id == 21) {
+                currentPattern = pattern.GPP; patternDetected = true;
+            } else if (best.id == 22) {
+                currentPattern = pattern.PGP; patternDetected = true;
+            } else if (best.id == 23) {
+                currentPattern = pattern.PPG; patternDetected = true;
+            } else {
+                patternDetected = false;
+                telemetry.addLine("NO PATTERN FOUND");
+            }
+        }
+    }//todo
+
+    ///////////////////////////////////////////////
+
     public class intakesubsys extends SubsystemBase {
         private final Motor intake, revolver;
         //2 is intake side 0 is top
@@ -213,16 +233,6 @@ public class FROGTONOMOUS extends CommandOpMode {
         }
         public void intakeon() {
             intake.set(Globals.intakePower);
-        }
-        public void oneRotationRevolver(boolean left) {
-            // PID setup
-
-            // PID setup
-            revolverPID.setTolerance(0);
-            revolverPID.setPIDF(Globals.revolver.revolverKP, Globals.revolver.revolverKI, Globals.revolver.revolverKD, Globals.revolver.revolverKF);
-            previousRevolverPosition = revolverTarget;
-            revolverTarget += left ? +Globals.revolver.oneRotation : -Globals.revolver.oneRotation; //TODO Chekc if this is right
-
         }
         public void intakeoff() {
             intake.set(0);
@@ -256,7 +266,6 @@ public class FROGTONOMOUS extends CommandOpMode {
             }
             return "EMPTY";
         }
-
         private String[] desiredByPattern() {
             // Order: [top (0), left (1), right (2)]
             switch (currentPattern) {
@@ -279,83 +288,83 @@ public class FROGTONOMOUS extends CommandOpMode {
 
             int filled = revolverState.size() - Collections.frequency(revolverState, "EMPTY");
             String color = senseColour();
+            if (patternDetected) {
+                if (!"EMPTY".equals(color) && revolverReady) {
 
-            if (!"EMPTY".equals(color) && revolverReady) {
+                    String wantTop = desiredByPattern()[0];
 
-                String wantTop = desiredByPattern()[0];
-
-                switch (filled) {
-                    case 0: {
-                        // put new ball into slot 2, then ALWAYS rotate it to slot 1
-                        revolverReady = false;
-                        revolverState.set(2, color);
-
-                        oneRotationRevolver(false);
-                        Collections.rotate(revolverState, -1);
-
-                        previousRotation = false;
-                        break;
-                    }
-
-                    case 1: {
-                        //same idea just move it into slot 1
-                        revolverReady = false;
-                        revolverState.set(2, color);
-
-                        oneRotationRevolver(false);
-                        Collections.rotate(revolverState, -1);
-                        previousRotation = false;
-
-                        break;
-                    }
-                    case 2: {
-                        revolverState.set(2, color);
-
-                        if (color.equals(wantTop)) {
-                            // new ball IS the one we want on top → bring index 2 -> index 0
+                    switch (filled) {
+                        case 0: {
+                            // put new ball into slot 2, then ALWAYS rotate it to slot 1
                             revolverReady = false;
-                            oneRotationRevolver(true);
-                            Collections.rotate(revolverState, 1);
-                            previousRotation = true;
+                            revolverState.set(2, color);
 
-                        } else if (revolverState.get(0).equals(wantTop)) {
-                            // already on top → do nothing
-                        } else if (revolverState.get(1).equals(wantTop)) {
-                            // we have it in slot 1 → bring 1 -> 0
+                            oneRotationRevolver(false);
+                            Collections.rotate(revolverState, -1);
+
+                            previousRotation = false;
+                            break;
+                        }
+
+                        case 1: {
+                            //same idea just move it into slot 1
                             revolverReady = false;
+                            revolverState.set(2, color);
+
                             oneRotationRevolver(false);
                             Collections.rotate(revolverState, -1);
                             previousRotation = false;
-                        } else {
 
+                            break;
                         }
+                        case 2: {
+                            revolverState.set(2, color);
 
-                        //describes whether to launch clockwise or counter clockwise in launch 3
-                        String[] want = desiredByPattern();
-                        String secondBall = want[1];
-                        if (revolverState.get(1).equals(secondBall)) {
-                            shootCounterClockwise = false;
-                        } else if (revolverState.get(2).equals(secondBall)) {
-                            shootCounterClockwise = true;
+                            if (color.equals(wantTop)) {
+                                // new ball IS the one we want on top → bring index 2 -> index 0
+                                revolverReady = false;
+                                oneRotationRevolver(true);
+                                Collections.rotate(revolverState, 1);
+                                previousRotation = true;
+
+                            } else if (revolverState.get(0).equals(wantTop)) {
+                                // already on top → do nothing
+                            } else if (revolverState.get(1).equals(wantTop)) {
+                                // we have it in slot 1 → bring 1 -> 0
+                                revolverReady = false;
+                                oneRotationRevolver(false);
+                                Collections.rotate(revolverState, -1);
+                                previousRotation = false;
+                            } else {
+
+                            }
+
+                            //describes whether to launch clockwise or counter clockwise in launch 3
+                            String[] want = desiredByPattern();
+                            String secondBall = want[1];
+                            if (revolverState.get(1).equals(secondBall)) {
+                                shootCounterClockwise = false;
+                            } else if (revolverState.get(2).equals(secondBall)) {
+                                shootCounterClockwise = true;
+                            }
+
+
+                            // now we are full
+                            revolverReadytoLaunch = true;
+                            break;
                         }
-
-
-                        // now we are full
-                        revolverReadytoLaunch = true;
-                        break;
-                    }
-                    case 3:
-                    default: {
-                        break;
+                        case 3:
+                        default: {
+                            break;
+                        }
                     }
                 }
             }
-
         }
     }
-    public static class froggyactions extends CommandBase {
+    public static class froggyeat extends CommandBase {
         private final intakesubsys intake;
-        public froggyactions(intakesubsys intake) {
+        public froggyeat(intakesubsys intake) {
             this.intake = intake;
             addRequirements(intake);
         }
@@ -378,7 +387,6 @@ public class FROGTONOMOUS extends CommandOpMode {
 
     public class outtakesubsys extends SubsystemBase {
         private Motor launcher1, launcher2, revolver;
-
         public outtakesubsys(HardwareMap map) {
             launcher1 = new Motor(hardwareMap, "l1", 28, 6000);
             launcher1.setRunMode(Motor.RunMode.RawPower);
@@ -416,13 +424,6 @@ public class FROGTONOMOUS extends CommandOpMode {
             eject = new SimpleServo(hardwareMap, "eject", 0, 70);
             eject.setInverted(true);
             eject.turnToAngle(Globals.pushServo.defualt);
-        }
-        public void oneRotationRevolver(boolean left) {
-            revolverPID.setTolerance(0);
-            revolverPID.setPIDF(Globals.revolver.revolverKP, Globals.revolver.revolverKI, Globals.revolver.revolverKD, Globals.revolver.revolverKF);
-            previousRevolverPosition = revolverTarget;
-            revolverTarget += left ? +Globals.revolver.oneRotation : -Globals.revolver.oneRotation; //TODO Chekc if this is right
-
         }
         private void calculateRPM() {
             double currentTime = getRuntime();
@@ -502,132 +503,44 @@ public class FROGTONOMOUS extends CommandOpMode {
                 }
             } else {
                 power = 0;
-
             }
 
             feedforwardPower = ff.calculate(RPM, power);
+        }
 
+        @Override
+        public void periodic() {
+            calculateRPM();
+            launcherawe();
+            autoAimServoMode();
+        }
+    }//todo
+    public static class froggyspit extends CommandBase {
+        private final outtakesubsys outtake;
+        public froggyspit(outtakesubsys outtake) {
+            this.outtake = outtake;
+            addRequirements(outtake);
+        }
+
+        @Override
+        public void initialize() {
 
         }
 
-        public void launch3() {
-            revolverReadytoLaunch = true;
-            if (revolverReadytoLaunch) {
-                if (!shootLoop) {
-                    shootLoop = true;
-                    currentShooting = shooting.shootRotating;
+        @Override
+        public void execute() {
+            outtake.calculateRPM();
+            outtake.launcherawe();
+            outtake.autoAimServoMode();
+        }
 
-                    shootAction = false;
-                    ejectAction = false;
-                    rotating = false;
-                    shotsFired = 0;
-                }
-                if (!shootLoop) {
-                    // idle; ensure things are safe
-                    launcher1.set(0);
-                    launcher2.set(0);
-
-                    set.turnToAngle(Globals.launcher.downset);
-                    return;
-                }
-                if (shootLoop) {
-                    currCircle = gamepadEx2.getButton(GamepadKeys.Button.CIRCLE);
-
-                    launcher1.set(feedforwardPower);
-                    launcher2.set(feedforwardPower);
-
-                    // shooting cycle state machine
-                    switch (currentShooting) {
-                        case shootRotating: {
-                            shootTimer = Double.MAX_VALUE;
-                            if (!currCircle && prevCircle) { // POTENTIAL ERROR CUZ THE BUTTON COULD CARRY OVER
-                                if (!rotating && shotsFired > 0) {
-                                    // if true -> +1 -> 2->0 (counterclockwise)
-                                    oneRotationRevolver(shootCounterClockwise);
-                                    rotating = true;
-                                    currentShooting = shooting.shootEjecting;
-                                } else if (!rotating && shotsFired == 0) {
-                                    rotating = true;
-                                    previousRevolverPosition = revolverTarget;
-                                    currentShooting = shooting.shootEjecting;
-
-                                }
-                            }
-
-                            break;
-                        }
-
-                        case shootEjecting: {
-                            if (!ejectAction && (currCircle)) {
-                                eject.turnToAngle(Globals.pushServo.eject);
-                                ejectAction = true;
-                            }
-
-                            // retract when driver releases the button, then advance state
-                            if (ejectAction && (!currCircle && prevCircle)) {
-                                eject.turnToAngle(Globals.pushServo.defualt);
-                                currentShooting = shooting.shootFire;
-                            }
-                            // hold push until timer expires, then retract
-
-                            break;
-                        }
-
-                        case shootFire: {
-                            // wait for spin-up and aim, then flick
-                            boolean atSpeed = Math.abs(power - RPM) < Globals.launcher.launcherTol;
-
-                            if (atSpeed && aligned && shootTimer > globalTimer.seconds() && !shootAction) {
-                                set.turnToAngle(Globals.launcher.upset);
-                                shootTimer = globalTimer.seconds() + Globals.timers.pushUpTime; // 1s gate-open
-                                shootAction = true;
-                            }
-
-                            // close gate and finish cycle
-                            if (globalTimer.seconds() > shootTimer) {
-                                set.turnToAngle(Globals.launcher.downset);
-                                shotsFired++;
-                                if (shotsFired < 3) {
-                                    // Prepare next round: rotate again for the next chamber
-                                    currentShooting = shooting.shootRotating;
-                                    shootAction = false;
-                                    ejectAction = false;
-                                    rotating = false;
-
-                                    shootTimer = Double.MAX_VALUE;
-                                    // (keep launcher + intake running during the burst)
-                                } else {
-                                    // Burst done — shut down
-                                    currentShooting = shooting.shootIdle;
-                                    shootLoop = false;
-                                    revolverReadytoLaunch = false;
-                                    launcher1.set(0);
-                                    launcher2.set(0);
-                                    revolverState.set(0, "EMPTY");
-                                    revolverState.set(1, "EMPTY");
-                                    revolverState.set(2, "EMPTY");
-                                    shootTimer = Double.MAX_VALUE;
-                                }
-                            }
-                            break;
-                        }
-
-                        case shootIdle:
-                        default: {
-                            // Safety – shouldn’t sit here during an active cycle
-                            shootLoop = false;
-                            launcher1.set(0);
-                            launcher2.set(0);
-
-                            break;
-                        }
-
-                    }
-                }
-            }
+        @Override
+        public void end(boolean interrupted) {
 
         }
-    }
+
+
+    }//todo
 
 
 
@@ -639,20 +552,21 @@ public class FROGTONOMOUS extends CommandOpMode {
     public void initialize() {
         super.reset();
 
-
         follower = Constants.createFollower(hardwareMap);
         follower.setStartingPose(new Pose(19.300, 119.350));
+        outtakesubsys sub = new outtakesubsys(hardwareMap);
+        register(sub);
         buildPaths();
+        findPattern();
 
 
-        SequentialCommandGroup GPP = new SequentialCommandGroup(
+        SequentialCommandGroup froggyroute = new SequentialCommandGroup(
                 // Score preload
                 new FollowPathCommand(follower, shoot3),
 
                 new WaitCommand(1000), // Wait 1 second
                 // First pickup cycle
-                new FollowPathCommand(follower, eat3)// Sets globalMaxPower to 50% for all future paths
-                // (unless a custom maxPower is given)
+                new FollowPathCommand(follower, eat3)
 //                new ParallelDeadlineGroup(
 //                        new FollowPathCommand(follower, eat3),
 //                        new froggyeat()
@@ -660,17 +574,9 @@ public class FROGTONOMOUS extends CommandOpMode {
 
 
 
-//                // Second pickup cycle
-//                new FollowPathCommand(follower, grabPickup2),
-//                grabSample(),
-//                new FollowPathCommand(follower, scorePickup2, 1.0), // Overrides maxPower to 100% for this path only
-//                scoreSample(),
 //
-//                // Park
-//                new FollowPathCommand(follower, park, false), // park with holdEnd false
-//                level1Ascent()
         );
-        schedule(GPP);
+        schedule(froggyroute);
     }
 
     @Override

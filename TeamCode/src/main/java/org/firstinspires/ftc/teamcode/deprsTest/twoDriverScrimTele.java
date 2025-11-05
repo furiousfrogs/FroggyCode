@@ -49,8 +49,9 @@ public class twoDriverScrimTele extends OpMode {
     private boolean revolverReadytoLaunch = false;
     private boolean clockwise;
     private int filled;
-    double revolverSetupTimer = Double.MAX_VALUE;
+    private double revolverSetupTimer = Double.MAX_VALUE;
     private boolean revolverReady = true;
+    private boolean launcherReady = true;
 
 
     // ----- action booleans -----
@@ -71,6 +72,7 @@ public class twoDriverScrimTele extends OpMode {
     private double power;
     private int shotsFired = 0;
     private double previousRevolverPosition;
+    private double previousRPM = 0;
 
 
     // ----- pid's -----
@@ -237,8 +239,8 @@ public class twoDriverScrimTele extends OpMode {
             if (startPressed && !shootLoop) {
 
                 shootLoop = true;
-                currentShooting = shooting.shootRotating;
-
+                currentShooting = shooting.shootEjecting;
+                previousRevolverPosition = revolverTarget;
                 shootAction = false;
                 ejectAction = false;
                 rotating = false;
@@ -281,13 +283,15 @@ public class twoDriverScrimTele extends OpMode {
                     }
 
                     case shootEjecting: {
-                        if (!ejectAction && (currCircle)) {
+                        if (!ejectAction && (currCircle) && launcherReady) {
                             eject.turnToAngle(Globals.pushServo.eject);
+
+
                             ejectAction = true;
                         }
 
                         // retract when driver releases the button, then advance state
-                        if (ejectAction && (!currCircle && prevCircle)) {
+                        if (ejectAction && (!currCircle && prevCircle) && launcherReady) {
                             eject.turnToAngle(Globals.pushServo.defualt);
                             currentShooting = shooting.shootFire;
                         }
@@ -300,24 +304,17 @@ public class twoDriverScrimTele extends OpMode {
                         // wait for spin-up and aim, then flick
                         boolean atSpeed = Math.abs(power - RPM) < Globals.launcher.launcherTol;
 
-                        if (atSpeed && aligned && shootTimer > globalTimer.seconds() && !shootAction) {
-                            set.turnToAngle(Globals.launcher.upset);
-                            shootTimer = globalTimer.seconds() + Globals.timers.pushUpTime; // 1s gate-open
-                            shootAction = true;
-                        }
-
-                        // close gate and finish cycle
-                        if (globalTimer.seconds() > shootTimer) {
-                            set.turnToAngle(Globals.launcher.downset);
+                        if (atSpeed && aligned) {
+                            setUpBall();
+                            launcherReady = false;
                             shotsFired++;
                             if (shotsFired < 3) {
                                 // Prepare next round: rotate again for the next chamber
                                 currentShooting = shooting.shootRotating;
-                                shootAction = false;
                                 ejectAction = false;
                                 rotating = false;
 
-                                shootTimer = Double.MAX_VALUE;
+
                                 // (keep launcher + intake running during the burst)
                             } else {
                                 // Burst done — shut down
@@ -329,7 +326,7 @@ public class twoDriverScrimTele extends OpMode {
                                 revolverState.set(0, "EMPTY");
                                 revolverState.set(1, "EMPTY");
                                 revolverState.set(2, "EMPTY");
-                                shootTimer = Double.MAX_VALUE;
+
                             }
                         }
                         break;
@@ -347,11 +344,19 @@ public class twoDriverScrimTele extends OpMode {
 
                 }
                 prevCircle = currCircle;
-           }
+            }
         }
 
     }
 
+    public void setUpBall() {
+        boolean RPMdip = Math.abs(previousRPM - RPM) > Globals.launcher.RPMDipThreshold;
+        set.turnToAngle(Globals.launcher.upset);
+        if (set.getAngle() == Globals.launcher.upset && RPMdip) {
+            set.turnToAngle(Globals.launcher.downset);
+            launcherReady = true;
+        }
+    }
 
 
     public void ejection() {
@@ -379,18 +384,18 @@ public class twoDriverScrimTele extends OpMode {
                 hsv1[2] > 0.00 && hsv1[2] < 0.3) ||
 
                 (hsv2[0] >= 150 && hsv2[0] <= 180 &&
-                hsv2[1] >= 0.75 && hsv2[1] <= 1.00 &&
-                hsv2[2] > 0.00 && hsv2[2] < 0.3)) {
+                        hsv2[1] >= 0.75 && hsv2[1] <= 1.00 &&
+                        hsv2[2] > 0.00 && hsv2[2] < 0.3)) {
             return "G";
         } // if colour one or colour two return green/purpler
 
         if ((hsv1[0] >= 220 && hsv1[0] <= 250 &&
-            hsv1[1] >= 0.40 && hsv1[1] <= 0.60 &&
-            hsv1[2] > 0.00 && hsv1[2] < 0.3) ||
+                hsv1[1] >= 0.40 && hsv1[1] <= 0.60 &&
+                hsv1[2] > 0.00 && hsv1[2] < 0.3) ||
 
-            (hsv2[0] >= 220 && hsv2[0] <= 250 &&
-            hsv2[1] >= 0.40 && hsv2[1] <= 0.60 &&
-            hsv2[2] > 0.00 && hsv2[2] < 0.3)) {
+                (hsv2[0] >= 220 && hsv2[0] <= 250 &&
+                        hsv2[1] >= 0.40 && hsv2[1] <= 0.60 &&
+                        hsv2[2] > 0.00 && hsv2[2] < 0.3)) {
             return "P";
         }
         return "EMPTY";
@@ -546,6 +551,7 @@ public class twoDriverScrimTele extends OpMode {
         int deltaTicks = currentPosition - lastPosition;
 
         if (deltaTime > 0.05) {
+            previousRPM = RPM;
             double revs = (double) deltaTicks / 28.0; // GoBILDA CPR
             RPM = (revs / deltaTime) * 60.0;
 
