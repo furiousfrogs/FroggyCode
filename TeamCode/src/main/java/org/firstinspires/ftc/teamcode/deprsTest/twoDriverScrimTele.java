@@ -221,153 +221,280 @@ public class twoDriverScrimTele extends OpMode {
         drive();
 
         findPattern();
-        launch3();
+        ejection();
 
 
 
     }
 
 
-    public void launch3() {
-        gamepadEx2.readButtons();
-        revolver.set(((gamepadEx2.getTrigger(GamepadKeys.Trigger.RIGHT_TRIGGER) - gamepadEx2.getTrigger(GamepadKeys.Trigger.LEFT_TRIGGER)) * Globals.revolver.revolverNudge));
+//    public void launch3() {
+//        gamepadEx2.readButtons();
+//        revolver.set(((gamepadEx2.getTrigger(GamepadKeys.Trigger.RIGHT_TRIGGER) - gamepadEx2.getTrigger(GamepadKeys.Trigger.LEFT_TRIGGER)) * Globals.revolver.revolverNudge));
+//
+//        if (revolverReadytoLaunch) {
+//            // Arm spinner & intake only while we are in a shooting cycle
+//            boolean startPressed = gamepadEx2.getButton(GamepadKeys.Button.CROSS);
+//
+//
+//            // Start a new cycle
+//            if (startPressed && !prevCross && !shootLoop) {
+//
+//                shootLoop = true;
+//                currentShooting = shooting.shootEjecting;
+//                previousRevolverPosition = revolverTarget;
+//                shootAction = false;
+//                ejectAction = false;
+//                rotating = false;
+//                shotsFired = 0;
+//
+//            }
+//            if (!shootLoop) {
+//                // idle; ensure things are safe
+//                launcher1.set(0);
+//                launcher2.set(0);
+//
+//                set.turnToAngle(Globals.launcher.downset);
+//                return;
+//            } else  {
+//
+//
+//                boolean RPMdip = Math.abs(RPM - previousRPM) > Globals.launcher.RPMDipThreshold;
+//                if (RPMdip) {
+//                    set.turnToAngle(Globals.launcher.downset);
+//                    launcherReady = true;
+//                }
+//                currCircle = gamepadEx2.getButton(GamepadKeys.Button.CIRCLE);
+//
+//                launcher1.set(feedforwardPower);
+//                launcher2.set(feedforwardPower);
+//
+//                // shooting cycle state machine
+//                switch (currentShooting) {
+//                    case shootRotating: {
+//                        shootTimer = Double.MAX_VALUE;
+//                        if (!currCircle && prevCircle) { // POTENTIAL ERROR CUZ THE BUTTON COULD CARRY OVER
+//                            if (!rotating && shotsFired > 0) {
+//                                // if true -> +1 -> 2->0 (counterclockwise)
+//                                oneRotationRevolver(shootCounterClockwise);
+//                                rotating = true;
+//                                currentShooting = shooting.shootEjecting;
+//                            } else if (!rotating && shotsFired == 0) {
+//                                rotating = true;
+//                                previousRevolverPosition = revolverTarget;
+//                                currentShooting = shooting.shootEjecting;
+//
+//                            }
+//                        }
+//
+//                        break;
+//                    }
+//
+//                    case shootEjecting: {
+//
+//
+//                        if (!ejectAction && (currCircle) && launcherReady) {
+//                            eject.turnToAngle(Globals.pushServo.eject);
+//
+//
+//                            ejectAction = true;
+//                        }
+//
+//                        // retract when driver releases the button, then advance state
+//                        if (ejectAction && (!currCircle && prevCircle) && launcherReady) {
+//                            eject.turnToAngle(Globals.pushServo.defualt);
+//                            currentShooting = shooting.shootFire;
+//                        }
+//                        // hold push until timer expires, then retract
+//
+//                        break;
+//                    }
+//
+//                    case shootFire: {
+//                        // wait for spin-up and aim, then flick
+//                        boolean atSpeed = Math.abs(power - RPM) < Globals.launcher.launcherTol;
+//
+//                        if (atSpeed && aligned) {
+//                            set.turnToAngle(Globals.launcher.upset);
+//                            launcherReady = false;
+//                            shotsFired++;
+//                            if (!shootAction) {
+//                                shootAction = true;
+//                                shootTimer = globalTimer.seconds() + 1;
+//                            }
+//
+//                            if (shotsFired < 3) {
+//                                // Prepare next round: rotate again for the next chamber
+//                                currentShooting = shooting.shootRotating;
+//                                ejectAction = false;
+//                                rotating = false;
+//
+//
+//                                // (keep launcher + intake running during the burst)
+//                            } else {
+//
+//                                if (globalTimer.seconds() > shootTimer) {
+//                                    // Burst done — shut down
+//                                    currentShooting = shooting.shootIdle;
+//                                    shootLoop = false;
+//                                    revolverReadytoLaunch = false;
+//                                    launcher1.set(0);
+//                                    launcher2.set(0);
+//                                    revolverState.set(0, "EMPTY");
+//                                    revolverState.set(1, "EMPTY");
+//                                    revolverState.set(2, "EMPTY");
+//                                    shootTimer = Double.MAX_VALUE;
+//                                }
+//
+//                            }
+//                        }
+//                        break;
+//                    }
+//
+//                    case shootIdle:
+//                    default: {
+//                        // Safety – shouldn’t sit here during an active cycle
+//                        shootLoop = false;
+//                        launcher1.set(0);
+//                        launcher2.set(0);
+//
+//                        break;
+//                    }
+//
+//                }
+//                prevCircle = currCircle;
+//            }
+//            prevCross = startPressed;
+//        }
+//
+//    }
 
-        if (revolverReadytoLaunch) {
-            // Arm spinner & intake only while we are in a shooting cycle
-            boolean startPressed = gamepadEx2.getButton(GamepadKeys.Button.CROSS);
-
-
-            // Start a new cycle
-            if (startPressed && !prevCross && !shootLoop) {
-
-                shootLoop = true;
-                currentShooting = shooting.shootEjecting;
-                previousRevolverPosition = revolverTarget;
-                shootAction = false;
-                ejectAction = false;
-                rotating = false;
-                shotsFired = 0;
-
-            }
-            if (!shootLoop) {
-                // idle; ensure things are safe
-                launcher1.set(0);
-                launcher2.set(0);
-
-                set.turnToAngle(Globals.launcher.downset);
-                return;
-            } else  {
-
-
-                boolean RPMdip = Math.abs(RPM - previousRPM) > Globals.launcher.RPMDipThreshold;
-                if (RPMdip) {
-                    set.turnToAngle(Globals.launcher.downset);
-                    launcherReady = true;
-                }
-                currCircle = gamepadEx2.getButton(GamepadKeys.Button.CIRCLE);
-
-                launcher1.set(feedforwardPower);
-                launcher2.set(feedforwardPower);
-
-                // shooting cycle state machine
-                switch (currentShooting) {
-                    case shootRotating: {
-                        shootTimer = Double.MAX_VALUE;
-                        if (!currCircle && prevCircle) { // POTENTIAL ERROR CUZ THE BUTTON COULD CARRY OVER
-                            if (!rotating && shotsFired > 0) {
-                                // if true -> +1 -> 2->0 (counterclockwise)
-                                oneRotationRevolver(shootCounterClockwise);
-                                rotating = true;
-                                currentShooting = shooting.shootEjecting;
-                            } else if (!rotating && shotsFired == 0) {
-                                rotating = true;
-                                previousRevolverPosition = revolverTarget;
-                                currentShooting = shooting.shootEjecting;
-
-                            }
-                        }
-
-                        break;
-                    }
-
-                    case shootEjecting: {
-
-
-                        if (!ejectAction && (currCircle) && launcherReady) {
-                            eject.turnToAngle(Globals.pushServo.eject);
-
-
-                            ejectAction = true;
-                        }
-
-                        // retract when driver releases the button, then advance state
-                        if (ejectAction && (!currCircle && prevCircle) && launcherReady) {
-                            eject.turnToAngle(Globals.pushServo.defualt);
-                            currentShooting = shooting.shootFire;
-                        }
-                        // hold push until timer expires, then retract
-
-                        break;
-                    }
-
-                    case shootFire: {
-                        // wait for spin-up and aim, then flick
-                        boolean atSpeed = Math.abs(power - RPM) < Globals.launcher.launcherTol;
-
-                        if (atSpeed && aligned) {
-                            set.turnToAngle(Globals.launcher.upset);
-                            launcherReady = false;
-                            shotsFired++;
-                            if (!shootAction) {
-                                shootAction = true;
-                                shootTimer = globalTimer.seconds() + 1;
-                            }
-
-                            if (shotsFired < 3) {
-                                // Prepare next round: rotate again for the next chamber
-                                currentShooting = shooting.shootRotating;
-                                ejectAction = false;
-                                rotating = false;
-
-
-                                // (keep launcher + intake running during the burst)
-                            } else {
-
-                                if (globalTimer.seconds() > shootTimer) {
-                                    // Burst done — shut down
-                                    currentShooting = shooting.shootIdle;
-                                    shootLoop = false;
-                                    revolverReadytoLaunch = false;
-                                    launcher1.set(0);
-                                    launcher2.set(0);
-                                    revolverState.set(0, "EMPTY");
-                                    revolverState.set(1, "EMPTY");
-                                    revolverState.set(2, "EMPTY");
-                                    shootTimer = Double.MAX_VALUE;
-                                }
-
-                            }
-                        }
-                        break;
-                    }
-
-                    case shootIdle:
-                    default: {
-                        // Safety – shouldn’t sit here during an active cycle
-                        shootLoop = false;
-                        launcher1.set(0);
-                        launcher2.set(0);
-
-                        break;
-                    }
-
-                }
-                prevCircle = currCircle;
-            }
-            prevCross = startPressed;
-        }
-
-    }
+//    public void launch3() {
+//        gamepadEx2.readButtons();
+//        revolver.set(((gamepadEx2.getTrigger(GamepadKeys.Trigger.RIGHT_TRIGGER) - gamepadEx2.getTrigger(GamepadKeys.Trigger.LEFT_TRIGGER)) * Globals.revolver.revolverNudge));
+//
+//        if (revolverReadytoLaunch) {
+//            // Arm spinner & intake only while we are in a shooting cycle
+//            boolean startPressed = gamepadEx2.getButton(GamepadKeys.Button.CROSS);
+//
+//            // Start a new cycle
+//            if (startPressed && !shootLoop) {
+//
+//                shootLoop = true;
+//                currentShooting = shooting.shootRotating;
+//
+//                shootAction = false;
+//                ejectAction = false;
+//                rotating = false;
+//                shotsFired = 0;
+//
+//            }
+//            if (!shootLoop) {
+//                // idle; ensure things are safe
+//                launcher1.set(0);
+//                launcher2.set(0);
+//
+//                set.turnToAngle(Globals.launcher.downset);
+//                return;
+//            }
+//            if (shootLoop) {
+//                currCircle = gamepadEx2.getButton(GamepadKeys.Button.CIRCLE);
+//
+//                launcher1.set(feedforwardPower);
+//                launcher2.set(feedforwardPower);
+//
+//                // shooting cycle state machine
+//                switch (currentShooting) {
+//                    case shootRotating: {
+//                        shootTimer = Double.MAX_VALUE;
+//                        if (!currCircle && prevCircle) { // POTENTIAL ERROR CUZ THE BUTTON COULD CARRY OVER
+//                            if (!rotating && shotsFired > 0) {
+//                                // if true -> +1 -> 2->0 (counterclockwise)
+//                                oneRotationRevolver(shootCounterClockwise);
+//                                rotating = true;
+//                                currentShooting = shooting.shootEjecting;
+//                            } else if (!rotating && shotsFired == 0) {
+//                                rotating = true;
+//                                previousRevolverPosition = revolverTarget;
+//                                currentShooting = shooting.shootEjecting;
+//
+//                            }
+//                        }
+//
+//                        break;
+//                    }
+//
+//                    case shootEjecting: {
+//                        if (!ejectAction && (currCircle)) {
+//                            eject.turnToAngle(Globals.pushServo.eject);
+//                            ejectAction = true;
+//                        }
+//
+//                        // retract when driver releases the button, then advance state
+//                        if (ejectAction && (!currCircle && prevCircle)) {
+//                            eject.turnToAngle(Globals.pushServo.defualt);
+//                            currentShooting = shooting.shootFire;
+//                        }
+//                        // hold push until timer expires, then retract
+//
+//                        break;
+//                    }
+//
+//                    case shootFire: {
+//                        // wait for spin-up and aim, then flick
+//                        boolean atSpeed = Math.abs(power - RPM) < Globals.launcher.launcherTol;
+//
+//                        if (atSpeed && aligned && shootTimer > globalTimer.seconds() && !shootAction) {
+//                            set.turnToAngle(Globals.launcher.upset);
+//                            shootTimer = globalTimer.seconds() + Globals.timers.pushUpTime; // 1s gate-open
+//                            shootAction = true;
+//                        }
+//
+//                        // close gate and finish cycle
+//                        if (globalTimer.seconds() > shootTimer) {
+//                            set.turnToAngle(Globals.launcher.downset);
+//                            shotsFired++;
+//                            if (shotsFired < 3) {
+//                                // Prepare next round: rotate again for the next chamber
+//                                currentShooting = shooting.shootRotating;
+//                                shootAction = false;
+//                                ejectAction = false;
+//                                rotating = false;
+//
+//                                shootTimer = Double.MAX_VALUE;
+//                                // (keep launcher + intake running during the burst)
+//                            } else {
+//                                // Burst done — shut down
+//                                currentShooting = shooting.shootIdle;
+//                                shootLoop = false;
+//                                revolverReadytoLaunch = false;
+//                                launcher1.set(0);
+//                                launcher2.set(0);
+//                                revolverState.set(0, "EMPTY");
+//                                revolverState.set(1, "EMPTY");
+//                                revolverState.set(2, "EMPTY");
+//                                shootTimer = Double.MAX_VALUE;
+//                            }
+//                        }
+//                        break;
+//                    }
+//
+//                    case shootIdle:
+//                    default: {
+//                        // Safety – shouldn’t sit here during an active cycle
+//                        shootLoop = false;
+//                        launcher1.set(0);
+//                        launcher2.set(0);
+//
+//                        break;
+//                    }
+//
+//                }
+//                prevCircle = currCircle;
+//            }
+//        }
+//
+//    }
 
 
 
