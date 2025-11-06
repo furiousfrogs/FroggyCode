@@ -181,12 +181,6 @@ public class FROGTONOMOUS extends CommandOpMode {
                 .setLinearHeadingInterpolation(Math.toRadians(-180), Math.toRadians(-75))
                 .build();
     }
-    public void oneRotationRevolver(boolean left) {
-        revolverPID.setTolerance(0);
-        revolverPID.setPIDF(Globals.revolver.revolverKP, Globals.revolver.revolverKI, Globals.revolver.revolverKD, Globals.revolver.revolverKF);
-        previousRevolverPosition = revolverTarget;
-        revolverTarget += left ? +Globals.revolver.oneRotation : -Globals.revolver.oneRotation; //TODO Chekc if this is right
-    }
     private void findPattern() {
         List<AprilTagDetection> code = tagProcessor.getDetections();
         if (code != null && !code.isEmpty()) {
@@ -223,13 +217,7 @@ public class FROGTONOMOUS extends CommandOpMode {
 
             revolverPID = new PIDController(Globals.revolver.revolverKP, Globals.revolver.revolverKI, Globals.revolver.revolverKD);
 
-            colourSensor = hardwareMap.get(NormalizedColorSensor.class,"colour1");
-            colourSensor.setGain(2.0f);
             distanceSensor = hardwareMap.get(DistanceSensor.class, "colour1");
-
-            secondColourSensor = hardwareMap.get(NormalizedColorSensor.class,"colour2");
-            secondDistanceSensor = hardwareMap.get(DistanceSensor.class, "colour2");
-            secondColourSensor.setGain(2.0f);
         }
         public void intakeon() {
             intake.set(Globals.intakePower);
@@ -237,130 +225,11 @@ public class FROGTONOMOUS extends CommandOpMode {
         public void intakeoff() {
             intake.set(0);
         }
-        public String senseColour(){//1 ppg 2 pgp 3 gpp
-            if (distanceSensor.getDistance(DistanceUnit.CM) > 3 && secondDistanceSensor.getDistance(DistanceUnit.CM) > 3) return "EMPTY";
 
-            NormalizedRGBA rgba1 = colourSensor.getNormalizedColors();
-            Color.colorToHSV(rgba1.toColor(), hsv1); // hsv[0]=H, hsv[1]=S, hsv[2]=V
+        public void sort(){
 
-            NormalizedRGBA rgba2 = secondColourSensor.getNormalizedColors();
-            Color.colorToHSV(rgba2.toColor(), hsv2); // hsv[0]=H, hsv[1]=S, hsv[2]=V
-            if ( (hsv1[0] >= 150 && hsv1[0] <= 180 &&
-                    hsv1[1] >= 0.75 && hsv1[1] <= 1.00 &&
-                    hsv1[2] > 0.00 && hsv1[2] < 0.3) ||
-
-                    (hsv2[0] >= 150 && hsv2[0] <= 180 &&
-                            hsv2[1] >= 0.75 && hsv2[1] <= 1.00 &&
-                            hsv2[2] > 0.00 && hsv2[2] < 0.3)) {
-                return "G";
-            } // if colour one or colour two return green/purpler
-
-            if ((hsv1[0] >= 220 && hsv1[0] <= 250 &&
-                    hsv1[1] >= 0.40 && hsv1[1] <= 0.60 &&
-                    hsv1[2] > 0.00 && hsv1[2] < 0.3) ||
-
-                    (hsv2[0] >= 220 && hsv2[0] <= 250 &&
-                            hsv2[1] >= 0.40 && hsv2[1] <= 0.60 &&
-                            hsv2[2] > 0.00 && hsv2[2] < 0.3)) {
-                return "P";
-            }
-            return "EMPTY";
         }
-        private String[] desiredByPattern() {
-            // Order: [top (0), left (1), right (2)]
-            switch (currentPattern) {
-                case PPG: return new String[]{"P","P","G"};
-                case PGP: return new String[]{"P","G","P"};
-                case GPP: return new String[]{"G","P","P"};
-                default:  return new String[]{"EMPTY","EMPTY","EMPTY"};
-            }
-        }
-        public void colorsort() {
-            revolverPID.setTolerance(0);
-            revolverPID.setPIDF(Globals.revolver.revolverKP, Globals.revolver.revolverKI, Globals.revolver.revolverKD, Globals.revolver.revolverKF);
-            revolverPower = revolverPID.calculate(revolver.getCurrentPosition(), revolverTarget);
-            revolver.set(revolverPower);
 
-            if (!revolverReady &&
-                    Math.abs(Math.abs(revolver.getCurrentPosition() - previousRevolverPosition) - Globals.revolver.oneRotation) < 10) {
-                revolverReady = true;
-            }
-
-            int filled = revolverState.size() - Collections.frequency(revolverState, "EMPTY");
-            String color = senseColour();
-            if (patternDetected) {
-                if (!"EMPTY".equals(color) && revolverReady) {
-
-                    String wantTop = desiredByPattern()[0];
-
-                    switch (filled) {
-                        case 0: {
-                            // put new ball into slot 2, then ALWAYS rotate it to slot 1
-                            revolverReady = false;
-                            revolverState.set(2, color);
-
-                            oneRotationRevolver(false);
-                            Collections.rotate(revolverState, -1);
-
-                            previousRotation = false;
-                            break;
-                        }
-
-                        case 1: {
-                            //same idea just move it into slot 1
-                            revolverReady = false;
-                            revolverState.set(2, color);
-
-                            oneRotationRevolver(false);
-                            Collections.rotate(revolverState, -1);
-                            previousRotation = false;
-
-                            break;
-                        }
-                        case 2: {
-                            revolverState.set(2, color);
-
-                            if (color.equals(wantTop)) {
-                                // new ball IS the one we want on top → bring index 2 -> index 0
-                                revolverReady = false;
-                                oneRotationRevolver(true);
-                                Collections.rotate(revolverState, 1);
-                                previousRotation = true;
-
-                            } else if (revolverState.get(0).equals(wantTop)) {
-                                // already on top → do nothing
-                            } else if (revolverState.get(1).equals(wantTop)) {
-                                // we have it in slot 1 → bring 1 -> 0
-                                revolverReady = false;
-                                oneRotationRevolver(false);
-                                Collections.rotate(revolverState, -1);
-                                previousRotation = false;
-                            } else {
-
-                            }
-
-                            //describes whether to launch clockwise or counter clockwise in launch 3
-                            String[] want = desiredByPattern();
-                            String secondBall = want[1];
-                            if (revolverState.get(1).equals(secondBall)) {
-                                shootCounterClockwise = false;
-                            } else if (revolverState.get(2).equals(secondBall)) {
-                                shootCounterClockwise = true;
-                            }
-
-
-                            // now we are full
-                            revolverReadytoLaunch = true;
-                            break;
-                        }
-                        case 3:
-                        default: {
-                            break;
-                        }
-                    }
-                }
-            }
-        }
     }
     public static class froggyeat extends CommandBase {
         private final intakesubsys intake;
@@ -376,7 +245,7 @@ public class FROGTONOMOUS extends CommandOpMode {
 
         @Override
         public void execute() {
-            intake.colorsort();
+            //intake.colorsort();
         }
 
         @Override
@@ -384,7 +253,6 @@ public class FROGTONOMOUS extends CommandOpMode {
             intake.intakeoff();
         }
     }
-
     public class outtakesubsys extends SubsystemBase {
         private Motor launcher1, launcher2, revolver;
         public outtakesubsys(HardwareMap map) {
@@ -529,9 +397,6 @@ public class FROGTONOMOUS extends CommandOpMode {
 
         @Override
         public void execute() {
-            outtake.calculateRPM();
-            outtake.launcherawe();
-            outtake.autoAimServoMode();
         }
 
         @Override
@@ -552,7 +417,7 @@ public class FROGTONOMOUS extends CommandOpMode {
     public void initialize() {
 
         follower = Constants.createFollower(hardwareMap);
-        follower.setStartingPose(new Pose(19.300, 119.350));
+        follower.setStartingPose(new Pose(19.300, 119.350, -36));
         telemetry.update();
 
         outtakesubsys sub = new outtakesubsys(hardwareMap);
@@ -561,8 +426,7 @@ public class FROGTONOMOUS extends CommandOpMode {
         //findPattern();
 
 
-        SequentialCommandGroup froggyroute = new SequentialCommandGroup(
-                // Score preload
+        SequentialCommandGroup PPG = new SequentialCommandGroup(
                 new FollowPathCommand(follower, shoot3),
 
                 new WaitCommand(1000), // Wait 1 second
@@ -571,13 +435,8 @@ public class FROGTONOMOUS extends CommandOpMode {
 //                new ParallelDeadlineGroup(
 //                        new FollowPathCommand(follower, eat3),
 //                        new froggyeat()
-//                )
-
-
-
-//
         );
-        schedule(froggyroute);
+        schedule(PPG);
     }
 
     @Override
