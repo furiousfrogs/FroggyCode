@@ -26,7 +26,7 @@ public class Globals {
         public static float revolverKD= 0.0003F;
         public static float revolverKI = 0F;
         public static float revolverKF = 0;
-        public static float revolverNudge = 3.5F;
+        public static float revolverNudge = 0.3F;
     }
 
     @Config

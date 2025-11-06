@@ -230,7 +230,7 @@ public class twoDriverScrimTele extends OpMode {
 
     public void launch3() {
         gamepadEx2.readButtons();
-        revolverTarget += (int) ((gamepadEx2.getTrigger(GamepadKeys.Trigger.RIGHT_TRIGGER) - gamepadEx2.getTrigger(GamepadKeys.Trigger.LEFT_TRIGGER)) * Globals.revolver.revolverNudge);
+        revolver.set(((gamepadEx2.getTrigger(GamepadKeys.Trigger.RIGHT_TRIGGER) - gamepadEx2.getTrigger(GamepadKeys.Trigger.LEFT_TRIGGER)) * Globals.revolver.revolverNudge));
 
         if (revolverReadytoLaunch) {
             // Arm spinner & intake only while we are in a shooting cycle
@@ -318,7 +318,11 @@ public class twoDriverScrimTele extends OpMode {
                             set.turnToAngle(Globals.launcher.upset);
                             launcherReady = false;
                             shotsFired++;
-                            shootTimer = globalTimer.seconds() + 1;
+                            if (!shootAction) {
+                                shootAction = true;
+                                shootTimer = globalTimer.seconds() + 1;
+                            }
+
                             if (shotsFired < 3) {
                                 // Prepare next round: rotate again for the next chamber
                                 currentShooting = shooting.shootRotating;
