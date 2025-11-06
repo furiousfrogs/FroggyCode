@@ -550,14 +550,15 @@ public class FROGTONOMOUS extends CommandOpMode {
 
     @Override
     public void initialize() {
-        super.reset();
 
         follower = Constants.createFollower(hardwareMap);
         follower.setStartingPose(new Pose(19.300, 119.350));
+        telemetry.update();
+
         outtakesubsys sub = new outtakesubsys(hardwareMap);
         register(sub);
         buildPaths();
-        findPattern();
+        //findPattern();
 
 
         SequentialCommandGroup froggyroute = new SequentialCommandGroup(
@@ -582,6 +583,7 @@ public class FROGTONOMOUS extends CommandOpMode {
     @Override
     public void run() {
         super.run();
+        follower.update();
 
         telemetryData.addData("X", follower.getPose().getX());
         telemetryData.addData("Y", follower.getPose().getY());

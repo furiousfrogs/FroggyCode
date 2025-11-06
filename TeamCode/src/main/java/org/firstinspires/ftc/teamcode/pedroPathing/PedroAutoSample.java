@@ -110,42 +110,46 @@ public class PedroAutoSample extends CommandOpMode {
      */
     @Override
     public void initialize() {
-        super.reset();
+        //super.reset();
 
         // Initialize follower
         follower = Constants.createFollower(hardwareMap);
         follower.setStartingPose(startPose);
+
+        telemetry.addData("Follower good", follower != null);
+        telemetry.update();
+
         buildPaths();
 
         // Create the autonomous command sequence
         SequentialCommandGroup autonomousSequence = new SequentialCommandGroup(
                 // Score preload
                 new FollowPathCommand(follower, scorePreload),
-                openOuttakeClaw(),
+                //openOuttakeClaw(),
                 new WaitCommand(1000), // Wait 1 second
 
                 // First pickup cycle
                 new FollowPathCommand(follower, grabPickup1).setGlobalMaxPower(0.5), // Sets globalMaxPower to 50% for all future paths
                                                                                      // (unless a custom maxPower is given)
-                grabSample(),
+                //grabSample(),
                 new FollowPathCommand(follower, scorePickup1),
-                scoreSample(),
+                //scoreSample(),
 
                 // Second pickup cycle
                 new FollowPathCommand(follower, grabPickup2),
-                grabSample(),
+                //grabSample(),
                 new FollowPathCommand(follower, scorePickup2, 1.0), // Overrides maxPower to 100% for this path only
-                scoreSample(),
+                //scoreSample(),
 
                 // Third pickup cycle
                 new FollowPathCommand(follower, grabPickup3),
-                grabSample(),
+                //grabSample(),
                 new FollowPathCommand(follower, scorePickup3),
-                scoreSample(),
+                //scoreSample(),
 
                 // Park
-                new FollowPathCommand(follower, park, false), // park with holdEnd false
-                level1Ascent()
+                new FollowPathCommand(follower, park, false) // park with holdEnd false
+                //level1Ascent()
         );
 
         // Schedule the autonomous sequence
@@ -167,6 +171,7 @@ public class PedroAutoSample extends CommandOpMode {
         telemetryData.addData("X", follower.getPose().getX());
         telemetryData.addData("Y", follower.getPose().getY());
         telemetryData.addData("Heading", follower.getPose().getHeading());
+        telemetry.addLine("Auto started!");
         telemetryData.update();
     }
 }
