@@ -214,7 +214,7 @@ public class twoDriverScrimTele extends OpMode {
     @Override
     public void loop() { // TODO add revolver sequence logic
         calculateRPM();
-        launcherawe();
+
         autoAimServoMode();      // now only reads/controls; does NOT rebuild vision
         doTelemetry();
         intake();
@@ -257,12 +257,10 @@ public class twoDriverScrimTele extends OpMode {
                 set.turnToAngle(Globals.launcher.downset);
                 return;
             } else  {
-                if (startPressed && !prevCross) {
-                    shootLoop = false;
-                }
+
 
                 boolean RPMdip = Math.abs(RPM - previousRPM) > Globals.launcher.RPMDipThreshold;
-                if (set.getAngle() == Globals.launcher.upset && RPMdip) {
+                if (RPMdip) {
                     set.turnToAngle(Globals.launcher.downset);
                     launcherReady = true;
                 }
@@ -294,6 +292,7 @@ public class twoDriverScrimTele extends OpMode {
 
                     case shootEjecting: {
 
+
                         if (!ejectAction && (currCircle) && launcherReady) {
                             eject.turnToAngle(Globals.pushServo.eject);
 
@@ -319,6 +318,7 @@ public class twoDriverScrimTele extends OpMode {
                             set.turnToAngle(Globals.launcher.upset);
                             launcherReady = false;
                             shotsFired++;
+                            shootTimer = globalTimer.seconds() + 1;
                             if (shotsFired < 3) {
                                 // Prepare next round: rotate again for the next chamber
                                 currentShooting = shooting.shootRotating;
@@ -328,15 +328,19 @@ public class twoDriverScrimTele extends OpMode {
 
                                 // (keep launcher + intake running during the burst)
                             } else {
-                                // Burst done — shut down
-                                currentShooting = shooting.shootIdle;
-                                shootLoop = false;
-                                revolverReadytoLaunch = false;
-                                launcher1.set(0);
-                                launcher2.set(0);
-                                revolverState.set(0, "EMPTY");
-                                revolverState.set(1, "EMPTY");
-                                revolverState.set(2, "EMPTY");
+
+                                if (globalTimer.seconds() > shootTimer) {
+                                    // Burst done — shut down
+                                    currentShooting = shooting.shootIdle;
+                                    shootLoop = false;
+                                    revolverReadytoLaunch = false;
+                                    launcher1.set(0);
+                                    launcher2.set(0);
+                                    revolverState.set(0, "EMPTY");
+                                    revolverState.set(1, "EMPTY");
+                                    revolverState.set(2, "EMPTY");
+                                    shootTimer = Double.MAX_VALUE;
+                                }
 
                             }
                         }
@@ -449,7 +453,7 @@ public class twoDriverScrimTele extends OpMode {
         int filled = revolverState.size() - Collections.frequency(revolverState, "EMPTY");
         String color = senseColour();  // "P", "G", or "EMPTY"
 
-        if (gamepadEx2.getButton(GamepadKeys.Button.SQUARE) && patternDetected) {
+        if (patternDetected) {
             if (!"EMPTY".equals(color) && revolverReady) {
 
                 String wantTop = desiredByPattern()[0];
@@ -571,19 +575,18 @@ public class twoDriverScrimTele extends OpMode {
         ff.setF(Globals.launcher.flykF);
         turretPIDF.setPIDF(Globals.turret.turretKP, Globals.turret.turretKI, Globals.turret.turretKD, Globals.turret.turretKF);
 
-        boolean pad = gamepadEx2.getButton(GamepadKeys.Button.TOUCHPAD);
-        if (pad && !prevPad) {
-            autoAimEnabled = !autoAimEnabled;
-            turretPIDF.reset();
-        }
-        prevPad = pad;
+//        boolean pad = gamepadEx2.getButton(GamepadKeys.Button.TOUCHPAD);
+//        if (pad && !prevPad) {
+//            autoAimEnabled = !autoAimEnabled;
+//        }
+//        prevPad = pad;
 
         boolean lb = gamepadEx2.getButton(GamepadKeys.Button.LEFT_BUMPER);
         boolean rb = gamepadEx2.getButton(GamepadKeys.Button.RIGHT_BUMPER);
 
 
         List<AprilTagDetection> detections = tagProcessor.getDetections();
-        if (autoAimEnabled && !lb ^ rb) {
+        if (!lb ^ rb) {
             visionPortal.setProcessorEnabled(tagProcessor, true);
 
             AprilTagDetection chosen = null;
@@ -640,28 +643,6 @@ public class twoDriverScrimTele extends OpMode {
 
         feedforwardPower = ff.calculate(RPM, power);
         rotate.turnToAngle(turretTarget);
-
-    }
-
-
-    private void launcherawe() {
-
-
-
-
-        List<AprilTagDetection> detections = tagProcessor.getDetections();
-        if (detections != null && !detections.isEmpty()) {
-            for (AprilTagDetection d : detections) {
-
-
-            }
-        } else {
-
-
-        }
-
-
-
 
     }
 
