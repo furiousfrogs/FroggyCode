@@ -64,17 +64,14 @@ public class FROGTONOMOUS extends CommandOpMode {
     private boolean aligned = false;
     private boolean patternDetected = false;
     private boolean autoAimEnabled = true;
+    private boolean revolverReady = true;
     private boolean prevTri = false;
     private boolean previousRotation;
     private boolean revolverReadytoLaunch = false;
     private boolean clockwise;
     private int filled;
     double revolverSetupTimer = Double.MAX_VALUE;
-    private boolean revolverReady = true;
-    private boolean shootLoop = false;
-    public boolean rotating = false;
-    private boolean ejectAction = false;
-    public boolean shootAction = false;
+    private boolean revolverting = false;
     private ElapsedTime globalTimer = new ElapsedTime();
     private double ejectTimer;
     private double shootTimer;
@@ -181,6 +178,11 @@ public class FROGTONOMOUS extends CommandOpMode {
                 .setLinearHeadingInterpolation(Math.toRadians(-180), Math.toRadians(-75))
                 .build();
     }
+
+    public void onerotation(boolean left) {
+        previousRevolverPosition = revolverTarget;
+        revolverTarget += left? +Globals.revolver.oneRotation : -Globals.revolver.oneRotation;
+    }
     private void findPattern() {
         List<AprilTagDetection> code = tagProcessor.getDetections();
         if (code != null && !code.isEmpty()) {
@@ -215,7 +217,8 @@ public class FROGTONOMOUS extends CommandOpMode {
             revolver.setRunMode(Motor.RunMode.RawPower);
             revolver.resetEncoder();
 
-            revolverPID = new PIDController(Globals.revolver.revolverKP, Globals.revolver.revolverKI, Globals.revolver.revolverKD);
+            revolverPID.setTolerance(0);
+            revolverPID.setPIDF(Globals.revolver.revolverKP, Globals.revolver.revolverKI, Globals.revolver.revolverKD, Globals.revolver.revolverKF);
 
             distanceSensor = hardwareMap.get(DistanceSensor.class, "colour1");
         }
@@ -226,9 +229,24 @@ public class FROGTONOMOUS extends CommandOpMode {
             intake.set(0);
         }
 
-        public void sort(){
+        public void sort(boolean left){
+            revolverPower = revolverPID.calculate(revolver.getCurrentPosition(), revolverTarget);
+            revolver.set(revolverPower);
 
+            if (distanceSensor.getDistance(DistanceUnit.CM) < 2 && !revolverting){
+                revolverting = true;
+                onerotation(true);
+
+                if (!revolverReady && Math.abs(Math.abs(revolver.getCurrentPosition() - previousRevolverPosition) - Globals.revolver.oneRotation) < 10) {
+                    revolverting = false;//detect if the rotation is done
+                }
+
+
+
+            }
         }
+
+
 
     }
     public static class froggyeat extends CommandBase {
