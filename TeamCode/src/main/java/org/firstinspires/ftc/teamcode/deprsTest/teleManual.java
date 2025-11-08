@@ -6,6 +6,9 @@ import android.graphics.Color;
 
 import com.acmerobotics.dashboard.FtcDashboard;
 import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
+import com.qualcomm.hardware.limelightvision.LLResult;
+import com.qualcomm.hardware.limelightvision.LLResultTypes;
+import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DistanceSensor;
@@ -98,8 +101,7 @@ private enum pattern {
 
 private VisionPortal visionPortal;
 private AprilTagProcessor tagProcessor;
-
-
+private Limelight3A limelight;
 private GamepadEx gamepadEx1, gamepadEx2;
 
 
@@ -179,6 +181,9 @@ public void init() {
     eject.setInverted(true);
     eject.turnToAngle(Globals.pushServo.defualt);
 
+    limelight = hardwareMap.get(Limelight3A.class, "limelight");
+    limelight.setPollRateHz(20);
+    limelight.pipelineSwitch(0);
 }
 
 @Override
@@ -375,21 +380,34 @@ public void intake() {
 
 
 private void findPattern() {
-    if (gamepadEx2.getButton(GamepadKeys.Button.OPTIONS)) {
-        List<AprilTagDetection> code = tagProcessor.getDetections();
-        if (code != null && !code.isEmpty()) {
-            code.sort(Comparator.comparingDouble((AprilTagDetection d) -> d.decisionMargin).reversed());
-            AprilTagDetection best = code.get(0);
+    if (gamepadEx2.getButton(GamepadKeys.Button.OPTIONS) && !patternDetected) {
+        limelight.start();
+        LLResult result = limelight.getLatestResult();
+        if (result != null && result.isValid()) {
 
-            if (best.id == 21) {
-                currentPattern = pattern.GPP; patternDetected = true;
-            } else if (best.id == 22) {
-                currentPattern = pattern.PGP; patternDetected = true;
-            } else if (best.id == 23) {
-                currentPattern = pattern.PPG; patternDetected = true;
-            } else {
-                patternDetected = false;
-                telemetry.addLine("NO PATTERN FOUND");
+            List<LLResultTypes.FiducialResult> tags = result.getFiducialResults();
+            if (!tags.isEmpty()) {
+                for (LLResultTypes.FiducialResult tag : tags) {
+                    int id = tag.getFiducialId();
+                    if (id == 21) {
+                        currentPattern = teleManual.pattern.GPP;
+                        patternDetected = true;
+                        limelight.stop();
+                    } else if (id == 22) {
+                        currentPattern = teleManual.pattern.PGP;
+                        patternDetected = true;
+                        limelight.stop();
+                    } else if (id == 23) {
+                        currentPattern = teleManual.pattern.PPG;
+                        patternDetected = true;
+                        limelight.stop();
+                    } else {
+                        patternDetected = false;
+                        telemetry.addLine("NO PATTERN FOUND");
+                    }
+
+
+                }
             }
         }
     }
