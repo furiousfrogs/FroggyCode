@@ -59,7 +59,7 @@ public class Globals {
         public static float eject = 0F;
     }
 
-
+    public static float slowdown = 0.6F;
     public static float revolverPower = 0;
 
 

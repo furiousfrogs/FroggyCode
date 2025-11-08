@@ -35,8 +35,8 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
-@TeleOp(name = "Tele manual")
-public class teleManual extends OpMode {
+@TeleOp(name = "Blue")
+public class teleManualBlue extends OpMode {
 
 // ----- booleans/toggles
 private boolean aligned = false;
@@ -390,15 +390,15 @@ private void findPattern() {
                 for (LLResultTypes.FiducialResult tag : tags) {
                     int id = tag.getFiducialId();
                     if (id == 21) {
-                        currentPattern = teleManual.pattern.GPP;
+                        currentPattern = pattern.GPP;
                         patternDetected = true;
                         limelight.stop();
                     } else if (id == 22) {
-                        currentPattern = teleManual.pattern.PGP;
+                        currentPattern = pattern.PGP;
                         patternDetected = true;
                         limelight.stop();
                     } else if (id == 23) {
-                        currentPattern = teleManual.pattern.PPG;
+                        currentPattern = pattern.PPG;
                         patternDetected = true;
                         limelight.stop();
                     } else {
@@ -456,12 +456,9 @@ private void autoAimServoMode() {
         double chosenBearing = 0.0;
         if (detections != null && !detections.isEmpty()) {
             for (AprilTagDetection d : detections) {
-                if (d != null && d.metadata != null && d.ftcPose != null) {
+                if (d != null && d.metadata != null && d.ftcPose != null && d.id == 24) {//BLUE IS 20 RED IS 24
                     distance = d.ftcPose.range;
-                    power = (2547.5 * pow(2.718281828459045, (0.0078 * distance)))/Globals.launcher.launcherTransformation; // here
-                }
-
-                if (d.ftcPose != null) {
+                    power = (2547.5 * pow(2.718281828459045, (0.0078 * distance))) / Globals.launcher.launcherTransformation; // here
                     double bearing = d.ftcPose.bearing;
                     if (chosen == null || Math.abs(bearing) < Math.abs(chosenBearing)) {
                         chosen = d;
@@ -521,7 +518,7 @@ private void drive(){
     double y = -gamepad1.left_stick_y; // Remember, Y stick value is reversed
     double x = gamepad1.left_stick_x * 1.1; // Counteract imperfect strafing
     double rx = gamepad1.right_trigger - gamepad1.left_trigger;
-    double slowdown = 0.6;
+    double slowdown = Globals.slowdown;
     if (Math.abs(y)<0.2){
         y=0.0;
     }

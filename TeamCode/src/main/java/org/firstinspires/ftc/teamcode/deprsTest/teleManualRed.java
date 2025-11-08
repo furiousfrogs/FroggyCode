@@ -6,39 +6,37 @@ import android.graphics.Color;
 
 import com.acmerobotics.dashboard.FtcDashboard;
 import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
+import com.qualcomm.hardware.limelightvision.LLResult;
+import com.qualcomm.hardware.limelightvision.LLResultTypes;
+import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
-
 import com.qualcomm.robotcore.hardware.DistanceSensor;
 import com.qualcomm.robotcore.hardware.NormalizedColorSensor;
 import com.qualcomm.robotcore.hardware.NormalizedRGBA;
 import com.qualcomm.robotcore.util.ElapsedTime;
-import com.seattlesolvers.solverslib.controller.PIDController;
 import com.seattlesolvers.solverslib.controller.PIDFController;
 import com.seattlesolvers.solverslib.gamepad.GamepadEx;
 import com.seattlesolvers.solverslib.gamepad.GamepadKeys;
 import com.seattlesolvers.solverslib.hardware.SimpleServo;
 import com.seattlesolvers.solverslib.hardware.motors.Motor;
+
 import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
+import org.firstinspires.ftc.teamcode.hardware.Globals;
 import org.firstinspires.ftc.vision.VisionPortal;
 import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
 import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
 
-import org.firstinspires.ftc.teamcode.hardware.Globals;
-
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
-import java.util.Collections;
-import java.util.Objects;
-
-
-@TeleOp(name = "Final Teleop 2 Drivers")
-public class twoDriverScrimTele extends OpMode {
+@TeleOp(name = "Red")
+public class teleManualRed extends OpMode {
 
     // ----- booleans/toggles
     private boolean aligned = false;
@@ -47,39 +45,24 @@ public class twoDriverScrimTele extends OpMode {
     private boolean prevPad = false;
     private boolean previousRotation;
     private boolean revolverReadytoLaunch = false;
-    private boolean clockwise;
     private int filled;
-    private double revolverSetupTimer = Double.MAX_VALUE;
     private boolean revolverReady = true;
-    private boolean launcherReady = true;
-    private boolean prevCross = false;
+
 
 
     // ----- action booleans -----
     private boolean shootLoop = false;
-    public boolean rotating = false;
-    private boolean ejectAction = false;
-    public boolean shootAction = false;
-
-    // ----- timers -----
-    private ElapsedTime globalTimer = new ElapsedTime();
-    private double ejectTimer;
-    private double shootTimer;
-    private double rotateTimer;
 
     // ----- doubles -----
     private double feedforwardPower = 0;
     private double distance;
     private double power;
-    private int shotsFired = 0;
     private double previousRevolverPosition;
     private double previousRPM = 0;
 
 
     // ----- pid's -----
     private PIDFController turretPIDF, ff, revolverPID;
-
-
     // ----- Motors, servos, sensors -----
     private Motor launcher1, launcher2, revolver,fl,bl,fr,br, intake;
     private SimpleServo set, rotate, eject;
@@ -92,7 +75,6 @@ public class twoDriverScrimTele extends OpMode {
     private int lastPosition;
 
     // ----- turret -----
-    private double bearing = 0.0;
     double turretTarget = 150F; // inital turret angle
 
     // ----- revolver -----
@@ -112,27 +94,17 @@ public class twoDriverScrimTele extends OpMode {
     private enum pattern {
         PPG,
         PGP,
-        GPP
-    } pattern currentPattern = pattern.PPG;
-    private enum shooting {
-        shootIdle,
-        shootRotating,
-        shootEjecting,
-        shootFire
-    } shooting currentShooting = shooting.shootIdle;
+        GPP,
+        noPattern
+    } pattern currentPattern = pattern.noPattern;
 
-    // ----- misc -----
-    private FtcDashboard dashboard = FtcDashboard.getInstance();
 
     private VisionPortal visionPortal;
     private AprilTagProcessor tagProcessor;
-
-    //--gamepad--
-    private boolean prevCircle = false;
-    private boolean currCircle = false;
+    private Limelight3A limelight;
     private GamepadEx gamepadEx1, gamepadEx2;
 
-    private boolean inCycle = false;
+
     @Override
     public void init() {
         // ----- drive -----
@@ -209,6 +181,9 @@ public class twoDriverScrimTele extends OpMode {
         eject.setInverted(true);
         eject.turnToAngle(Globals.pushServo.defualt);
 
+        limelight = hardwareMap.get(Limelight3A.class, "limelight");
+        limelight.setPollRateHz(20);
+        limelight.pipelineSwitch(0);
     }
 
     @Override
@@ -222,289 +197,37 @@ public class twoDriverScrimTele extends OpMode {
 
         findPattern();
         ejection();
-
+        rotate();
+        launch();
+        gamepadEx2.readButtons();
 
 
     }
 
-
-//    public void launch3() {
-//        gamepadEx2.readButtons();
-//        revolver.set(((gamepadEx2.getTrigger(GamepadKeys.Trigger.RIGHT_TRIGGER) - gamepadEx2.getTrigger(GamepadKeys.Trigger.LEFT_TRIGGER)) * Globals.revolver.revolverNudge));
-//
-//        if (revolverReadytoLaunch) {
-//            // Arm spinner & intake only while we are in a shooting cycle
-//            boolean startPressed = gamepadEx2.getButton(GamepadKeys.Button.CROSS);
-//
-//
-//            // Start a new cycle
-//            if (startPressed && !prevCross && !shootLoop) {
-//
-//                shootLoop = true;
-//                currentShooting = shooting.shootEjecting;
-//                previousRevolverPosition = revolverTarget;
-//                shootAction = false;
-//                ejectAction = false;
-//                rotating = false;
-//                shotsFired = 0;
-//
-//            }
-//            if (!shootLoop) {
-//                // idle; ensure things are safe
-//                launcher1.set(0);
-//                launcher2.set(0);
-//
-//                set.turnToAngle(Globals.launcher.downset);
-//                return;
-//            } else  {
-//
-//
-//                boolean RPMdip = Math.abs(RPM - previousRPM) > Globals.launcher.RPMDipThreshold;
-//                if (RPMdip) {
-//                    set.turnToAngle(Globals.launcher.downset);
-//                    launcherReady = true;
-//                }
-//                currCircle = gamepadEx2.getButton(GamepadKeys.Button.CIRCLE);
-//
-//                launcher1.set(feedforwardPower);
-//                launcher2.set(feedforwardPower);
-//
-//                // shooting cycle state machine
-//                switch (currentShooting) {
-//                    case shootRotating: {
-//                        shootTimer = Double.MAX_VALUE;
-//                        if (!currCircle && prevCircle) { // POTENTIAL ERROR CUZ THE BUTTON COULD CARRY OVER
-//                            if (!rotating && shotsFired > 0) {
-//                                // if true -> +1 -> 2->0 (counterclockwise)
-//                                oneRotationRevolver(shootCounterClockwise);
-//                                rotating = true;
-//                                currentShooting = shooting.shootEjecting;
-//                            } else if (!rotating && shotsFired == 0) {
-//                                rotating = true;
-//                                previousRevolverPosition = revolverTarget;
-//                                currentShooting = shooting.shootEjecting;
-//
-//                            }
-//                        }
-//
-//                        break;
-//                    }
-//
-//                    case shootEjecting: {
-//
-//
-//                        if (!ejectAction && (currCircle) && launcherReady) {
-//                            eject.turnToAngle(Globals.pushServo.eject);
-//
-//
-//                            ejectAction = true;
-//                        }
-//
-//                        // retract when driver releases the button, then advance state
-//                        if (ejectAction && (!currCircle && prevCircle) && launcherReady) {
-//                            eject.turnToAngle(Globals.pushServo.defualt);
-//                            currentShooting = shooting.shootFire;
-//                        }
-//                        // hold push until timer expires, then retract
-//
-//                        break;
-//                    }
-//
-//                    case shootFire: {
-//                        // wait for spin-up and aim, then flick
-//                        boolean atSpeed = Math.abs(power - RPM) < Globals.launcher.launcherTol;
-//
-//                        if (atSpeed && aligned) {
-//                            set.turnToAngle(Globals.launcher.upset);
-//                            launcherReady = false;
-//                            shotsFired++;
-//                            if (!shootAction) {
-//                                shootAction = true;
-//                                shootTimer = globalTimer.seconds() + 1;
-//                            }
-//
-//                            if (shotsFired < 3) {
-//                                // Prepare next round: rotate again for the next chamber
-//                                currentShooting = shooting.shootRotating;
-//                                ejectAction = false;
-//                                rotating = false;
-//
-//
-//                                // (keep launcher + intake running during the burst)
-//                            } else {
-//
-//                                if (globalTimer.seconds() > shootTimer) {
-//                                    // Burst done — shut down
-//                                    currentShooting = shooting.shootIdle;
-//                                    shootLoop = false;
-//                                    revolverReadytoLaunch = false;
-//                                    launcher1.set(0);
-//                                    launcher2.set(0);
-//                                    revolverState.set(0, "EMPTY");
-//                                    revolverState.set(1, "EMPTY");
-//                                    revolverState.set(2, "EMPTY");
-//                                    shootTimer = Double.MAX_VALUE;
-//                                }
-//
-//                            }
-//                        }
-//                        break;
-//                    }
-//
-//                    case shootIdle:
-//                    default: {
-//                        // Safety – shouldn’t sit here during an active cycle
-//                        shootLoop = false;
-//                        launcher1.set(0);
-//                        launcher2.set(0);
-//
-//                        break;
-//                    }
-//
-//                }
-//                prevCircle = currCircle;
-//            }
-//            prevCross = startPressed;
-//        }
-//
-//    }
-
-//    public void launch3() {
-//        gamepadEx2.readButtons();
-//        revolver.set(((gamepadEx2.getTrigger(GamepadKeys.Trigger.RIGHT_TRIGGER) - gamepadEx2.getTrigger(GamepadKeys.Trigger.LEFT_TRIGGER)) * Globals.revolver.revolverNudge));
-//
-//        if (revolverReadytoLaunch) {
-//            // Arm spinner & intake only while we are in a shooting cycle
-//            boolean startPressed = gamepadEx2.getButton(GamepadKeys.Button.CROSS);
-//
-//            // Start a new cycle
-//            if (startPressed && !shootLoop) {
-//
-//                shootLoop = true;
-//                currentShooting = shooting.shootRotating;
-//
-//                shootAction = false;
-//                ejectAction = false;
-//                rotating = false;
-//                shotsFired = 0;
-//
-//            }
-//            if (!shootLoop) {
-//                // idle; ensure things are safe
-//                launcher1.set(0);
-//                launcher2.set(0);
-//
-//                set.turnToAngle(Globals.launcher.downset);
-//                return;
-//            }
-//            if (shootLoop) {
-//                currCircle = gamepadEx2.getButton(GamepadKeys.Button.CIRCLE);
-//
-//                launcher1.set(feedforwardPower);
-//                launcher2.set(feedforwardPower);
-//
-//                // shooting cycle state machine
-//                switch (currentShooting) {
-//                    case shootRotating: {
-//                        shootTimer = Double.MAX_VALUE;
-//                        if (!currCircle && prevCircle) { // POTENTIAL ERROR CUZ THE BUTTON COULD CARRY OVER
-//                            if (!rotating && shotsFired > 0) {
-//                                // if true -> +1 -> 2->0 (counterclockwise)
-//                                oneRotationRevolver(shootCounterClockwise);
-//                                rotating = true;
-//                                currentShooting = shooting.shootEjecting;
-//                            } else if (!rotating && shotsFired == 0) {
-//                                rotating = true;
-//                                previousRevolverPosition = revolverTarget;
-//                                currentShooting = shooting.shootEjecting;
-//
-//                            }
-//                        }
-//
-//                        break;
-//                    }
-//
-//                    case shootEjecting: {
-//                        if (!ejectAction && (currCircle)) {
-//                            eject.turnToAngle(Globals.pushServo.eject);
-//                            ejectAction = true;
-//                        }
-//
-//                        // retract when driver releases the button, then advance state
-//                        if (ejectAction && (!currCircle && prevCircle)) {
-//                            eject.turnToAngle(Globals.pushServo.defualt);
-//                            currentShooting = shooting.shootFire;
-//                        }
-//                        // hold push until timer expires, then retract
-//
-//                        break;
-//                    }
-//
-//                    case shootFire: {
-//                        // wait for spin-up and aim, then flick
-//                        boolean atSpeed = Math.abs(power - RPM) < Globals.launcher.launcherTol;
-//
-//                        if (atSpeed && aligned && shootTimer > globalTimer.seconds() && !shootAction) {
-//                            set.turnToAngle(Globals.launcher.upset);
-//                            shootTimer = globalTimer.seconds() + Globals.timers.pushUpTime; // 1s gate-open
-//                            shootAction = true;
-//                        }
-//
-//                        // close gate and finish cycle
-//                        if (globalTimer.seconds() > shootTimer) {
-//                            set.turnToAngle(Globals.launcher.downset);
-//                            shotsFired++;
-//                            if (shotsFired < 3) {
-//                                // Prepare next round: rotate again for the next chamber
-//                                currentShooting = shooting.shootRotating;
-//                                shootAction = false;
-//                                ejectAction = false;
-//                                rotating = false;
-//
-//                                shootTimer = Double.MAX_VALUE;
-//                                // (keep launcher + intake running during the burst)
-//                            } else {
-//                                // Burst done — shut down
-//                                currentShooting = shooting.shootIdle;
-//                                shootLoop = false;
-//                                revolverReadytoLaunch = false;
-//                                launcher1.set(0);
-//                                launcher2.set(0);
-//                                revolverState.set(0, "EMPTY");
-//                                revolverState.set(1, "EMPTY");
-//                                revolverState.set(2, "EMPTY");
-//                                shootTimer = Double.MAX_VALUE;
-//                            }
-//                        }
-//                        break;
-//                    }
-//
-//                    case shootIdle:
-//                    default: {
-//                        // Safety – shouldn’t sit here during an active cycle
-//                        shootLoop = false;
-//                        launcher1.set(0);
-//                        launcher2.set(0);
-//
-//                        break;
-//                    }
-//
-//                }
-//                prevCircle = currCircle;
-//            }
-//        }
-//
-//    }
-
-
-
+    public void launch() {
+        if (power > 0 && aligned && gamepadEx2.getButton(GamepadKeys.Button.CROSS)) {
+            launcher1.set(feedforwardPower);
+            launcher2.set(feedforwardPower);
+            if (gamepadEx2.getButton(GamepadKeys.Button.DPAD_UP) && aligned && Math.abs(power - RPM) < Globals.launcher.launcherTol) {
+                set.turnToAngle(Globals.launcher.upset);
+            } else {
+                set.turnToAngle(Globals.launcher.downset);
+            }
+        }
+    }
+    public void rotate() {
+        revolverTarget = (int) ((gamepadEx2.getTrigger(GamepadKeys.Trigger.RIGHT_TRIGGER) - gamepadEx2.getTrigger(GamepadKeys.Trigger.LEFT_TRIGGER)) * Globals.revolver.revolverNudge);
+        if (gamepadEx2.wasJustPressed(GamepadKeys.Button.SQUARE)) {
+            revolverTarget += shootCounterClockwise ? -Globals.revolver.oneRotation : Globals.revolver.oneRotation;  // CW
+        }
+    }
     public void ejection() {
         if (gamepad1.right_stick_x > 0.5) {
-            eject.turnToAngle(28);
+            eject.turnToAngle(Globals.pushServo.eject);
         } else if (gamepad1.right_stick_x < -0.5) {
-            eject.turnToAngle(51);
+            eject.turnToAngle(Globals.pushServo.push);
         } else {
-            eject.turnToAngle(44);
+            eject.turnToAngle(Globals.pushServo.defualt);
 
         }// eject is 30, default is 44, push is 51
 
@@ -644,10 +367,6 @@ public class twoDriverScrimTele extends OpMode {
                             shootCounterClockwise = true;
                         }
 
-
-
-                        // now we are full
-                        revolverReadytoLaunch = true;
                         break;
                     }
                     case 3:
@@ -661,21 +380,34 @@ public class twoDriverScrimTele extends OpMode {
 
 
     private void findPattern() {
-        if (gamepadEx2.getButton(GamepadKeys.Button.OPTIONS)) {
-            List<AprilTagDetection> code = tagProcessor.getDetections();
-            if (code != null && !code.isEmpty()) {
-                code.sort(Comparator.comparingDouble((AprilTagDetection d) -> d.decisionMargin).reversed());
-                AprilTagDetection best = code.get(0);
+        if (gamepadEx2.getButton(GamepadKeys.Button.OPTIONS) && !patternDetected) {
+            limelight.start();
+            LLResult result = limelight.getLatestResult();
+            if (result != null && result.isValid()) {
 
-                if (best.id == 21) {
-                    currentPattern = pattern.GPP; patternDetected = true;
-                } else if (best.id == 22) {
-                    currentPattern = pattern.PGP; patternDetected = true;
-                } else if (best.id == 23) {
-                    currentPattern = pattern.PPG; patternDetected = true;
-                } else {
-                    patternDetected = false;
-                    telemetry.addLine("NO PATTERN FOUND");
+                List<LLResultTypes.FiducialResult> tags = result.getFiducialResults();
+                if (!tags.isEmpty()) {
+                    for (LLResultTypes.FiducialResult tag : tags) {
+                        int id = tag.getFiducialId();
+                        if (id == 21) {
+                            currentPattern = pattern.GPP;
+                            patternDetected = true;
+                            limelight.stop();
+                        } else if (id == 22) {
+                            currentPattern = pattern.PGP;
+                            patternDetected = true;
+                            limelight.stop();
+                        } else if (id == 23) {
+                            currentPattern = pattern.PPG;
+                            patternDetected = true;
+                            limelight.stop();
+                        } else {
+                            patternDetected = false;
+                            telemetry.addLine("NO PATTERN FOUND");
+                        }
+
+
+                    }
                 }
             }
         }
@@ -706,11 +438,11 @@ public class twoDriverScrimTele extends OpMode {
         ff.setF(Globals.launcher.flykF);
         turretPIDF.setPIDF(Globals.turret.turretKP, Globals.turret.turretKI, Globals.turret.turretKD, Globals.turret.turretKF);
 
-//        boolean pad = gamepadEx2.getButton(GamepadKeys.Button.TOUCHPAD);
-//        if (pad && !prevPad) {
-//            autoAimEnabled = !autoAimEnabled;
-//        }
-//        prevPad = pad;
+        boolean pad = gamepadEx2.getButton(GamepadKeys.Button.TOUCHPAD);
+        if (pad && !prevPad) {
+            autoAimEnabled = !autoAimEnabled;
+        }
+        prevPad = pad;
 
         boolean lb = gamepadEx2.getButton(GamepadKeys.Button.LEFT_BUMPER);
         boolean rb = gamepadEx2.getButton(GamepadKeys.Button.RIGHT_BUMPER);
@@ -724,12 +456,9 @@ public class twoDriverScrimTele extends OpMode {
             double chosenBearing = 0.0;
             if (detections != null && !detections.isEmpty()) {
                 for (AprilTagDetection d : detections) {
-                    if (d != null && d.metadata != null && d.ftcPose != null) {
+                    if (d != null && d.metadata != null && d.ftcPose != null && d.id == 20) {//BLUE IS 20 RED IS 24
                         distance = d.ftcPose.range;
-                        power = (2547.5 * pow(2.718281828459045, (0.0078 * distance)))/Globals.launcher.launcherTransformation; // here
-                    }
-
-                    if (d.ftcPose != null) {
+                        power = (2547.5 * pow(2.718281828459045, (0.0078 * distance))) / Globals.launcher.launcherTransformation; // here
                         double bearing = d.ftcPose.bearing;
                         if (chosen == null || Math.abs(bearing) < Math.abs(chosenBearing)) {
                             chosen = d;
@@ -772,7 +501,7 @@ public class twoDriverScrimTele extends OpMode {
             turretTarget = 0;
         }
 
-        feedforwardPower = ff.calculate(RPM, power);
+        feedforwardPower = power == 0 ? 0 : ff.calculate(RPM, power);
         rotate.turnToAngle(turretTarget);
 
     }
@@ -782,41 +511,6 @@ public class twoDriverScrimTele extends OpMode {
         telemetry.addData("aligned? ", aligned);
         telemetry.addData("pattern?: ", currentPattern);
 
-        telemetry.addLine("HSV")
-                .addData("H (deg)", "%.1f", hsv1[0])
-                .addData("S", "%.3f", hsv1[1])
-                .addData("V", "%.3f", hsv1[2]);
-
-        telemetry.addData("distance", distanceSensor.getDistance(DistanceUnit.CM));
-        telemetry.addData("filled", filled);
-
-        telemetry.addLine("revolver")
-                .addData("0", revolverState.get(0))
-                .addData("1", revolverState.get(1))
-                .addData("2", revolverState.get(2));
-
-//        telemetry.addLine("actual revolver")
-//                .addData("0", finalRevolver.get(0))
-//                .addData("1", finalRevolver.get(1))
-//                .addData("2", finalRevolver.get(2));
-
-
-        telemetry.addData("ready?", revolverReadytoLaunch);
-        telemetry.addData("revolverready?", revolverReady);
-        telemetry.addData("color?", color);
-        telemetry.addData("shootloop", shootLoop);
-        telemetry.addData("shot rotation?: ", currentShooting);
-        telemetry.addData("launcher dip",  Math.abs(RPM - previousRPM) > Globals.launcher.RPMDipThreshold);
-        telemetry.update();
-
-        TelemetryPacket rpmPacket = new TelemetryPacket();
-        rpmPacket.put("RPM", RPM);
-
-        TelemetryPacket powerPacket = new TelemetryPacket();
-        powerPacket.put("targetRPM", power);
-
-        FtcDashboard.getInstance().sendTelemetryPacket(powerPacket);
-        FtcDashboard.getInstance().sendTelemetryPacket(rpmPacket);
     }
 
 
@@ -824,7 +518,7 @@ public class twoDriverScrimTele extends OpMode {
         double y = -gamepad1.left_stick_y; // Remember, Y stick value is reversed
         double x = gamepad1.left_stick_x * 1.1; // Counteract imperfect strafing
         double rx = gamepad1.right_trigger - gamepad1.left_trigger;
-        double slowdown = 0.6;
+        double slowdown = Globals.slowdown;
         if (Math.abs(y)<0.2){
             y=0.0;
         }
