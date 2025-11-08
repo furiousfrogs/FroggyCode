@@ -7,7 +7,6 @@ import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.seattlesolvers.solverslib.gamepad.GamepadKeys;
 
-import org.firstinspires.ftc.teamcode.deprsTest.teleManual;
 
 import java.util.List;
 @TeleOp(name = "LLLLLL")
