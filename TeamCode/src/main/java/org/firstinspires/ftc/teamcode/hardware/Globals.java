@@ -9,10 +9,10 @@ public class Globals {
     @Config
     public static class turret {
         public static float turretTol = 4F;
-        public static float nudge = 5F;
-        public static double turretKP = 0.17F;
+        public static float nudge = 2F;
+        public static double turretKP = 0.048F;
         public static double turretKI = 0.000F;
-        public static double turretKD = 0.01F;
+        public static double turretKD = 0.006F;
         public static double turretKF = 0.000F;
         public static float turretLocationError = -1F;
 
@@ -34,10 +34,10 @@ public class Globals {
         public static float RPMDipThreshold = 200;
         public static float launcherTransformation = 1.06F;
         public static float launcherTol = 100F;
-        public static double flykP =0.00016811;
+        public static double flykP =0.0007; //0.00016811
         public static double flykI =0.0F;
         public static double flykD = 0.0F ;
-        public static double flykF = 0.000020;
+        public static double flykF = 0.000197; //0.000020
 
         public static double downset=0.0F;
         public static double upset=300;
@@ -55,7 +55,7 @@ public class Globals {
     @Config // eject is 30, default is 44, push is 51
     public static class pushServo {
         public static float push = 30F;
-        public static float defualt = 17F;
+        public static float defualt = 15F;
         public static float eject = 0F;
     }
 

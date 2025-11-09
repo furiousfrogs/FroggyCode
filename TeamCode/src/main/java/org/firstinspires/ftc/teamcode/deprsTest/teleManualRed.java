@@ -50,6 +50,7 @@ public class teleManualRed extends OpMode {
     private boolean prevSquare;
     private boolean launcherSetPower = false;
     private boolean prevCross;
+    boolean revolverOn = false;
 
     // ----- action booleans -----
     private boolean shootLoop = false;
@@ -60,7 +61,8 @@ public class teleManualRed extends OpMode {
     private double power;
     private double previousRevolverPosition;
     private double previousRPM = 0;
-
+private boolean prevCircle;
+    private int shotsFired = 0;
 
 
     // ----- pid's -----
@@ -208,11 +210,12 @@ public class teleManualRed extends OpMode {
 
     public void launch() {
 
+
         launcher1.set(launcherSetPower ? feedforwardPower : 0);
         launcher2.set(launcherSetPower ? feedforwardPower : 0);
         if (!launcherSetPower && power > 0 && gamepadEx2.getButton(GamepadKeys.Button.CROSS) && !prevCross) {
             launcherSetPower = true;
-        } else if ((launcherSetPower && gamepadEx2.getButton(GamepadKeys.Button.CROSS) && !prevCross) || power == 0) {
+        } else if ((launcherSetPower && gamepadEx2.getButton(GamepadKeys.Button.CROSS) && !prevCross)) {
             launcherSetPower = false;
         } prevCross = gamepadEx2.getButton(GamepadKeys.Button.CROSS);
 
@@ -225,8 +228,15 @@ public class teleManualRed extends OpMode {
     public void rotate() {
         revolverTarget += (int) ((gamepadEx2.getTrigger(GamepadKeys.Trigger.RIGHT_TRIGGER) - gamepadEx2.getTrigger(GamepadKeys.Trigger.LEFT_TRIGGER)) * Globals.revolver.revolverNudge);
         boolean square = gamepadEx2.getButton(GamepadKeys.Button.SQUARE);
-        if (square && !prevSquare && eject.getAngle() == Globals.pushServo.eject) {
+        if (square && !prevSquare && eject.getAngle() != Globals.pushServo.eject) {
             revolverTarget += shootCounterClockwise ? -Globals.revolver.oneRotation : Globals.revolver.oneRotation;  // CW
+            shotsFired++;
+        }
+        if (shotsFired >= 2) {
+            revolverState.set(0, "EMPTY");
+            revolverState.set(2, "EMPTY");
+            revolverState.set(1, "EMPTY");
+            shotsFired = 0;
         }
         prevSquare = square;
     }
@@ -312,7 +322,12 @@ public class teleManualRed extends OpMode {
         else {
             intake.set(0);
         }
-
+        if (gamepadEx2.getButton(GamepadKeys.Button.CIRCLE) && !revolverOn && !prevCircle) {
+            revolverOn = true;
+        } else if (gamepadEx2.getButton(GamepadKeys.Button.CIRCLE) && revolverOn && !prevCircle) {
+            revolverOn = false;
+        } prevCircle = gamepadEx2.getButton(GamepadKeys.Button.CIRCLE);
+        if (revolverOn) {
         int filled = revolverState.size() - Collections.frequency(revolverState, "EMPTY");
         String color = senseColour();  // "P", "G", or "EMPTY"
 
@@ -385,6 +400,7 @@ public class teleManualRed extends OpMode {
                 }
             }
         }
+        }
     }
 
 
@@ -393,29 +409,30 @@ public class teleManualRed extends OpMode {
             limelight.start();
             LLResult result = limelight.getLatestResult();
             if (result != null && result.isValid()) {
+                if (result.getStaleness() < 500) {
+                    List<LLResultTypes.FiducialResult> tags = result.getFiducialResults();
+                    if (!tags.isEmpty()) {
+                        for (LLResultTypes.FiducialResult tag : tags) {
+                            int id = tag.getFiducialId();
+                            if (id == 21) {
+                                currentPattern = pattern.GPP;
+                                patternDetected = true;
+                                limelight.stop();
+                            } else if (id == 22) {
+                                currentPattern = pattern.PGP;
+                                patternDetected = true;
+                                limelight.stop();
+                            } else if (id == 23) {
+                                currentPattern = pattern.PPG;
+                                patternDetected = true;
+                                limelight.stop();
+                            } else {
+                                patternDetected = false;
+                                telemetry.addLine("NO PATTERN FOUND");
+                            }
 
-                List<LLResultTypes.FiducialResult> tags = result.getFiducialResults();
-                if (!tags.isEmpty()) {
-                    for (LLResultTypes.FiducialResult tag : tags) {
-                        int id = tag.getFiducialId();
-                        if (id == 21) {
-                            currentPattern = pattern.GPP;
-                            patternDetected = true;
-                            limelight.stop();
-                        } else if (id == 22) {
-                            currentPattern = pattern.PGP;
-                            patternDetected = true;
-                            limelight.stop();
-                        } else if (id == 23) {
-                            currentPattern = pattern.PPG;
-                            patternDetected = true;
-                            limelight.stop();
-                        } else {
-                            patternDetected = false;
-                            telemetry.addLine("NO PATTERN FOUND");
+
                         }
-
-
                     }
                 }
             }
