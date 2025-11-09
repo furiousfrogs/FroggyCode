@@ -50,6 +50,9 @@ private boolean revolverReady = true;
 private boolean prevSquare;
 private boolean prevCross;
 private boolean launcherSetPower = false;
+private boolean revolverOn = false;
+private boolean prevCircle;
+
 
 
 // ----- action booleans -----
@@ -61,6 +64,8 @@ private double distance;
 private double power;
 private double previousRevolverPosition;
 private double previousRPM = 0;
+
+private int shotsFired = 0;
 
 
 // ----- pid's -----
@@ -227,10 +232,20 @@ public void launch() {
     public void rotate() {
         revolverTarget += (int) ((gamepadEx2.getTrigger(GamepadKeys.Trigger.RIGHT_TRIGGER) - gamepadEx2.getTrigger(GamepadKeys.Trigger.LEFT_TRIGGER)) * Globals.revolver.revolverNudge);
         boolean square = gamepadEx2.getButton(GamepadKeys.Button.SQUARE);
-        if (square && !prevSquare) {
+        if (square && !prevSquare && eject.getAngle() != Globals.pushServo.eject) {
             revolverTarget += shootCounterClockwise ? -Globals.revolver.oneRotation : Globals.revolver.oneRotation;  // CW
+            if (revolverOn) {
+                shotsFired++;
+            }
         }
         prevSquare = square;
+        if (shotsFired >= 2) {
+            revolverState.set(0, "EMPTY");
+            revolverState.set(2, "EMPTY");
+            revolverState.set(1, "EMPTY");
+            shotsFired = 0;
+        }
+
     }
 public void ejection() {
     if (gamepad2.right_stick_x > 0.5) {
@@ -314,7 +329,16 @@ public void intake() {
     else {
         intake.set(0);
     }
-
+    if (gamepadEx2.getButton(GamepadKeys.Button.CIRCLE) && !revolverOn && !prevCircle) {
+        revolverOn = true;
+        revolverState.set(0, "EMPTY");
+        revolverState.set(2, "EMPTY");
+        revolverState.set(1, "EMPTY");
+        shotsFired = 0;
+    } else if (gamepadEx2.getButton(GamepadKeys.Button.CIRCLE) && revolverOn && !prevCircle) {
+        revolverOn = false;
+    } prevCircle = gamepadEx2.getButton(GamepadKeys.Button.CIRCLE);
+    if (revolverOn) {
     int filled = revolverState.size() - Collections.frequency(revolverState, "EMPTY");
     String color = senseColour();  // "P", "G", or "EMPTY"
 
@@ -385,6 +409,7 @@ public void intake() {
                     break;
                 }
             }
+        }
         }
     }
 }
