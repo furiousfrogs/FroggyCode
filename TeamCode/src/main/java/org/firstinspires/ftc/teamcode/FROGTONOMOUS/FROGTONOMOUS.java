@@ -12,6 +12,9 @@ import com.pedropathing.geometry.BezierCurve;
 import com.pedropathing.geometry.BezierLine;
 import com.pedropathing.geometry.Pose;
 import com.pedropathing.paths.PathChain;
+import com.qualcomm.hardware.limelightvision.LLResult;
+import com.qualcomm.hardware.limelightvision.LLResultTypes;
+import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DistanceSensor;
@@ -40,6 +43,7 @@ import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
+import org.firstinspires.ftc.teamcode.deprsTest.teleManualBlue;
 import org.firstinspires.ftc.teamcode.deprsTest.twoDriverScrimTele;
 import org.firstinspires.ftc.teamcode.hardware.Globals;
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
@@ -47,6 +51,7 @@ import org.firstinspires.ftc.teamcode.testing.finalLaunch3;
 import org.firstinspires.ftc.vision.VisionPortal;
 import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
 import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
+
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -77,6 +82,7 @@ public class FROGTONOMOUS extends CommandOpMode {
     private double shootTimer;
     private double rotateTimer;
     private double feedforwardPower = 0;
+    private static int pattern;
     private double distance;
     private double power;
     private int shotsFired = 0;
@@ -98,21 +104,13 @@ public class FROGTONOMOUS extends CommandOpMode {
     private String color;
     private int revolverTarget = 0;
     private double revolverPower;
-    public enum pattern {
-        PPG,
-        PGP,
-        GPP
-    } pattern currentPattern = pattern.PPG;
-    public enum shooting {
-        shootIdle,
-        shootRotating,
-        shootEjecting,
-        shootFire
-    } shooting currentShooting = shooting.shootIdle;
+    private int ballcount = 0;
+    private boolean left;
+
     private FtcDashboard dashboard = FtcDashboard.getInstance();
     private VisionPortal visionPortal;
     private AprilTagProcessor tagProcessor;
-    private boolean inCycle = false;
+    private Limelight3A limelight;
 
     ////////////////////////////////////////////////
 
@@ -178,34 +176,45 @@ public class FROGTONOMOUS extends CommandOpMode {
                 .setLinearHeadingInterpolation(Math.toRadians(-180), Math.toRadians(-75))
                 .build();
     }
-
     public void onerotation(boolean left) {
         previousRevolverPosition = revolverTarget;
         revolverTarget += left? +Globals.revolver.oneRotation : -Globals.revolver.oneRotation;
     }
-    private void findPattern() {
-        List<AprilTagDetection> code = tagProcessor.getDetections();
-        if (code != null && !code.isEmpty()) {
-            code.sort(Comparator.comparingDouble((AprilTagDetection d) -> d.decisionMargin).reversed());
-            AprilTagDetection best = code.get(0);
 
-            if (best.id == 21) {
-                currentPattern = pattern.GPP; patternDetected = true;
-            } else if (best.id == 22) {
-                currentPattern = pattern.PGP; patternDetected = true;
-            } else if (best.id == 23) {
-                currentPattern = pattern.PPG; patternDetected = true;
-            } else {
-                patternDetected = false;
-                telemetry.addLine("NO PATTERN FOUND");
+    public int getPattern() {
+        limelight = hardwareMap.get(Limelight3A.class, "limelight");
+        limelight.setPollRateHz(20);
+        limelight.pipelineSwitch(0);
+        limelight.start();
+
+        long start = System.currentTimeMillis();
+        while (System.currentTimeMillis() - start < 2000) {  // 2s timeout
+            LLResult result = limelight.getLatestResult();
+            if (result != null && result.isValid()) {
+                List<LLResultTypes.FiducialResult> tags = result.getFiducialResults();
+                if (!tags.isEmpty()) {
+                    for (LLResultTypes.FiducialResult tag : tags) {
+                        int id = tag.getFiducialId();
+                        if (id == 21) return 3;
+                        if (id == 22) return 2;
+                        if (id == 23) return 1;
+                    }
+                }
             }
         }
-    }//todo
+        telemetry.addLine("NO PATTERN FOUND");
+        telemetry.update();
+        return 1;
+    }
+
+
 
     ///////////////////////////////////////////////
 
     public class intakesubsys extends SubsystemBase {
         private final Motor intake, revolver;
+
+
         //2 is intake side 0 is top
         public intakesubsys(HardwareMap map) {
             intake = new Motor(map, "intake");
@@ -217,42 +226,83 @@ public class FROGTONOMOUS extends CommandOpMode {
             revolver.setRunMode(Motor.RunMode.RawPower);
             revolver.resetEncoder();
 
+            revolverPID = new PIDFController(Globals.revolver.revolverKP, Globals.revolver.revolverKI, Globals.revolver.revolverKD, Globals.revolver.revolverKF);
             revolverPID.setTolerance(0);
-            revolverPID.setPIDF(Globals.revolver.revolverKP, Globals.revolver.revolverKI, Globals.revolver.revolverKD, Globals.revolver.revolverKF);
 
             distanceSensor = hardwareMap.get(DistanceSensor.class, "colour1");
         }
         public void intakeon() {
-            intake.set(Globals.intakePower);
+//            intake.set(Globals.intakePower);
+            intake.set(0.4);
+            ballcount = 0;
         }
         public void intakeoff() {
             intake.set(0);
+            ballcount = 0;
         }
 
-        public void sort(boolean left){
+        public void sort(int pattern, int pickupnum){//1 = ppg 2 pgp 3 gpp,
+            telemetry.addData("start", pickupnum);
+            telemetry.update();
             revolverPower = revolverPID.calculate(revolver.getCurrentPosition(), revolverTarget);
             revolver.set(revolverPower);
 
-            if (distanceSensor.getDistance(DistanceUnit.CM) < 2 && !revolverting){
-                revolverting = true;
+
+            if (!revolverReady && Math.abs(Math.abs(revolver.getCurrentPosition() - previousRevolverPosition) - Globals.revolver.oneRotation) < 10) {
+                revolverReady = true;;//detect if the rotation is done
+            }
+
+            if (ballcount == 2 && revolverReady && pattern == 3 && pickupnum == 1) {
+                revolverReady = false;
                 onerotation(true);
+            }
 
-                if (!revolverReady && Math.abs(Math.abs(revolver.getCurrentPosition() - previousRevolverPosition) - Globals.revolver.oneRotation) < 10) {
-                    revolverting = false;//detect if the rotation is done
+            if (ballcount < 2) {
+                if (distanceSensor.getDistance(DistanceUnit.CM) < 2 && revolverReady) {
+                    if (pattern == 1 || pattern == 2) {
+                        telemetry.addData("wopfmew[fwe", pickupnum);
+                        telemetry.update();
+                        if (pickupnum == 1) {
+                            telemetry.addData("rotatobrotato", pickupnum);
+                            telemetry.update();
+                            revolverReady = false;
+                            onerotation(true);
+                            ballcount += 1;
+                        } else if (pickupnum == 2) {
+                            revolverReady = false;
+                            onerotation(false);
+                            ballcount += 1;
+                        } else if (pickupnum == 3) {
+                            revolverReady = false;
+                            onerotation(true);
+                            ballcount += 1;
+                        }
+                    } else if (pattern == 3) {
+                        if (pickupnum == 1) {
+                            revolverReady = false;
+                            onerotation(true);
+                            ballcount += 1;
+                        } else if (pickupnum == 2) {
+                            revolverReady = false;
+                            onerotation(false);
+                            ballcount += 1;
+                        } else if (pickupnum == 3) {
+                            revolverReady = false;
+                            onerotation(true);
+                            ballcount += 1;
+                        }
+                    }
                 }
-
-
-
             }
         }
-
-
-
     }
     public static class froggyeat extends CommandBase {
         private final intakesubsys intake;
-        public froggyeat(intakesubsys intake) {
+        private int pickupnum;
+
+        public froggyeat(intakesubsys intake, int pickupnum) {
             this.intake = intake;
+            this.pickupnum = pickupnum;
             addRequirements(intake);
         }
 
@@ -263,7 +313,7 @@ public class FROGTONOMOUS extends CommandOpMode {
 
         @Override
         public void execute() {
-            //intake.colorsort();
+            intake.sort(pattern, pickupnum);
         }
 
         @Override
@@ -271,6 +321,9 @@ public class FROGTONOMOUS extends CommandOpMode {
             intake.intakeoff();
         }
     }
+
+    ///////////////////////////////////////////////
+
     public class outtakesubsys extends SubsystemBase {
         private Motor launcher1, launcher2, revolver;
         public outtakesubsys(HardwareMap map) {
@@ -287,12 +340,10 @@ public class FROGTONOMOUS extends CommandOpMode {
             revolver = new Motor(hardwareMap, "revolver", 28, 1150);
             revolver.setRunMode(Motor.RunMode.RawPower);
             revolver.resetEncoder();
-            revolverPID = new PIDController(Globals.revolver.revolverKP, Globals.revolver.revolverKI, Globals.revolver.revolverKD);
             rotate = new SimpleServo(hardwareMap, "turret", 0, 300, AngleUnit.DEGREES);
             rotate.turnToAngle(turretTarget);
             turretPIDF = new PIDFController(Globals.turret.turretKP, Globals.turret.turretKI, Globals.turret.turretKD, Globals.turret.turretKF);
 
-            // ----- build ov9281 -----
             tagProcessor = new AprilTagProcessor.Builder()
                     .setDrawAxes(true)
                     .setDrawTagID(true)
@@ -433,23 +484,33 @@ public class FROGTONOMOUS extends CommandOpMode {
 
     @Override
     public void initialize() {
+        pattern = getPattern();
+
+        telemetry.addData("Pattern detected", pattern);
+        telemetry.update();
 
         follower = Constants.createFollower(hardwareMap);
         follower.setStartingPose(new Pose(19.300, 119.350, -36));
         telemetry.update();
 
-        outtakesubsys sub = new outtakesubsys(hardwareMap);
-        register(sub);
+        //outtakesubsys loopedfunctions = new outtakesubsys(hardwareMap);
+        //register(loopedfunctions);
+
         buildPaths();
-        //findPattern();
 
 
         SequentialCommandGroup PPG = new SequentialCommandGroup(
-                new FollowPathCommand(follower, shoot3),
+                new WaitCommand(5000),
+                new froggyeat(new intakesubsys(hardwareMap), 1)
 
-                new WaitCommand(1000), // Wait 1 second
-                // First pickup cycle
-                new FollowPathCommand(follower, eat3)
+
+//                new FollowPathCommand(follower, shoot3),
+//
+//                new WaitCommand(1000), // Wait 1 second
+//                // First pickup cycle
+//                new FollowPathCommand(follower, eat3),
+//                new froggyeat(new intakesubsys(hardwareMap), 1)
+                 // Wait 1 second, 1)
 //                new ParallelDeadlineGroup(
 //                        new FollowPathCommand(follower, eat3),
 //                        new froggyeat()
