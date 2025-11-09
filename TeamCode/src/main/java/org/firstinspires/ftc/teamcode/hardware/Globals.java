@@ -34,10 +34,10 @@ public class Globals {
         public static float RPMDipThreshold = 200;
         public static float launcherTransformation = 1.06F;
         public static float launcherTol = 100F;
-        public static double flykP =0.00016811; //0.0007F;
+        public static double flykP =0.0007; //0.00016811
         public static double flykI =0.0F;
         public static double flykD = 0.0F ;
-        public static double flykF = 0.000020; //0.000197F
+        public static double flykF = 0.000197; //0.000020
 
         public static double downset=0.0F;
         public static double upset=300;

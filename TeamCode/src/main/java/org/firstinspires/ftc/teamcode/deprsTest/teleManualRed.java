@@ -393,29 +393,30 @@ public class teleManualRed extends OpMode {
             limelight.start();
             LLResult result = limelight.getLatestResult();
             if (result != null && result.isValid()) {
+                if (result.getStaleness() < 500) {
+                    List<LLResultTypes.FiducialResult> tags = result.getFiducialResults();
+                    if (!tags.isEmpty()) {
+                        for (LLResultTypes.FiducialResult tag : tags) {
+                            int id = tag.getFiducialId();
+                            if (id == 21) {
+                                currentPattern = pattern.GPP;
+                                patternDetected = true;
+                                limelight.stop();
+                            } else if (id == 22) {
+                                currentPattern = pattern.PGP;
+                                patternDetected = true;
+                                limelight.stop();
+                            } else if (id == 23) {
+                                currentPattern = pattern.PPG;
+                                patternDetected = true;
+                                limelight.stop();
+                            } else {
+                                patternDetected = false;
+                                telemetry.addLine("NO PATTERN FOUND");
+                            }
 
-                List<LLResultTypes.FiducialResult> tags = result.getFiducialResults();
-                if (!tags.isEmpty()) {
-                    for (LLResultTypes.FiducialResult tag : tags) {
-                        int id = tag.getFiducialId();
-                        if (id == 21) {
-                            currentPattern = pattern.GPP;
-                            patternDetected = true;
-                            limelight.stop();
-                        } else if (id == 22) {
-                            currentPattern = pattern.PGP;
-                            patternDetected = true;
-                            limelight.stop();
-                        } else if (id == 23) {
-                            currentPattern = pattern.PPG;
-                            patternDetected = true;
-                            limelight.stop();
-                        } else {
-                            patternDetected = false;
-                            telemetry.addLine("NO PATTERN FOUND");
+
                         }
-
-
                     }
                 }
             }
