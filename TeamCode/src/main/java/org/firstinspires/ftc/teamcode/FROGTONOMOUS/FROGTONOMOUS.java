@@ -12,6 +12,9 @@ import com.pedropathing.geometry.BezierCurve;
 import com.pedropathing.geometry.BezierLine;
 import com.pedropathing.geometry.Pose;
 import com.pedropathing.paths.PathChain;
+import com.qualcomm.hardware.limelightvision.LLResult;
+import com.qualcomm.hardware.limelightvision.LLResultTypes;
+import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DistanceSensor;
@@ -40,6 +43,7 @@ import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
+import org.firstinspires.ftc.teamcode.deprsTest.teleManualBlue;
 import org.firstinspires.ftc.teamcode.deprsTest.twoDriverScrimTele;
 import org.firstinspires.ftc.teamcode.hardware.Globals;
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
@@ -47,6 +51,7 @@ import org.firstinspires.ftc.teamcode.testing.finalLaunch3;
 import org.firstinspires.ftc.vision.VisionPortal;
 import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
 import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
+
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -62,21 +67,14 @@ public class FROGTONOMOUS extends CommandOpMode {
     TelemetryData telemetryData = new TelemetryData(telemetry);
     private PathChain shoot3, eat3, shoot6, eat6, shoot9, eat9, shoot12;
     private boolean aligned = false;
-    private boolean patternDetected = false;
     private boolean autoAimEnabled = true;
     private boolean revolverReady = true;
-    private boolean prevTri = false;
-    private boolean previousRotation;
-    private boolean revolverReadytoLaunch = false;
+    private VisionPortal visionPortal;
+    private AprilTagProcessor tagProcessor;
     private boolean clockwise;
-    private int filled;
     double revolverSetupTimer = Double.MAX_VALUE;
-    private boolean revolverting = false;
-    private ElapsedTime globalTimer = new ElapsedTime();
-    private double ejectTimer;
-    private double shootTimer;
-    private double rotateTimer;
     private double feedforwardPower = 0;
+    private static int pattern;
     private double distance;
     private double power;
     private int shotsFired = 0;
@@ -90,29 +88,19 @@ public class FROGTONOMOUS extends CommandOpMode {
     private int lastPosition;
     private double bearing = 0.0;
     double turretTarget = 150F; // inital turret angle
-    private final float[] hsv1 = new float[3];
-    private final float[] hsv2 = new float[3];
     private boolean shootCounterClockwise = false;
     private List<String> revolverState = new ArrayList<>(Arrays.asList("EMPTY", "EMPTY", "EMPTY"));
     private List<String> finalRevolver = new ArrayList<>(Arrays.asList("EMPTY", "EMPTY", "EMPTY"));
     private String color;
     private int revolverTarget = 0;
     private double revolverPower;
-    public enum pattern {
-        PPG,
-        PGP,
-        GPP
-    } pattern currentPattern = pattern.PPG;
-    public enum shooting {
-        shootIdle,
-        shootRotating,
-        shootEjecting,
-        shootFire
-    } shooting currentShooting = shooting.shootIdle;
+    private int ballcount = 0;
+
+    private int ballsshot = 0;
+    private boolean left;
+
     private FtcDashboard dashboard = FtcDashboard.getInstance();
-    private VisionPortal visionPortal;
-    private AprilTagProcessor tagProcessor;
-    private boolean inCycle = false;
+    private Limelight3A limelight;
 
     ////////////////////////////////////////////////
 
@@ -178,35 +166,123 @@ public class FROGTONOMOUS extends CommandOpMode {
                 .setLinearHeadingInterpolation(Math.toRadians(-180), Math.toRadians(-75))
                 .build();
     }
-
     public void onerotation(boolean left) {
         previousRevolverPosition = revolverTarget;
         revolverTarget += left? +Globals.revolver.oneRotation : -Globals.revolver.oneRotation;
     }
-    private void findPattern() {
-        List<AprilTagDetection> code = tagProcessor.getDetections();
-        if (code != null && !code.isEmpty()) {
-            code.sort(Comparator.comparingDouble((AprilTagDetection d) -> d.decisionMargin).reversed());
-            AprilTagDetection best = code.get(0);
 
-            if (best.id == 21) {
-                currentPattern = pattern.GPP; patternDetected = true;
-            } else if (best.id == 22) {
-                currentPattern = pattern.PGP; patternDetected = true;
-            } else if (best.id == 23) {
-                currentPattern = pattern.PPG; patternDetected = true;
-            } else {
-                patternDetected = false;
-                telemetry.addLine("NO PATTERN FOUND");
+    public int getPattern() {
+        limelight = hardwareMap.get(Limelight3A.class, "limelight");
+        limelight.setPollRateHz(20);
+        limelight.pipelineSwitch(0);
+        limelight.start();
+
+        long start = System.currentTimeMillis();
+        while (System.currentTimeMillis() - start < 2000) {  // 2s timeout
+            LLResult result = limelight.getLatestResult();
+            if (result != null && result.isValid()) {
+                if (result.getStaleness() < 500) {
+                    List<LLResultTypes.FiducialResult> tags = result.getFiducialResults();
+                    if (!tags.isEmpty()) {
+                        for (LLResultTypes.FiducialResult tag : tags) {
+                            int id = tag.getFiducialId();
+                            if (id == 21) return 3;
+                            if (id == 22) return 2;
+                            if (id == 23) return 1;
+                        }
+                    }
+                }
             }
         }
-    }//todo
+        telemetry.addLine("NO PATTERN FOUND");
+        telemetry.update();
+        return 1;
+    }
+
+    public boolean ballcases(int pickupnum, boolean comingin) {
+        if (pattern == 1){
+            if (pickupnum == 1){
+                if (comingin){
+                    return true;
+                } else if (!comingin){
+                    return false;
+                }
+            } else if (pickupnum == 2) {
+                if (comingin){
+                    return false;
+                } else if (!comingin){
+                    return true;
+                }
+            } else if (pickupnum == 3) {
+                if (comingin){
+                    return true;
+                } else if (!comingin){
+                    return true;
+                }
+            } else if (pickupnum == 0) {
+                if (!comingin){
+                    return false;
+                }
+            }
+        } else if (pattern == 2) {
+            if (pickupnum == 1){
+                if (comingin){
+                    return true;
+                } else if (!comingin){
+                    return true;
+                }
+            } else if (pickupnum == 2) {
+                if (comingin) {
+                    return false;
+                } else if (!comingin) {
+                    return false;
+                }
+            } else if (pickupnum == 3) {
+                if (comingin) {
+                    return true;
+                } else if (!comingin) {
+                    return false;
+                }
+            }else if (pickupnum == 0) {
+                if (!comingin){
+                    return true;
+                }
+            }
+        } else if (pattern == 3) {
+            if (pickupnum == 1) {
+                if (comingin) {
+                    return true;
+                } else if (!comingin) {
+                    return true;
+                }
+            } else if (pickupnum == 2) {
+                if (comingin) {
+                    return true;
+                } else if (!comingin) {
+                    return true;
+                }
+            } else if (pickupnum == 3) {
+                if (comingin) {
+                    return false;
+                } else if (!comingin) {
+                    return true;
+                }
+            }else if (pickupnum == 0) {
+                if (!comingin){
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+
+
 
     ///////////////////////////////////////////////
 
     public class intakesubsys extends SubsystemBase {
         private final Motor intake, revolver;
-        //2 is intake side 0 is top
+
         public intakesubsys(HardwareMap map) {
             intake = new Motor(map, "intake");
             intake.setRunMode(Motor.RunMode.RawPower);
@@ -217,42 +293,94 @@ public class FROGTONOMOUS extends CommandOpMode {
             revolver.setRunMode(Motor.RunMode.RawPower);
             revolver.resetEncoder();
 
+            revolverPID = new PIDFController(Globals.revolver.revolverKP, Globals.revolver.revolverKI, Globals.revolver.revolverKD, Globals.revolver.revolverKF);
             revolverPID.setTolerance(0);
-            revolverPID.setPIDF(Globals.revolver.revolverKP, Globals.revolver.revolverKI, Globals.revolver.revolverKD, Globals.revolver.revolverKF);
 
             distanceSensor = hardwareMap.get(DistanceSensor.class, "colour1");
         }
         public void intakeon() {
-            intake.set(Globals.intakePower);
+//            intake.set(Globals.intakePower);
+            intake.set(0.7);
+            ballcount = 0;
         }
         public void intakeoff() {
             intake.set(0);
+            ballcount = 0;
         }
-
-        public void sort(boolean left){
+        @Override
+        public void periodic(){
             revolverPower = revolverPID.calculate(revolver.getCurrentPosition(), revolverTarget);
             revolver.set(revolverPower);
 
-            if (distanceSensor.getDistance(DistanceUnit.CM) < 2 && !revolverting){
-                revolverting = true;
-                onerotation(true);
-
-                if (!revolverReady && Math.abs(Math.abs(revolver.getCurrentPosition() - previousRevolverPosition) - Globals.revolver.oneRotation) < 10) {
-                    revolverting = false;//detect if the rotation is done
-                }
-
-
-
+            if (!revolverReady && Math.abs(Math.abs(revolver.getCurrentPosition() - previousRevolverPosition) - Globals.revolver.oneRotation) < 10) {
+                revolverReady = true;;//detect if the rotation is done
             }
         }
 
+        public void sort(int pickupnum){//1 = ppg 2 pgp 3 gpp,
 
+            if (ballcount == 2 && revolverReady && pattern == 3 && pickupnum == 1) {
+                revolverReady = false;
+                onerotation(ballcases(pickupnum, true));
+                ballcount += 1;
+            }
 
+            if (ballcount < 2) {
+                if (distanceSensor.getDistance(DistanceUnit.CM) < 2 && revolverReady) {
+                    if (pattern == 1) {
+                        if (pickupnum == 1) {
+                            revolverReady = false;
+                            onerotation(ballcases(pickupnum, true));
+                            ballcount += 1;
+                        } else if (pickupnum == 2) {
+                            revolverReady = false;
+                            onerotation(ballcases(pickupnum, true));
+                            ballcount += 1;
+                        } else if (pickupnum == 3) {
+                            revolverReady = false;
+                            onerotation(ballcases(pickupnum, true));
+                            ballcount += 1;
+                        }
+                    } else if (pattern == 2) {
+                        if (pickupnum == 1) {
+                            revolverReady = false;
+                            onerotation(ballcases(pickupnum, true));
+                            ballcount += 1;
+                        } else if (pickupnum == 2) {
+                            revolverReady = false;
+                            onerotation(ballcases(pickupnum, true));
+                            ballcount += 1;
+                        } else if (pickupnum == 3) {
+                            revolverReady = false;
+                            onerotation(ballcases(pickupnum, true));
+                            ballcount += 1;
+                        }
+                    } else if (pattern == 3) {
+                        if (pickupnum == 1) {
+                            revolverReady = false;
+                            onerotation(ballcases(pickupnum, true));
+                            ballcount += 1;
+                        } else if (pickupnum == 2) {
+                            revolverReady = false;
+                            onerotation(ballcases(pickupnum, true));
+                            ballcount += 1;
+                        } else if (pickupnum == 3) {
+                            revolverReady = false;
+                            onerotation(ballcases(pickupnum, true));
+                            ballcount += 1;
+                        }
+                    }
+                }
+            }
+        }
     }
     public static class froggyeat extends CommandBase {
         private final intakesubsys intake;
-        public froggyeat(intakesubsys intake) {
+        private int pickupnum;
+
+        public froggyeat(intakesubsys intake, int pickupnum) {
             this.intake = intake;
+            this.pickupnum = pickupnum;
             addRequirements(intake);
         }
 
@@ -263,7 +391,7 @@ public class FROGTONOMOUS extends CommandOpMode {
 
         @Override
         public void execute() {
-            //intake.colorsort();
+            intake.sort(pickupnum);
         }
 
         @Override
@@ -271,8 +399,12 @@ public class FROGTONOMOUS extends CommandOpMode {
             intake.intakeoff();
         }
     }
+
+    ///////////////////////////////////////////////
+
     public class outtakesubsys extends SubsystemBase {
         private Motor launcher1, launcher2, revolver;
+        private final ElapsedTime timer = new ElapsedTime();
         public outtakesubsys(HardwareMap map) {
             launcher1 = new Motor(hardwareMap, "l1", 28, 6000);
             launcher1.setRunMode(Motor.RunMode.RawPower);
@@ -287,29 +419,13 @@ public class FROGTONOMOUS extends CommandOpMode {
             revolver = new Motor(hardwareMap, "revolver", 28, 1150);
             revolver.setRunMode(Motor.RunMode.RawPower);
             revolver.resetEncoder();
-            revolverPID = new PIDController(Globals.revolver.revolverKP, Globals.revolver.revolverKI, Globals.revolver.revolverKD);
             rotate = new SimpleServo(hardwareMap, "turret", 0, 300, AngleUnit.DEGREES);
             rotate.turnToAngle(turretTarget);
             turretPIDF = new PIDFController(Globals.turret.turretKP, Globals.turret.turretKI, Globals.turret.turretKD, Globals.turret.turretKF);
-
-            // ----- build ov9281 -----
-            tagProcessor = new AprilTagProcessor.Builder()
-                    .setDrawAxes(true)
-                    .setDrawTagID(true)
-                    .setDrawTagOutline(true)
-                    .setDrawCubeProjection(true)
-                    .setLensIntrinsics(914.101, 914.101, 645.664, 342.333)
-                    .build();
-
-            visionPortal = new VisionPortal.Builder()
-                    .addProcessor(tagProcessor)
-                    .setCamera(hardwareMap.get(WebcamName.class, "ov9281"))
-                    .setStreamFormat(VisionPortal.StreamFormat.MJPEG)
-                    .setCameraResolution(new android.util.Size(1280, 720))
-                    .build();
+            turretPIDF.setTolerance(Globals.turret.turretTol);
             eject = new SimpleServo(hardwareMap, "eject", 0, 70);
             eject.setInverted(true);
-            eject.turnToAngle(Globals.pushServo.defualt);
+            eject.turnToAngle(25F);
         }
         private void calculateRPM() {
             double currentTime = getRuntime();
@@ -326,17 +442,18 @@ public class FROGTONOMOUS extends CommandOpMode {
                 lastPosition = currentPosition;
             }
         }
-        private void autoAimServoMode() {
-            turretPIDF.setPIDF(Globals.turret.turretKP, Globals.turret.turretKI, Globals.turret.turretKD, Globals.turret.turretKF);
-
+        private void aiming() {
             List<AprilTagDetection> detections = tagProcessor.getDetections();
+
                 visionPortal.setProcessorEnabled(tagProcessor, true);
 
                 AprilTagDetection chosen = null;
                 double chosenBearing = 0.0;
                 if (detections != null && !detections.isEmpty()) {
                     for (AprilTagDetection d : detections) {
-                        if (d.ftcPose != null) {
+                        if (d.ftcPose != null && d.id == 20) {//blue IS 20 red IS 24
+                            distance = d.ftcPose.range;
+                            power = (2547.5 * pow(2.718281828459045, (0.0078 * distance))) / Globals.launcher.launcherTransformation; // here
                             double bearing = d.ftcPose.bearing;
                             if (chosen == null || Math.abs(bearing) < Math.abs(chosenBearing)) {
                                 chosen = d;
@@ -344,6 +461,8 @@ public class FROGTONOMOUS extends CommandOpMode {
                             }
                         }
                     }
+                } else {
+                    power = 0;
                 }
 
                 if (chosen != null) {
@@ -361,60 +480,74 @@ public class FROGTONOMOUS extends CommandOpMode {
 
                 }
 
+
             if (turretTarget > 300) {
                 turretTarget = 300;
             } else if (turretTarget < 0) {
                 turretTarget = 0;
             }
 
+            feedforwardPower = ff.calculate(RPM, power);
             rotate.turnToAngle(turretTarget);
-
         }
-        private void launcherawe() {
-            ff.setP(Globals.launcher.flykP);
-            ff.setI(Globals.launcher.flykI);
-            ff.setD(Globals.launcher.flykD);
-            ff.setF(Globals.launcher.flykF);
 
+        private void timerreset() {
+            timer.reset();
+        }
 
+        private void launch(int shootnum) {
+            telemetry.addData("time", timer.seconds());
+            telemetry.addData("balls", ballsshot);
+            telemetry.update();
 
-            List<AprilTagDetection> detections = tagProcessor.getDetections();
-            if (detections != null && !detections.isEmpty()) {
-                for (AprilTagDetection d : detections) {
-
-                    if (d != null && d.metadata != null && d.ftcPose != null) {
-                        distance = d.ftcPose.range;
-                        power = (2547.5 * pow(2.718281828459045, (0.0078 * distance)))/Globals.launcher.launcherTransformation; // here
+            if (ballsshot < 3) {
+                if (timer.seconds() > 0.4) {
+                    if (pattern == 1) {
+                        if (shootnum == 0) {
+                            launcher1.set(feedforwardPower);
+                            launcher2.set(feedforwardPower);
+                            //eject.turnToAngle(Globals.pushServo.eject);
+                            eject.turnToAngle(8F);
+                            if (aligned && Math.abs(power - RPM) < Globals.launcher.launcherTol && power > 0) {
+                                set.turnToAngle(Globals.launcher.upset);
+                            }
+                            if (timer.seconds() > 1) {
+                                eject.turnToAngle(Globals.pushServo.defualt);
+                            }
+                            if (timer.seconds() > 2) {
+                                onerotation(ballcases(shootnum, false));
+                                ballsshot += 1;
+                            }
+                        }
                     }
                 }
-            } else {
-                power = 0;
             }
 
-            feedforwardPower = ff.calculate(RPM, power);
         }
 
         @Override
         public void periodic() {
             calculateRPM();
-            launcherawe();
-            autoAimServoMode();
+            aiming();
         }
     }//todo
     public static class froggyspit extends CommandBase {
         private final outtakesubsys outtake;
-        public froggyspit(outtakesubsys outtake) {
+        private int shootnum;
+        public froggyspit(outtakesubsys outtake, int shootnum) {
             this.outtake = outtake;
+            this.shootnum = shootnum;
             addRequirements(outtake);
         }
 
         @Override
         public void initialize() {
-
+            outtake.timerreset();
         }
 
         @Override
         public void execute() {
+            outtake.launch(shootnum);
         }
 
         @Override
@@ -433,28 +566,85 @@ public class FROGTONOMOUS extends CommandOpMode {
 
     @Override
     public void initialize() {
+        pattern = getPattern();
+        limelight.stop();
+
+        tagProcessor = new AprilTagProcessor.Builder()
+                .setDrawAxes(true)
+                .setDrawTagID(true)
+                .setDrawTagOutline(true)
+                .setDrawCubeProjection(true)
+                .setLensIntrinsics(914.101, 914.101, 645.664, 342.333)
+                .build();
+        visionPortal = new VisionPortal.Builder()
+                .addProcessor(tagProcessor)
+                .setCamera(hardwareMap.get(WebcamName.class, "ov9281"))
+                .setStreamFormat(VisionPortal.StreamFormat.MJPEG)
+                .setCameraResolution(new android.util.Size(1280, 720))
+                .build();
+
+        telemetry.addData("Pattern detected", pattern);
+        telemetry.update();
 
         follower = Constants.createFollower(hardwareMap);
         follower.setStartingPose(new Pose(19.300, 119.350, -36));
         telemetry.update();
 
-        outtakesubsys sub = new outtakesubsys(hardwareMap);
-        register(sub);
+        outtakesubsys loopedfunctionsout = new outtakesubsys(hardwareMap);
+        register(loopedfunctionsout);
+
+        outtakesubsys loopedfunctionsin = new outtakesubsys(hardwareMap);
+        register(loopedfunctionsin);
+
         buildPaths();
-        //findPattern();
 
 
-        SequentialCommandGroup PPG = new SequentialCommandGroup(
-                new FollowPathCommand(follower, shoot3),
-
-                new WaitCommand(1000), // Wait 1 second
-                // First pickup cycle
-                new FollowPathCommand(follower, eat3)
+        SequentialCommandGroup froggyroute = new SequentialCommandGroup(
+                new WaitCommand(3000),
+                new froggyspit(new outtakesubsys(hardwareMap), 0)
+//                new FollowPathCommand(follower, shoot3),
 //                new ParallelDeadlineGroup(
-//                        new FollowPathCommand(follower, eat3),
-//                        new froggyeat()
+//                        new WaitCommand(5000),
+//                        new froggyspit(new outtakesubsys(hardwareMap), 0)
+//                ),
+//                new ParallelDeadlineGroup(
+//                        new SequentialCommandGroup(
+//                                new FollowPathCommand(follower, eat3),
+//                                new WaitCommand(500)
+//                        ),
+//                        new froggyeat(new intakesubsys(hardwareMap), 1)
+//                ),
+//                new FollowPathCommand(follower, shoot6),
+//                new ParallelDeadlineGroup(
+//                        new WaitCommand(5000),
+//                        new froggyspit(new outtakesubsys(hardwareMap), 1)
+//                ),
+//                new ParallelDeadlineGroup(
+//                        new SequentialCommandGroup(
+//                                new FollowPathCommand(follower, eat6),
+//                                new WaitCommand(500)
+//                        ),
+//                        new froggyeat(new intakesubsys(hardwareMap), 2)
+//                ),
+//                new FollowPathCommand(follower, shoot9),
+//                new ParallelDeadlineGroup(
+//                        new WaitCommand(5000),
+//                        new froggyspit(new outtakesubsys(hardwareMap), 2)
+//                ),
+//                new ParallelDeadlineGroup(
+//                        new SequentialCommandGroup(
+//                                new FollowPathCommand(follower, eat9),
+//                                new WaitCommand(500)
+//                        ),
+//                        new froggyeat(new intakesubsys(hardwareMap), 3)
+//                ),
+//                new FollowPathCommand(follower, shoot12),
+//                new ParallelDeadlineGroup(
+//                        new WaitCommand(5000),
+//                        new froggyspit(new outtakesubsys(hardwareMap), 3)
+//                )
         );
-        schedule(PPG);
+        schedule(froggyroute);
     }
 
     @Override
