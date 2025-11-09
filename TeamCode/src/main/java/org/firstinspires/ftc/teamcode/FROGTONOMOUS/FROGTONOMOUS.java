@@ -67,17 +67,16 @@ public class FROGTONOMOUS extends CommandOpMode {
     TelemetryData telemetryData = new TelemetryData(telemetry);
     private PathChain shoot3, eat3, shoot6, eat6, shoot9, eat9, shoot12;
     private boolean aligned = false;
-    private boolean autoAimEnabled = true;
     private boolean revolverReady = true;
+
+    private boolean ejecting = false;
     private VisionPortal visionPortal;
     private AprilTagProcessor tagProcessor;
-    private boolean clockwise;
-    double revolverSetupTimer = Double.MAX_VALUE;
     private double feedforwardPower = 0;
     private static int pattern;
     private double distance;
     private double power;
-    private int shotsFired = 0;
+    private boolean launcherready = true;
     private double previousRevolverPosition;
     private PIDFController turretPIDF, ff, revolverPID;
     private SimpleServo set, rotate, eject;
@@ -121,6 +120,7 @@ public class FROGTONOMOUS extends CommandOpMode {
                         )
                 )
                 .setLinearHeadingInterpolation(Math.toRadians(-36), Math.toRadians(-180))
+                .setTimeoutConstraint(500)
                 .build();
 
         shoot6 = follower.pathBuilder()
@@ -139,6 +139,7 @@ public class FROGTONOMOUS extends CommandOpMode {
                         )
                 )
                 .setLinearHeadingInterpolation(Math.toRadians(-75), Math.toRadians(-180))
+                .setTimeoutConstraint(500)
                 .build();
 
         shoot9 = follower.pathBuilder()
@@ -157,6 +158,7 @@ public class FROGTONOMOUS extends CommandOpMode {
                         )
                 )
                 .setLinearHeadingInterpolation(Math.toRadians(-75), Math.toRadians(-180))
+                .setTimeoutConstraint(500)
                 .build();
 
         shoot12 = follower.pathBuilder()
@@ -307,8 +309,9 @@ public class FROGTONOMOUS extends CommandOpMode {
             intake.set(0);
             ballcount = 0;
         }
+
         @Override
-        public void periodic(){
+        public void periodic() {
             revolverPower = revolverPID.calculate(revolver.getCurrentPosition(), revolverTarget);
             revolver.set(revolverPower);
 
@@ -494,33 +497,138 @@ public class FROGTONOMOUS extends CommandOpMode {
         private void timerreset() {
             timer.reset();
         }
+        private void shooting(){
+            launcher1.set(feedforwardPower);
+            launcher2.set(feedforwardPower);
+            if (timer.seconds() < 0.5) {
+                eject.turnToAngle(Globals.pushServo.eject);
+                ejecting = true;
+            }
+            if (aligned && Math.abs(power - RPM) < Globals.launcher.launcherTol && power > 0) {
+                set.turnToAngle(Globals.launcher.upset);
+            }
+            if (timer.seconds() > 1.2) {
+                set.turnToAngle(Globals.launcher.downset);
+            }
+            if (timer.seconds() > 1) {
+                eject.turnToAngle(Globals.pushServo.defualt);
+            }
+        }
 
         private void launch(int shootnum) {
             telemetry.addData("time", timer.seconds());
             telemetry.addData("balls", ballsshot);
             telemetry.update();
 
+
             if (ballsshot < 3) {
-                if (timer.seconds() > 0.4) {
-                    if (pattern == 1) {
-                        if (shootnum == 0) {
-                            launcher1.set(feedforwardPower);
-                            launcher2.set(feedforwardPower);
-                            //eject.turnToAngle(Globals.pushServo.eject);
-                            eject.turnToAngle(8F);
-                            if (aligned && Math.abs(power - RPM) < Globals.launcher.launcherTol && power > 0) {
-                                set.turnToAngle(Globals.launcher.upset);
+                if (launcherready) {
+                    if (timer.seconds() > 0.4)
+                        if (pattern == 1) {
+                            if (shootnum == 0) {
+                                shooting();
+                                if (timer.seconds() > 1.2) {
+                                    onerotation(ballcases(shootnum, false));
+                                    ballsshot += 1;
+                                    ejecting = false;
+                                    timer.reset();
+                                }
+                            } else if (shootnum == 1) {
+                                shooting();
+                                if (timer.seconds() > 1.2) {
+                                    onerotation(ballcases(shootnum, false));
+                                    ballsshot += 1;
+                                    ejecting = false;
+                                    timer.reset();
+                                }
+                            } else if (shootnum == 2) {
+                                shooting();
+                                if (timer.seconds() > 1.2) {
+                                    onerotation(ballcases(shootnum, false));
+                                    ballsshot += 1;
+                                    ejecting = false;
+                                    timer.reset();
+                                }
+                            } else if (shootnum == 3) {
+                                shooting();
+                                if (timer.seconds() > 1.2) {
+                                    onerotation(ballcases(shootnum, false));
+                                    ballsshot += 1;
+                                    ejecting = false;
+                                    timer.reset();
+                                }
                             }
-                            if (timer.seconds() > 1) {
-                                eject.turnToAngle(Globals.pushServo.defualt);
+                        } else if (pattern == 2) {
+                            if (shootnum == 0) {
+                                shooting();
+                                if (timer.seconds() > 1.2) {
+                                    onerotation(ballcases(shootnum, false));
+                                    ballsshot += 1;
+                                    ejecting = false;
+                                    timer.reset();
+                                }
+                            } else if (shootnum == 1) {
+                                shooting();
+                                if (timer.seconds() > 1.2) {
+                                    onerotation(ballcases(shootnum, false));
+                                    ballsshot += 1;
+                                    ejecting = false;
+                                    timer.reset();
+                                }
+                            } else if (shootnum == 2) {
+                                shooting();
+                                if (timer.seconds() > 1.2) {
+                                    onerotation(ballcases(shootnum, false));
+                                    ballsshot += 1;
+                                    ejecting = false;
+                                    timer.reset();
+                                }
+                            } else if (shootnum == 3) {
+                                shooting();
+                                if (timer.seconds() > 1.2) {
+                                    onerotation(ballcases(shootnum, false));
+                                    ballsshot += 1;
+                                    ejecting = false;
+                                    timer.reset();
+                                }
                             }
-                            if (timer.seconds() > 2) {
-                                onerotation(ballcases(shootnum, false));
-                                ballsshot += 1;
+                        } else if (pattern == 3) {
+                            if (shootnum == 0) {
+                                shooting();
+                                if (timer.seconds() > 1.2) {
+                                    onerotation(ballcases(shootnum, false));
+                                    ballsshot += 1;
+                                    ejecting = false;
+                                    timer.reset();
+                                }
+                            } else if (shootnum == 1) {
+                                shooting();
+                                if (timer.seconds() > 1.2) {
+                                    onerotation(ballcases(shootnum, false));
+                                    ballsshot += 1;
+                                    ejecting = false;
+                                    timer.reset();
+                                }
+                            } else if (shootnum == 2) {
+                                shooting();
+                                if (timer.seconds() > 1.2) {
+                                    onerotation(ballcases(shootnum, false));
+                                    ballsshot += 1;
+                                    ejecting = false;
+                                    timer.reset();
+                                }
+                            } else if (shootnum == 3) {
+                                shooting();
+                                if (timer.seconds() > 1.2) {
+                                    onerotation(ballcases(shootnum, false));
+                                    ballsshot += 1;
+                                    ejecting = false;
+                                    timer.reset();
+                                }
                             }
                         }
                     }
-                }
+
             }
 
         }
@@ -587,7 +695,7 @@ public class FROGTONOMOUS extends CommandOpMode {
         telemetry.update();
 
         follower = Constants.createFollower(hardwareMap);
-        follower.setStartingPose(new Pose(19.300, 119.350, -36));
+        follower.setStartingPose(new Pose(19.300, 119.350, Math.toRadians(-36)));
         telemetry.update();
 
         outtakesubsys loopedfunctionsout = new outtakesubsys(hardwareMap);
@@ -600,49 +708,40 @@ public class FROGTONOMOUS extends CommandOpMode {
 
 
         SequentialCommandGroup froggyroute = new SequentialCommandGroup(
-                new WaitCommand(3000),
-                new froggyspit(new outtakesubsys(hardwareMap), 0)
-//                new FollowPathCommand(follower, shoot3),
-//                new ParallelDeadlineGroup(
-//                        new WaitCommand(5000),
-//                        new froggyspit(new outtakesubsys(hardwareMap), 0)
-//                ),
-//                new ParallelDeadlineGroup(
-//                        new SequentialCommandGroup(
-//                                new FollowPathCommand(follower, eat3),
-//                                new WaitCommand(500)
-//                        ),
-//                        new froggyeat(new intakesubsys(hardwareMap), 1)
-//                ),
-//                new FollowPathCommand(follower, shoot6),
-//                new ParallelDeadlineGroup(
-//                        new WaitCommand(5000),
-//                        new froggyspit(new outtakesubsys(hardwareMap), 1)
-//                ),
-//                new ParallelDeadlineGroup(
-//                        new SequentialCommandGroup(
-//                                new FollowPathCommand(follower, eat6),
-//                                new WaitCommand(500)
-//                        ),
-//                        new froggyeat(new intakesubsys(hardwareMap), 2)
-//                ),
-//                new FollowPathCommand(follower, shoot9),
-//                new ParallelDeadlineGroup(
-//                        new WaitCommand(5000),
-//                        new froggyspit(new outtakesubsys(hardwareMap), 2)
-//                ),
-//                new ParallelDeadlineGroup(
-//                        new SequentialCommandGroup(
-//                                new FollowPathCommand(follower, eat9),
-//                                new WaitCommand(500)
-//                        ),
-//                        new froggyeat(new intakesubsys(hardwareMap), 3)
-//                ),
-//                new FollowPathCommand(follower, shoot12),
-//                new ParallelDeadlineGroup(
-//                        new WaitCommand(5000),
-//                        new froggyspit(new outtakesubsys(hardwareMap), 3)
-//                )
+                new FollowPathCommand(follower, shoot3),
+                new ParallelDeadlineGroup(
+                        new WaitCommand(4500),
+                        new froggyspit(new outtakesubsys(hardwareMap), 0)
+                ),
+                new ParallelDeadlineGroup(
+                                new FollowPathCommand(follower, eat3),
+
+                        new froggyeat(new intakesubsys(hardwareMap), 1)
+                ),
+                new FollowPathCommand(follower, shoot6),
+                new ParallelDeadlineGroup(
+                        new WaitCommand(4500),
+                        new froggyspit(new outtakesubsys(hardwareMap), 1)
+                ),
+                new ParallelDeadlineGroup(
+                                new FollowPathCommand(follower, eat6),
+                        new froggyeat(new intakesubsys(hardwareMap), 2)
+                ),
+                new FollowPathCommand(follower, shoot9),
+                new ParallelDeadlineGroup(
+                        new WaitCommand(4500),
+                        new froggyspit(new outtakesubsys(hardwareMap), 2)
+                ),
+                new ParallelDeadlineGroup(
+
+                                new FollowPathCommand(follower, eat9),
+                        new froggyeat(new intakesubsys(hardwareMap), 3)
+                ),
+                new FollowPathCommand(follower, shoot12),
+                new ParallelDeadlineGroup(
+                        new WaitCommand(4500),
+                        new froggyspit(new outtakesubsys(hardwareMap), 3)
+                )
         );
         schedule(froggyroute);
     }

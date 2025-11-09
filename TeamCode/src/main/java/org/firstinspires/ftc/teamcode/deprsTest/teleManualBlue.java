@@ -239,7 +239,7 @@ public void launch() {
             }
         }
         prevSquare = square;
-        if (shotsFired >= 2) {
+        if (shotsFired >= 3) {
             revolverState.set(0, "EMPTY");
             revolverState.set(2, "EMPTY");
             revolverState.set(1, "EMPTY");

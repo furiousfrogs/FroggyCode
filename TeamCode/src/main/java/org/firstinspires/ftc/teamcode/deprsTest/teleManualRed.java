@@ -232,7 +232,7 @@ private boolean prevCircle;
             revolverTarget += shootCounterClockwise ? -Globals.revolver.oneRotation : Globals.revolver.oneRotation;  // CW
             shotsFired++;
         }
-        if (shotsFired >= 2) {
+        if (shotsFired >= 3) {
             revolverState.set(0, "EMPTY");
             revolverState.set(2, "EMPTY");
             revolverState.set(1, "EMPTY");
