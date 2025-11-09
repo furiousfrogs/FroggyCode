@@ -2,7 +2,6 @@ package org.firstinspires.ftc.teamcode.chuckFull;
 
 
 import com.seattlesolvers.solverslib.command.CommandScheduler;
-import com.seattlesolvers.solverslib.command.Subsystem;
 import com.seattlesolvers.solverslib.gamepad.GamepadEx;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import org.firstinspires.ftc.teamcode.chuckFull.subsystems.*;
@@ -33,12 +32,12 @@ public class RobotContainer {
 
 
 // set default commands
-        CommandScheduler.getInstance().setDefaultCommand((Subsystem) drivebase, new DriveCommand(drivebase,driver));
-        CommandScheduler.getInstance().setDefaultCommand((Subsystem) launcher, new LauncherCommand(launcher, turret, pattern, driver));
-        CommandScheduler.getInstance().setDefaultCommand((Subsystem) revolver, new RevolverCommand(revolver, driver));
-        CommandScheduler.getInstance().setDefaultCommand((Subsystem) turret, new TurretAutoAimCommand(turret, driver));
-        CommandScheduler.getInstance().setDefaultCommand((Subsystem) intake, new IntakeCommand(intake, driver));
-        CommandScheduler.getInstance().setDefaultCommand((Subsystem) pattern, new PatternDetectCommand(pattern, driver));
+        CommandScheduler.getInstance().setDefaultCommand(drivebase, new DriveCommand(drivebase,driver));
+        CommandScheduler.getInstance().setDefaultCommand(launcher, new LauncherCommand(launcher, turret, pattern, driver));
+        CommandScheduler.getInstance().setDefaultCommand(revolver, new RevolverCommand(revolver, driver));
+        CommandScheduler.getInstance().setDefaultCommand(turret, new TurretAutoAimCommand(turret, driver));
+        CommandScheduler.getInstance().setDefaultCommand(intake, new IntakeCommand(intake, driver));
+        CommandScheduler.getInstance().setDefaultCommand(pattern, new PatternDetectCommand(pattern, driver));
     }
 
 
