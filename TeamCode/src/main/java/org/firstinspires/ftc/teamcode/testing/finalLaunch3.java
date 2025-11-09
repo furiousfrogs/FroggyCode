@@ -2,8 +2,6 @@ package org.firstinspires.ftc.teamcode.testing;
 
 import static java.lang.Math.pow;
 
-import android.provider.Settings;
-
 import com.acmerobotics.dashboard.FtcDashboard;
 import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
 import com.qualcomm.robotcore.eventloop.opmode.Disabled;
@@ -233,23 +231,18 @@ public class finalLaunch3 extends OpMode {
                 switch (currentShooting) {
                     case shootRotating: {
                         // only add one rotation once
-                        if (rotateTimer > globalTimer.seconds() && !rotating && shotsFired > 0) {
+                        if (rotateTimer > globalTimer.seconds() && !rotating) {
                             revolverTarget += clockwise ? -Globals.revolver.oneRotation : Globals.revolver.oneRotation;
-                            rotateTimer = globalTimer.seconds() + Globals.timers.oneRotationTime;
+                            rotateTimer = globalTimer.seconds() + 1;
                             rotating = true;
-                        } else if (rotateTimer > globalTimer.seconds() && !rotating && shotsFired == 0) {
-                            rotating = true;
-                            rotateTimer = globalTimer.seconds() - 1;
                         }
-
-
                         // wait until position reached
                         if (Math.abs(revolverTarget - revolver.getCurrentPosition()) < 10 && rotating && globalTimer.seconds() > rotateTimer) {
                             rotateTimer = Double.MAX_VALUE;
                             currentShooting = shooting.shootEjecting;
-                            eject.turnToAngle(Globals.pushServo.push);                 // push
+                            eject.turnToAngle(51);                 // push
                             if (ejectTimer > globalTimer.seconds()) {
-                                ejectTimer = globalTimer.seconds() + Globals.timers.servoPushTime; // 1s dwell
+                                ejectTimer = globalTimer.seconds() + 1.0; // 1s dwell
                             }
                         }
                         break;
@@ -259,7 +252,7 @@ public class finalLaunch3 extends OpMode {
 
                         // hold push until timer expires, then retract
                         if (globalTimer.seconds() > ejectTimer) {
-                            eject.turnToAngle(Globals.pushServo.defualt); // retract to neutral
+                            eject.turnToAngle(44); // retract to neutral
                             currentShooting = shooting.shootFire;
                             ejectTimer = Double.MAX_VALUE;
                         }
@@ -272,7 +265,7 @@ public class finalLaunch3 extends OpMode {
 
                         if (atSpeed && aligned && shootTimer > globalTimer.seconds() && !shootAction) {
                             set.turnToAngle(Globals.launcher.upset);
-                            shootTimer = globalTimer.seconds() + Globals.timers.pushUpTime; // 1s gate-open
+                            shootTimer = globalTimer.seconds() + 1.0; // 1s gate-open
                             shootAction = true;
                         }
 
@@ -280,7 +273,7 @@ public class finalLaunch3 extends OpMode {
                         if (globalTimer.seconds() > shootTimer) {
                             set.turnToAngle(Globals.launcher.downset);
                             shotsFired++;
-                            if (shotsFired < 4) {
+                            if (shotsFired < 3) {
                                 // Prepare next round: rotate again for the next chamber
                                 currentShooting = shooting.shootRotating;
                                 shootAction = false;
@@ -345,13 +338,13 @@ public class finalLaunch3 extends OpMode {
         gamepadEx.readButtons();
         revolverPID.setPID(Globals.revolver.revolverKP, Globals.revolver.revolverKI, Globals.revolver.revolverKD);
 
-        if (eject.getAngle() != 51) {
-            if (gamepadEx.wasJustPressed(GamepadKeys.Button.SQUARE)) {
-                revolverTarget += Globals.revolver.oneRotation;  // CW
-            } else if (gamepadEx.wasJustPressed(GamepadKeys.Button.CIRCLE)) {
-                revolverTarget -= Globals.revolver.oneRotation;
-            }
-        }
+//        if (eject.getAngle() != 51) {
+//            if (gamepadEx.wasJustPressed(GamepadKeys.Button.SQUARE)) {
+//                revolverTarget += Globals.revolver.oneRotation;  // CW
+//            } else if (gamepadEx.wasJustPressed(GamepadKeys.Button.CIRCLE)) {
+//                revolverTarget -= Globals.revolver.oneRotation;
+//            }
+//        }
         revolverPower = revolverPID.calculate(revolver.getCurrentPosition(), revolverTarget);
         revolver.set(revolverPower);
 

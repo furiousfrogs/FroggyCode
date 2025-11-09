@@ -47,7 +47,9 @@ private boolean previousRotation;
 private boolean revolverReadytoLaunch = false;
 private int filled;
 private boolean revolverReady = true;
-
+private boolean prevSquare;
+private boolean prevCross;
+private boolean launcherSetPower = false;
 
 
 // ----- action booleans -----
@@ -201,30 +203,39 @@ public void loop() { // TODO add revolver sequence logic
     launch();
     gamepadEx2.readButtons();
 
+    feedforwardPower = ff.calculate(RPM, power);
+    rotate.turnToAngle(turretTarget);
 
 }
 
 public void launch() {
-    if (power > 0 && aligned && gamepadEx2.getButton(GamepadKeys.Button.CROSS)) {
-        launcher1.set(feedforwardPower);
-        launcher2.set(feedforwardPower);
-        if (gamepadEx2.getButton(GamepadKeys.Button.DPAD_UP) && aligned && Math.abs(power - RPM) < Globals.launcher.launcherTol) {
-            set.turnToAngle(Globals.launcher.upset);
-        } else {
-            set.turnToAngle(Globals.launcher.downset);
+
+    launcher1.set(launcherSetPower ? feedforwardPower : 0);
+    launcher2.set(launcherSetPower ? feedforwardPower : 0);
+    if (!launcherSetPower && power > 0 && gamepadEx2.getButton(GamepadKeys.Button.CROSS) && !prevCross) {
+        launcherSetPower = true;
+    } else if ((launcherSetPower && gamepadEx2.getButton(GamepadKeys.Button.CROSS) && !prevCross) || power == 0) {
+        launcherSetPower = false;
+    } prevCross = gamepadEx2.getButton(GamepadKeys.Button.CROSS);
+
+    if (gamepadEx2.getButton(GamepadKeys.Button.DPAD_UP) && aligned && Math.abs(power - RPM) < Globals.launcher.launcherTol && power > 0) {
+        set.turnToAngle(Globals.launcher.upset);
+    } else {
+        set.turnToAngle(Globals.launcher.downset);
+    }
+}
+    public void rotate() {
+        revolverTarget += (int) ((gamepadEx2.getTrigger(GamepadKeys.Trigger.RIGHT_TRIGGER) - gamepadEx2.getTrigger(GamepadKeys.Trigger.LEFT_TRIGGER)) * Globals.revolver.revolverNudge);
+        boolean square = gamepadEx2.getButton(GamepadKeys.Button.SQUARE);
+        if (square && !prevSquare) {
+            revolverTarget += shootCounterClockwise ? -Globals.revolver.oneRotation : Globals.revolver.oneRotation;  // CW
         }
+        prevSquare = square;
     }
-}
-public void rotate() {
-    revolverTarget = (int) ((gamepadEx2.getTrigger(GamepadKeys.Trigger.RIGHT_TRIGGER) - gamepadEx2.getTrigger(GamepadKeys.Trigger.LEFT_TRIGGER)) * Globals.revolver.revolverNudge);
-    if (gamepadEx2.wasJustPressed(GamepadKeys.Button.SQUARE)) {
-        revolverTarget += shootCounterClockwise ? -Globals.revolver.oneRotation : Globals.revolver.oneRotation;  // CW
-    }
-}
 public void ejection() {
-    if (gamepad1.right_stick_x > 0.5) {
+    if (gamepad2.right_stick_x > 0.5) {
         eject.turnToAngle(Globals.pushServo.eject);
-    } else if (gamepad1.right_stick_x < -0.5) {
+    } else if (gamepad2.right_stick_x < -0.5) {
         eject.turnToAngle(Globals.pushServo.push);
     } else {
         eject.turnToAngle(Globals.pushServo.defualt);
@@ -432,13 +443,14 @@ private void calculateRPM() {
 }
 
 private void autoAimServoMode() {
+    turretPIDF.setTolerance(Globals.turret.turretTol);
     ff.setP(Globals.launcher.flykP);
     ff.setI(Globals.launcher.flykI);
     ff.setD(Globals.launcher.flykD);
     ff.setF(Globals.launcher.flykF);
     turretPIDF.setPIDF(Globals.turret.turretKP, Globals.turret.turretKI, Globals.turret.turretKD, Globals.turret.turretKF);
 
-        boolean pad = gamepadEx2.getButton(GamepadKeys.Button.TOUCHPAD);
+        boolean pad = gamepadEx2.getButton(GamepadKeys.Button.DPAD_DOWN);
         if (pad && !prevPad) {
             autoAimEnabled = !autoAimEnabled;
         }
@@ -449,14 +461,14 @@ private void autoAimServoMode() {
 
 
     List<AprilTagDetection> detections = tagProcessor.getDetections();
-    if (!lb ^ rb) {
+    if (!lb ^ rb && autoAimEnabled) {
         visionPortal.setProcessorEnabled(tagProcessor, true);
 
         AprilTagDetection chosen = null;
         double chosenBearing = 0.0;
         if (detections != null && !detections.isEmpty()) {
             for (AprilTagDetection d : detections) {
-                if (d != null && d.metadata != null && d.ftcPose != null && d.id == 24) {//BLUE IS 20 RED IS 24
+                if (d.ftcPose != null && d.id == 20) {//blue IS 20 red IS 24
                     distance = d.ftcPose.range;
                     power = (2547.5 * pow(2.718281828459045, (0.0078 * distance))) / Globals.launcher.launcherTransformation; // here
                     double bearing = d.ftcPose.bearing;
@@ -487,6 +499,7 @@ private void autoAimServoMode() {
 
     } else if (!autoAimEnabled && !patternDetected) {
         visionPortal.setProcessorEnabled(tagProcessor, false);
+        aligned = false;
     }
 
     if (lb ^ rb) {
@@ -501,8 +514,6 @@ private void autoAimServoMode() {
         turretTarget = 0;
     }
 
-    feedforwardPower = power == 0 ? 0 : ff.calculate(RPM, power);
-    rotate.turnToAngle(turretTarget);
 
 }
 
@@ -510,7 +521,21 @@ private void autoAimServoMode() {
 private void doTelemetry() {
     telemetry.addData("aligned? ", aligned);
     telemetry.addData("pattern?: ", currentPattern);
+    telemetry.addData("autoaim", autoAimEnabled);
+    telemetry.addData("power,", power);
+    telemetry.addData("ff power", feedforwardPower);
+    telemetry.addData("atspeed", Math.abs(power - RPM) < Globals.launcher.launcherTol);
 
+    telemetry.update();
+
+    TelemetryPacket rpmPacket = new TelemetryPacket();
+    rpmPacket.put("RPM", RPM);
+
+    TelemetryPacket powerPacket = new TelemetryPacket();
+    powerPacket.put("targetRPM", power);
+
+    FtcDashboard.getInstance().sendTelemetryPacket(powerPacket);
+    FtcDashboard.getInstance().sendTelemetryPacket(rpmPacket);
 }
 
 
