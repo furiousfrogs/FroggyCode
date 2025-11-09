@@ -67,20 +67,12 @@ public class FROGTONOMOUS extends CommandOpMode {
     TelemetryData telemetryData = new TelemetryData(telemetry);
     private PathChain shoot3, eat3, shoot6, eat6, shoot9, eat9, shoot12;
     private boolean aligned = false;
-    private boolean patternDetected = false;
     private boolean autoAimEnabled = true;
     private boolean revolverReady = true;
-    private boolean prevTri = false;
-    private boolean previousRotation;
-    private boolean revolverReadytoLaunch = false;
+    private VisionPortal visionPortal;
+    private AprilTagProcessor tagProcessor;
     private boolean clockwise;
-    private int filled;
     double revolverSetupTimer = Double.MAX_VALUE;
-    private boolean revolverting = false;
-    private ElapsedTime globalTimer = new ElapsedTime();
-    private double ejectTimer;
-    private double shootTimer;
-    private double rotateTimer;
     private double feedforwardPower = 0;
     private static int pattern;
     private double distance;
@@ -96,8 +88,6 @@ public class FROGTONOMOUS extends CommandOpMode {
     private int lastPosition;
     private double bearing = 0.0;
     double turretTarget = 150F; // inital turret angle
-    private final float[] hsv1 = new float[3];
-    private final float[] hsv2 = new float[3];
     private boolean shootCounterClockwise = false;
     private List<String> revolverState = new ArrayList<>(Arrays.asList("EMPTY", "EMPTY", "EMPTY"));
     private List<String> finalRevolver = new ArrayList<>(Arrays.asList("EMPTY", "EMPTY", "EMPTY"));
@@ -105,11 +95,11 @@ public class FROGTONOMOUS extends CommandOpMode {
     private int revolverTarget = 0;
     private double revolverPower;
     private int ballcount = 0;
+
+    private int ballsshot = 0;
     private boolean left;
 
     private FtcDashboard dashboard = FtcDashboard.getInstance();
-    private VisionPortal visionPortal;
-    private AprilTagProcessor tagProcessor;
     private Limelight3A limelight;
 
     ////////////////////////////////////////////////
@@ -191,13 +181,15 @@ public class FROGTONOMOUS extends CommandOpMode {
         while (System.currentTimeMillis() - start < 2000) {  // 2s timeout
             LLResult result = limelight.getLatestResult();
             if (result != null && result.isValid()) {
-                List<LLResultTypes.FiducialResult> tags = result.getFiducialResults();
-                if (!tags.isEmpty()) {
-                    for (LLResultTypes.FiducialResult tag : tags) {
-                        int id = tag.getFiducialId();
-                        if (id == 21) return 3;
-                        if (id == 22) return 2;
-                        if (id == 23) return 1;
+                if (result.getStaleness() < 500) {
+                    List<LLResultTypes.FiducialResult> tags = result.getFiducialResults();
+                    if (!tags.isEmpty()) {
+                        for (LLResultTypes.FiducialResult tag : tags) {
+                            int id = tag.getFiducialId();
+                            if (id == 21) return 3;
+                            if (id == 22) return 2;
+                            if (id == 23) return 1;
+                        }
                     }
                 }
             }
@@ -207,6 +199,71 @@ public class FROGTONOMOUS extends CommandOpMode {
         return 1;
     }
 
+    public boolean ballcases(int pickupnum, boolean comingin) {
+        if (pattern == 1){
+            if (pickupnum == 1){
+                if (comingin){
+                    return true;
+                } else if (!comingin){
+                    return false;
+                }
+            } else if (pickupnum == 2) {
+                if (comingin){
+                    return false;
+                } else if (!comingin){
+                    return true;
+                }
+            } else if (pickupnum == 3) {
+                if (comingin){
+                    return true;
+                } else if (!comingin){
+                    return true;
+                }
+            }
+        } else if (pattern == 2) {
+            if (pickupnum == 1){
+                if (comingin){
+                    return true;
+                } else if (!comingin){
+                    return true;
+                }
+            } else if (pickupnum == 2) {
+                if (comingin) {
+                    return false;
+                } else if (!comingin) {
+                    return false;
+                }
+            } else if (pickupnum == 3) {
+                if (comingin) {
+                    return true;
+                } else if (!comingin) {
+                    return false;
+                }
+            }
+        } else if (pattern == 3) {
+            if (pickupnum == 1) {
+                if (comingin) {
+                    return true;
+                } else if (!comingin) {
+                    return true;
+                }
+            } else if (pickupnum == 2) {
+                if (comingin) {
+                    return true;
+                } else if (!comingin) {
+                    return true;
+                }
+            } else if (pickupnum == 3) {
+                if (comingin) {
+                    return false;
+                } else if (!comingin) {
+                    return true;
+                }
+            }
+        }
+        return true;
+    }
+
 
 
     ///////////////////////////////////////////////
@@ -214,8 +271,6 @@ public class FROGTONOMOUS extends CommandOpMode {
     public class intakesubsys extends SubsystemBase {
         private final Motor intake, revolver;
 
-
-        //2 is intake side 0 is top
         public intakesubsys(HardwareMap map) {
             intake = new Motor(map, "intake");
             intake.setRunMode(Motor.RunMode.RawPower);
@@ -240,13 +295,9 @@ public class FROGTONOMOUS extends CommandOpMode {
             intake.set(0);
             ballcount = 0;
         }
-
-        public void sort(int pattern, int pickupnum){//1 = ppg 2 pgp 3 gpp,
-            telemetry.addData("start", pickupnum);
-            telemetry.update();
+        public void sort(int pickupnum){//1 = ppg 2 pgp 3 gpp,
             revolverPower = revolverPID.calculate(revolver.getCurrentPosition(), revolverTarget);
             revolver.set(revolverPower);
-
 
             if (!revolverReady && Math.abs(Math.abs(revolver.getCurrentPosition() - previousRevolverPosition) - Globals.revolver.oneRotation) < 10) {
                 revolverReady = true;;//detect if the rotation is done
@@ -254,41 +305,51 @@ public class FROGTONOMOUS extends CommandOpMode {
 
             if (ballcount == 2 && revolverReady && pattern == 3 && pickupnum == 1) {
                 revolverReady = false;
-                onerotation(true);
+                onerotation(ballcases(pickupnum, true));
             }
 
             if (ballcount < 2) {
                 if (distanceSensor.getDistance(DistanceUnit.CM) < 2 && revolverReady) {
-                    if (pattern == 1 || pattern == 2) {
-                        telemetry.addData("wopfmew[fwe", pickupnum);
-                        telemetry.update();
+                    if (pattern == 1) {
                         if (pickupnum == 1) {
-                            telemetry.addData("rotatobrotato", pickupnum);
-                            telemetry.update();
                             revolverReady = false;
-                            onerotation(true);
+                            onerotation(ballcases(pickupnum, true));
                             ballcount += 1;
                         } else if (pickupnum == 2) {
                             revolverReady = false;
-                            onerotation(false);
+                            onerotation(ballcases(pickupnum, true));
                             ballcount += 1;
                         } else if (pickupnum == 3) {
                             revolverReady = false;
-                            onerotation(true);
+                            onerotation(ballcases(pickupnum, true));
+                            ballcount += 1;
+                        }
+                    } else if (pattern == 2) {
+                        if (pickupnum == 1) {
+                            revolverReady = false;
+                            onerotation(ballcases(pickupnum, true));
+                            ballcount += 1;
+                        } else if (pickupnum == 2) {
+                            revolverReady = false;
+                            onerotation(ballcases(pickupnum, true));
+                            ballcount += 1;
+                        } else if (pickupnum == 3) {
+                            revolverReady = false;
+                            onerotation(ballcases(pickupnum, true));
                             ballcount += 1;
                         }
                     } else if (pattern == 3) {
                         if (pickupnum == 1) {
                             revolverReady = false;
-                            onerotation(true);
+                            onerotation(ballcases(pickupnum, true));
                             ballcount += 1;
                         } else if (pickupnum == 2) {
                             revolverReady = false;
-                            onerotation(false);
+                            onerotation(ballcases(pickupnum, true));
                             ballcount += 1;
                         } else if (pickupnum == 3) {
                             revolverReady = false;
-                            onerotation(true);
+                            onerotation(ballcases(pickupnum, true));
                             ballcount += 1;
                         }
                     }
@@ -313,7 +374,7 @@ public class FROGTONOMOUS extends CommandOpMode {
 
         @Override
         public void execute() {
-            intake.sort(pattern, pickupnum);
+            intake.sort(pickupnum);
         }
 
         @Override
@@ -326,6 +387,7 @@ public class FROGTONOMOUS extends CommandOpMode {
 
     public class outtakesubsys extends SubsystemBase {
         private Motor launcher1, launcher2, revolver;
+        private final ElapsedTime timer = new ElapsedTime();
         public outtakesubsys(HardwareMap map) {
             launcher1 = new Motor(hardwareMap, "l1", 28, 6000);
             launcher1.setRunMode(Motor.RunMode.RawPower);
@@ -343,24 +405,11 @@ public class FROGTONOMOUS extends CommandOpMode {
             rotate = new SimpleServo(hardwareMap, "turret", 0, 300, AngleUnit.DEGREES);
             rotate.turnToAngle(turretTarget);
             turretPIDF = new PIDFController(Globals.turret.turretKP, Globals.turret.turretKI, Globals.turret.turretKD, Globals.turret.turretKF);
-
-            tagProcessor = new AprilTagProcessor.Builder()
-                    .setDrawAxes(true)
-                    .setDrawTagID(true)
-                    .setDrawTagOutline(true)
-                    .setDrawCubeProjection(true)
-                    .setLensIntrinsics(914.101, 914.101, 645.664, 342.333)
-                    .build();
-
-            visionPortal = new VisionPortal.Builder()
-                    .addProcessor(tagProcessor)
-                    .setCamera(hardwareMap.get(WebcamName.class, "ov9281"))
-                    .setStreamFormat(VisionPortal.StreamFormat.MJPEG)
-                    .setCameraResolution(new android.util.Size(1280, 720))
-                    .build();
+            turretPIDF.setTolerance(Globals.turret.turretTol);
             eject = new SimpleServo(hardwareMap, "eject", 0, 70);
             eject.setInverted(true);
             eject.turnToAngle(Globals.pushServo.defualt);
+            timer.reset();
         }
         private void calculateRPM() {
             double currentTime = getRuntime();
@@ -377,17 +426,18 @@ public class FROGTONOMOUS extends CommandOpMode {
                 lastPosition = currentPosition;
             }
         }
-        private void autoAimServoMode() {
-            turretPIDF.setPIDF(Globals.turret.turretKP, Globals.turret.turretKI, Globals.turret.turretKD, Globals.turret.turretKF);
-
+        private void aiming() {
             List<AprilTagDetection> detections = tagProcessor.getDetections();
+
                 visionPortal.setProcessorEnabled(tagProcessor, true);
 
                 AprilTagDetection chosen = null;
                 double chosenBearing = 0.0;
                 if (detections != null && !detections.isEmpty()) {
                     for (AprilTagDetection d : detections) {
-                        if (d.ftcPose != null) {
+                        if (d.ftcPose != null && d.id == 20) {//blue IS 20 red IS 24
+                            distance = d.ftcPose.range;
+                            power = (2547.5 * pow(2.718281828459045, (0.0078 * distance))) / Globals.launcher.launcherTransformation; // here
                             double bearing = d.ftcPose.bearing;
                             if (chosen == null || Math.abs(bearing) < Math.abs(chosenBearing)) {
                                 chosen = d;
@@ -395,6 +445,8 @@ public class FROGTONOMOUS extends CommandOpMode {
                             }
                         }
                     }
+                } else {
+                    power = 0;
                 }
 
                 if (chosen != null) {
@@ -412,50 +464,52 @@ public class FROGTONOMOUS extends CommandOpMode {
 
                 }
 
+
             if (turretTarget > 300) {
                 turretTarget = 300;
             } else if (turretTarget < 0) {
                 turretTarget = 0;
             }
 
+            feedforwardPower = ff.calculate(RPM, power);
             rotate.turnToAngle(turretTarget);
-
         }
-        private void launcherawe() {
-            ff.setP(Globals.launcher.flykP);
-            ff.setI(Globals.launcher.flykI);
-            ff.setD(Globals.launcher.flykD);
-            ff.setF(Globals.launcher.flykF);
 
-
-
-            List<AprilTagDetection> detections = tagProcessor.getDetections();
-            if (detections != null && !detections.isEmpty()) {
-                for (AprilTagDetection d : detections) {
-
-                    if (d != null && d.metadata != null && d.ftcPose != null) {
-                        distance = d.ftcPose.range;
-                        power = (2547.5 * pow(2.718281828459045, (0.0078 * distance)))/Globals.launcher.launcherTransformation; // here
+        private void launch(int shootnum) {
+            if (ballsshot < 3) {
+                if (timer.seconds() > 0.4) {
+                    if (pattern == 1) {
+                        if (shootnum == 0) {
+                            eject.turnToAngle(Globals.pushServo.eject);
+                            if (aligned && Math.abs(power - RPM) < Globals.launcher.launcherTol && power > 0) {
+                                set.turnToAngle(Globals.launcher.upset);
+                            }
+                            if (timer.seconds() > 1) {
+                                eject.turnToAngle(Globals.pushServo.defualt);
+                                if (timer.seconds() > 0.8) {
+                                    onerotation(ballcases(shootnum, false));
+                                    ballsshot++;
+                                }
+                            }
+                        }
                     }
                 }
-            } else {
-                power = 0;
             }
 
-            feedforwardPower = ff.calculate(RPM, power);
         }
 
         @Override
         public void periodic() {
             calculateRPM();
-            launcherawe();
-            autoAimServoMode();
+            aiming();
         }
     }//todo
     public static class froggyspit extends CommandBase {
         private final outtakesubsys outtake;
-        public froggyspit(outtakesubsys outtake) {
+        private int shootnum;
+        public froggyspit(outtakesubsys outtake, int shootnum) {
             this.outtake = outtake;
+            this.shootnum = shootnum;
             addRequirements(outtake);
         }
 
@@ -466,6 +520,7 @@ public class FROGTONOMOUS extends CommandOpMode {
 
         @Override
         public void execute() {
+            outtake.launch(shootnum);
         }
 
         @Override
@@ -485,6 +540,21 @@ public class FROGTONOMOUS extends CommandOpMode {
     @Override
     public void initialize() {
         pattern = getPattern();
+        limelight.stop();
+
+        tagProcessor = new AprilTagProcessor.Builder()
+                .setDrawAxes(true)
+                .setDrawTagID(true)
+                .setDrawTagOutline(true)
+                .setDrawCubeProjection(true)
+                .setLensIntrinsics(914.101, 914.101, 645.664, 342.333)
+                .build();
+        visionPortal = new VisionPortal.Builder()
+                .addProcessor(tagProcessor)
+                .setCamera(hardwareMap.get(WebcamName.class, "ov9281"))
+                .setStreamFormat(VisionPortal.StreamFormat.MJPEG)
+                .setCameraResolution(new android.util.Size(1280, 720))
+                .build();
 
         telemetry.addData("Pattern detected", pattern);
         telemetry.update();
@@ -493,15 +563,15 @@ public class FROGTONOMOUS extends CommandOpMode {
         follower.setStartingPose(new Pose(19.300, 119.350, -36));
         telemetry.update();
 
-        //outtakesubsys loopedfunctions = new outtakesubsys(hardwareMap);
-        //register(loopedfunctions);
+        outtakesubsys loopedfunctions = new outtakesubsys(hardwareMap);
+        register(loopedfunctions);
 
         buildPaths();
 
 
         SequentialCommandGroup PPG = new SequentialCommandGroup(
                 new WaitCommand(5000),
-                new froggyeat(new intakesubsys(hardwareMap), 1)
+                new froggyspit(new outtakesubsys (hardwareMap), 0 )
 
 
 //                new FollowPathCommand(follower, shoot3),
