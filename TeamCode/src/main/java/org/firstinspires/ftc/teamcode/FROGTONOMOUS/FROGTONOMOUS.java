@@ -219,6 +219,10 @@ public class FROGTONOMOUS extends CommandOpMode {
                 } else if (!comingin){
                     return true;
                 }
+            } else if (pickupnum == 0) {
+                if (!comingin){
+                    return false;
+                }
             }
         } else if (pattern == 2) {
             if (pickupnum == 1){
@@ -239,6 +243,10 @@ public class FROGTONOMOUS extends CommandOpMode {
                 } else if (!comingin) {
                     return false;
                 }
+            }else if (pickupnum == 0) {
+                if (!comingin){
+                    return true;
+                }
             }
         } else if (pattern == 3) {
             if (pickupnum == 1) {
@@ -258,6 +266,10 @@ public class FROGTONOMOUS extends CommandOpMode {
                     return false;
                 } else if (!comingin) {
                     return true;
+                }
+            }else if (pickupnum == 0) {
+                if (!comingin){
+                    return false;
                 }
             }
         }
@@ -288,24 +300,29 @@ public class FROGTONOMOUS extends CommandOpMode {
         }
         public void intakeon() {
 //            intake.set(Globals.intakePower);
-            intake.set(0.4);
+            intake.set(0.7);
             ballcount = 0;
         }
         public void intakeoff() {
             intake.set(0);
             ballcount = 0;
         }
-        public void sort(int pickupnum){//1 = ppg 2 pgp 3 gpp,
+        @Override
+        public void periodic(){
             revolverPower = revolverPID.calculate(revolver.getCurrentPosition(), revolverTarget);
             revolver.set(revolverPower);
 
             if (!revolverReady && Math.abs(Math.abs(revolver.getCurrentPosition() - previousRevolverPosition) - Globals.revolver.oneRotation) < 10) {
                 revolverReady = true;;//detect if the rotation is done
             }
+        }
+
+        public void sort(int pickupnum){//1 = ppg 2 pgp 3 gpp,
 
             if (ballcount == 2 && revolverReady && pattern == 3 && pickupnum == 1) {
                 revolverReady = false;
                 onerotation(ballcases(pickupnum, true));
+                ballcount += 1;
             }
 
             if (ballcount < 2) {
@@ -408,7 +425,7 @@ public class FROGTONOMOUS extends CommandOpMode {
             turretPIDF.setTolerance(Globals.turret.turretTol);
             eject = new SimpleServo(hardwareMap, "eject", 0, 70);
             eject.setInverted(true);
-            eject.turnToAngle(Globals.pushServo.defualt);
+            eject.turnToAngle(25F);
         }
         private void calculateRPM() {
             double currentTime = getRuntime();
@@ -499,7 +516,7 @@ public class FROGTONOMOUS extends CommandOpMode {
                             }
                             if (timer.seconds() > 2) {
                                 onerotation(ballcases(shootnum, false));
-                                ballsshot++;
+                                ballsshot += 1;
                             }
                         }
                     }
@@ -573,29 +590,61 @@ public class FROGTONOMOUS extends CommandOpMode {
         follower.setStartingPose(new Pose(19.300, 119.350, -36));
         telemetry.update();
 
-        outtakesubsys loopedfunctions = new outtakesubsys(hardwareMap);
-        register(loopedfunctions);
+        outtakesubsys loopedfunctionsout = new outtakesubsys(hardwareMap);
+        register(loopedfunctionsout);
+
+        outtakesubsys loopedfunctionsin = new outtakesubsys(hardwareMap);
+        register(loopedfunctionsin);
 
         buildPaths();
 
 
-        SequentialCommandGroup PPG = new SequentialCommandGroup(
-                new WaitCommand(5000),
-                new froggyspit(new outtakesubsys (hardwareMap), 0 )
-
-
+        SequentialCommandGroup froggyroute = new SequentialCommandGroup(
+                new WaitCommand(3000),
+                new froggyspit(new outtakesubsys(hardwareMap), 0)
 //                new FollowPathCommand(follower, shoot3),
-//
-//                new WaitCommand(1000), // Wait 1 second
-//                // First pickup cycle
-//                new FollowPathCommand(follower, eat3),
-//                new froggyeat(new intakesubsys(hardwareMap), 1)
-                 // Wait 1 second, 1)
 //                new ParallelDeadlineGroup(
-//                        new FollowPathCommand(follower, eat3),
-//                        new froggyeat()
+//                        new WaitCommand(5000),
+//                        new froggyspit(new outtakesubsys(hardwareMap), 0)
+//                ),
+//                new ParallelDeadlineGroup(
+//                        new SequentialCommandGroup(
+//                                new FollowPathCommand(follower, eat3),
+//                                new WaitCommand(500)
+//                        ),
+//                        new froggyeat(new intakesubsys(hardwareMap), 1)
+//                ),
+//                new FollowPathCommand(follower, shoot6),
+//                new ParallelDeadlineGroup(
+//                        new WaitCommand(5000),
+//                        new froggyspit(new outtakesubsys(hardwareMap), 1)
+//                ),
+//                new ParallelDeadlineGroup(
+//                        new SequentialCommandGroup(
+//                                new FollowPathCommand(follower, eat6),
+//                                new WaitCommand(500)
+//                        ),
+//                        new froggyeat(new intakesubsys(hardwareMap), 2)
+//                ),
+//                new FollowPathCommand(follower, shoot9),
+//                new ParallelDeadlineGroup(
+//                        new WaitCommand(5000),
+//                        new froggyspit(new outtakesubsys(hardwareMap), 2)
+//                ),
+//                new ParallelDeadlineGroup(
+//                        new SequentialCommandGroup(
+//                                new FollowPathCommand(follower, eat9),
+//                                new WaitCommand(500)
+//                        ),
+//                        new froggyeat(new intakesubsys(hardwareMap), 3)
+//                ),
+//                new FollowPathCommand(follower, shoot12),
+//                new ParallelDeadlineGroup(
+//                        new WaitCommand(5000),
+//                        new froggyspit(new outtakesubsys(hardwareMap), 3)
+//                )
         );
-        schedule(PPG);
+        schedule(froggyroute);
     }
 
     @Override
