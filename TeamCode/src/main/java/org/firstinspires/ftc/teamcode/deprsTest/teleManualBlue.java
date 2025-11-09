@@ -219,7 +219,7 @@ public void launch() {
     launcher2.set(launcherSetPower ? feedforwardPower : 0);
     if (!launcherSetPower && power > 0 && gamepadEx2.getButton(GamepadKeys.Button.CROSS) && !prevCross) {
         launcherSetPower = true;
-    } else if ((launcherSetPower && gamepadEx2.getButton(GamepadKeys.Button.CROSS) && !prevCross) || power == 0) {
+    } else if ((launcherSetPower && gamepadEx2.getButton(GamepadKeys.Button.CROSS) && !prevCross)) {
         launcherSetPower = false;
     } prevCross = gamepadEx2.getButton(GamepadKeys.Button.CROSS);
 
@@ -469,7 +469,7 @@ private void calculateRPM() {
 }
 
 private void autoAimServoMode() {
-    turretPIDF.setTolerance(Globals.turret.turretTol);
+
     ff.setP(Globals.launcher.flykP);
     ff.setI(Globals.launcher.flykI);
     ff.setD(Globals.launcher.flykD);

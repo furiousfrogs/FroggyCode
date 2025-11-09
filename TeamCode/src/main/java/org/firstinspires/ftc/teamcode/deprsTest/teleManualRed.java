@@ -215,7 +215,7 @@ private boolean prevCircle;
         launcher2.set(launcherSetPower ? feedforwardPower : 0);
         if (!launcherSetPower && power > 0 && gamepadEx2.getButton(GamepadKeys.Button.CROSS) && !prevCross) {
             launcherSetPower = true;
-        } else if ((launcherSetPower && gamepadEx2.getButton(GamepadKeys.Button.CROSS) && !prevCross) || power == 0) {
+        } else if ((launcherSetPower && gamepadEx2.getButton(GamepadKeys.Button.CROSS) && !prevCross)) {
             launcherSetPower = false;
         } prevCross = gamepadEx2.getButton(GamepadKeys.Button.CROSS);
 
