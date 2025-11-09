@@ -409,7 +409,6 @@ public class FROGTONOMOUS extends CommandOpMode {
             eject = new SimpleServo(hardwareMap, "eject", 0, 70);
             eject.setInverted(true);
             eject.turnToAngle(Globals.pushServo.defualt);
-            timer.reset();
         }
         private void calculateRPM() {
             double currentTime = getRuntime();
@@ -475,21 +474,32 @@ public class FROGTONOMOUS extends CommandOpMode {
             rotate.turnToAngle(turretTarget);
         }
 
+        private void timerreset() {
+            timer.reset();
+        }
+
         private void launch(int shootnum) {
+            telemetry.addData("time", timer.seconds());
+            telemetry.addData("balls", ballsshot);
+            telemetry.update();
+
             if (ballsshot < 3) {
                 if (timer.seconds() > 0.4) {
                     if (pattern == 1) {
                         if (shootnum == 0) {
-                            eject.turnToAngle(Globals.pushServo.eject);
+                            launcher1.set(feedforwardPower);
+                            launcher2.set(feedforwardPower);
+                            //eject.turnToAngle(Globals.pushServo.eject);
+                            eject.turnToAngle(8F);
                             if (aligned && Math.abs(power - RPM) < Globals.launcher.launcherTol && power > 0) {
                                 set.turnToAngle(Globals.launcher.upset);
                             }
                             if (timer.seconds() > 1) {
                                 eject.turnToAngle(Globals.pushServo.defualt);
-                                if (timer.seconds() > 0.8) {
-                                    onerotation(ballcases(shootnum, false));
-                                    ballsshot++;
-                                }
+                            }
+                            if (timer.seconds() > 2) {
+                                onerotation(ballcases(shootnum, false));
+                                ballsshot++;
                             }
                         }
                     }
@@ -515,7 +525,7 @@ public class FROGTONOMOUS extends CommandOpMode {
 
         @Override
         public void initialize() {
-
+            outtake.timerreset();
         }
 
         @Override
