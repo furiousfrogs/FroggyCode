@@ -229,7 +229,7 @@ private boolean prevCircle;
         revolverTarget += (int) ((gamepadEx2.getTrigger(GamepadKeys.Trigger.RIGHT_TRIGGER) - gamepadEx2.getTrigger(GamepadKeys.Trigger.LEFT_TRIGGER)) * Globals.revolver.revolverNudge);
         boolean square = gamepadEx2.getButton(GamepadKeys.Button.SQUARE);
         if (square && !prevSquare && eject.getAngle() != Globals.pushServo.eject) {
-            revolverTarget += shootCounterClockwise ? -Globals.revolver.oneRotation : Globals.revolver.oneRotation;  // CW
+            revolverTarget += shootCounterClockwise ? Globals.revolver.oneRotation : -Globals.revolver.oneRotation;  // CW
             shotsFired++;
         }
         if (shotsFired >= 3) {

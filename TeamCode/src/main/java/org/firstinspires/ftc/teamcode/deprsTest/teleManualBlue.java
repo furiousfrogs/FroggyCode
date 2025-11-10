@@ -233,7 +233,7 @@ public void launch() {
         revolverTarget += (int) ((gamepadEx2.getTrigger(GamepadKeys.Trigger.RIGHT_TRIGGER) - gamepadEx2.getTrigger(GamepadKeys.Trigger.LEFT_TRIGGER)) * Globals.revolver.revolverNudge);
         boolean square = gamepadEx2.getButton(GamepadKeys.Button.SQUARE);
         if (square && !prevSquare && eject.getAngle() != Globals.pushServo.eject) {
-            revolverTarget += shootCounterClockwise ? -Globals.revolver.oneRotation : Globals.revolver.oneRotation;  // CW
+            revolverTarget += shootCounterClockwise ? Globals.revolver.oneRotation : -Globals.revolver.oneRotation;  // CW
             if (revolverOn) {
                 shotsFired++;
             }
@@ -551,7 +551,8 @@ private void doTelemetry() {
     telemetry.addData("power,", power);
     telemetry.addData("ff power", feedforwardPower);
     telemetry.addData("atspeed", Math.abs(power - RPM) < Globals.launcher.launcherTol);
-
+    telemetry.addData("shotsFired?", shotsFired);
+    telemetry.addData("revolveron", revolverOn);
     telemetry.update();
 
     TelemetryPacket rpmPacket = new TelemetryPacket();

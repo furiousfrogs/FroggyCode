@@ -54,9 +54,17 @@ public class Globals {
 
     @Config // eject is 30, default is 44, push is 51
     public static class pushServo {
-        public static float push = 30F;
-        public static float defualt = 26F;
-        public static float eject = 12F;
+        public static float push = 49F;
+        public static float defualt = 45F;
+        public static float eject = 33F;
+    }
+
+    @Config
+    public static class autotimers {
+        public static float rotationtime = 0.4F;
+        public static float fulllaunch = 1.2F;
+        public static float balldown = 1.0F;
+        public static float ejectout = 0.7F;
     }
 
     public static float slowdown = 0.6F;
