@@ -509,8 +509,10 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
         private void shooting(){
             launcher1.set(feedforwardPower);
             launcher2.set(feedforwardPower);
-            eject.turnToAngle(Globals.pushServo.eject);
-            if (timer.seconds() > Globals.autotimers.rotationtime +0.1){
+            if (timer.seconds() < 0.6) {
+                eject.turnToAngle(Globals.pushServo.eject);
+            }
+            if (timer.seconds() > Globals.autotimers.rotationtime + Globals.autotimers.ejectin){
                 ejecting=true;
             }
 
@@ -541,6 +543,98 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
                                         ballsshot += 1;
                                         ejecting = false;
                                         timer.reset();
+                            }
+                        } else if (shootnum == 1) {
+                            shooting();
+                            if (timer.seconds() > Globals.autotimers.fulllaunch) {
+                                onerotation(ballcases(shootnum, false));
+                                ballsshot += 1;
+                                ejecting = false;
+                                timer.reset();
+                            }
+                        } else if (shootnum == 2) {
+                            shooting();
+                            if (timer.seconds() > Globals.autotimers.fulllaunch) {
+                                onerotation(ballcases(shootnum, false));
+                                ballsshot += 1;
+                                ejecting = false;
+                                timer.reset();
+                            }
+                        } else if (shootnum == 3) {
+                            shooting();
+                            if (timer.seconds() > Globals.autotimers.fulllaunch) {
+                                onerotation(ballcases(shootnum, false));
+                                ballsshot += 1;
+                                ejecting = false;
+                                timer.reset();
+                            }
+                        }
+                    } else  if (pattern == 2) {
+                        if (shootnum == 0) {
+                            shooting();
+                            if (timer.seconds() > Globals.autotimers.fulllaunch) {
+                                onerotation(ballcases(shootnum, false));
+                                ballsshot += 1;
+                                ejecting = false;
+                                timer.reset();
+                            }
+                        } else if (shootnum == 1) {
+                            shooting();
+                            if (timer.seconds() > Globals.autotimers.fulllaunch) {
+                                onerotation(ballcases(shootnum, false));
+                                ballsshot += 1;
+                                ejecting = false;
+                                timer.reset();
+                            }
+                        } else if (shootnum == 2) {
+                            shooting();
+                            if (timer.seconds() > Globals.autotimers.fulllaunch) {
+                                onerotation(ballcases(shootnum, false));
+                                ballsshot += 1;
+                                ejecting = false;
+                                timer.reset();
+                            }
+                        } else if (shootnum == 3) {
+                            shooting();
+                            if (timer.seconds() > Globals.autotimers.fulllaunch) {
+                                onerotation(ballcases(shootnum, false));
+                                ballsshot += 1;
+                                ejecting = false;
+                                timer.reset();
+                            }
+                        }
+                    } else  if (pattern == 3) {
+                        if (shootnum == 0) {
+                            shooting();
+                            if (timer.seconds() > Globals.autotimers.fulllaunch) {
+                                onerotation(ballcases(shootnum, false));
+                                ballsshot += 1;
+                                ejecting = false;
+                                timer.reset();
+                            }
+                        } else if (shootnum == 1) {
+                            shooting();
+                            if (timer.seconds() > Globals.autotimers.fulllaunch) {
+                                onerotation(ballcases(shootnum, false));
+                                ballsshot += 1;
+                                ejecting = false;
+                                timer.reset();
+                            }
+                        } else if (shootnum == 2) {
+                            shooting();
+                            if (timer.seconds() > Globals.autotimers.fulllaunch) {
+                                onerotation(ballcases(shootnum, false));
+                                ballsshot += 1;
+                                ejecting = false;
+                                timer.reset();
+                            }
+                        } else if (shootnum == 3) {
+                            shooting();
+                            if (timer.seconds() > Globals.autotimers.fulllaunch) {
+                                onerotation(ballcases(shootnum, false));
+                                ballsshot += 1;
+                                ejecting = false;
+                                timer.reset();
                             }
                         }
                     }
