@@ -88,7 +88,7 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
     private double lastTime;
     private int lastPosition;
     private double bearing = 0.0;
-    double turretTarget = 150F; // inital turret angle
+    double turretTarget = 299F; // inital turret angle red
 
     private int revolverTarget = 0;
     private double revolverPower;
@@ -712,7 +712,7 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
         telemetry.update();
 
         follower = Constants.createFollower(hardwareMap);
-        follower.setStartingPose(new Pose(18.997, 118.671, Math.toRadians(-36)));
+        follower.setStartingPose(new Pose(18.790, 119.941, Math.toRadians(-126)));
         telemetry.update();
 
         outtakesubsys loopedfunctionsout = new outtakesubsys(hardwareMap);
