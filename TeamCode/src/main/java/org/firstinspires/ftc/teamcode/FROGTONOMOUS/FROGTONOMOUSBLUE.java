@@ -67,7 +67,7 @@ import java.util.*;
 public class FROGTONOMOUSBLUE extends CommandOpMode {
     private Follower follower;
     TelemetryData telemetryData = new TelemetryData(telemetry);
-    private PathChain shoot3, eat3, shoot6, eat6, shoot9, eat9, shoot12;
+    private PathChain shoot3, eat3, eat3rotate, shoot6, eat6, eat6rotate, shoot9, eat9, shoot12;
     private boolean aligned = false;
     private boolean revolverReady = true;
 
@@ -105,66 +105,54 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
     public void buildPaths() {
         shoot3 = follower.pathBuilder()
                 .addPath(
-                        new BezierLine(new Pose(19.300, 119.350), new Pose(36.785, 106.991))
+                        new BezierLine(new Pose(18.997, 118.671), new Pose(45.733, 86.306))
                 )
-                .setLinearHeadingInterpolation(Math.toRadians(-36), Math.toRadians(-36))
+                .setLinearHeadingInterpolation(Math.toRadians(-36), Math.toRadians(-77))
                 .build();
+
+        eat3rotate = follower.pathBuilder()
+                .addPath(
+                        new BezierLine(new Pose(45.733, 86.306), new Pose(44.326, 83.726))
+                )
+                .setLinearHeadingInterpolation(Math.toRadians(-77), Math.toRadians(180))
+                .build();
+
 
         eat3 = follower.pathBuilder()
                 .addPath(
-                        new BezierCurve(
-                                new Pose(36.785, 106.991),
-                                new Pose(52.935, 84.561),
-                                new Pose(21.308, 84.785)
-                        )
+                        new BezierLine(new Pose(44.326, 83.726), new Pose(20.404, 83.726))
                 )
-                .setLinearHeadingInterpolation(Math.toRadians(-36), Math.toRadians(-180))
+                .setLinearHeadingInterpolation(Math.toRadians(180), Math.toRadians(180))
                 .setTimeoutConstraint(500)
                 .build();
 
+
         shoot6 = follower.pathBuilder()
                 .addPath(
-                        new BezierLine(new Pose(21.308, 84.785), new Pose(32.075, 97.121))
+                        new BezierLine(new Pose(20.404, 83.726), new Pose(42.684, 97.564))
                 )
-                .setLinearHeadingInterpolation(Math.toRadians(-180), Math.toRadians(-75))
+                .setLinearHeadingInterpolation(Math.toRadians(180), Math.toRadians(-115))
+                .build();
+
+        eat6rotate = follower.pathBuilder()
+                .addPath(
+                        new BezierLine(new Pose(42.684, 97.564), new Pose(42.450, 60.039))
+                )
+                .setLinearHeadingInterpolation(Math.toRadians(-115), Math.toRadians(180))
                 .build();
 
         eat6 = follower.pathBuilder()
                 .addPath(
-                        new BezierCurve(
-                                new Pose(32.075, 97.121),
-                                new Pose(50.243, 62.804),
-                                new Pose(21.533, 60.561)
-                        )
+                        new BezierLine(new Pose(42.450, 60.039), new Pose(20.404, 60.274))
                 )
-                .setLinearHeadingInterpolation(Math.toRadians(-75), Math.toRadians(-180))
-                .setTimeoutConstraint(500)
+                .setLinearHeadingInterpolation(Math.toRadians(180), Math.toRadians(180))
                 .build();
 
         shoot9 = follower.pathBuilder()
                 .addPath(
-                        new BezierLine(new Pose(21.533, 60.561), new Pose(36.336, 92.636))
+                        new BezierLine(new Pose(20.404, 60.274), new Pose(42.450, 98.033))
                 )
-                .setLinearHeadingInterpolation(Math.toRadians(-180), Math.toRadians(-75))
-                .build();
-
-        eat9 = follower.pathBuilder()
-                .addPath(
-                        new BezierCurve(
-                                new Pose(36.336, 92.636),
-                                new Pose(53.832, 39.477),
-                                new Pose(22.430, 36.561)
-                        )
-                )
-                .setLinearHeadingInterpolation(Math.toRadians(-75), Math.toRadians(-180))
-                .setTimeoutConstraint(500)
-                .build();
-
-        shoot12 = follower.pathBuilder()
-                .addPath(
-                        new BezierLine(new Pose(22.430, 36.561), new Pose(40.598, 88.598))
-                )
-                .setLinearHeadingInterpolation(Math.toRadians(-180), Math.toRadians(-75))
+                .setLinearHeadingInterpolation(Math.toRadians(180), Math.toRadians(-118))
                 .build();
     }
 
@@ -173,14 +161,14 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
         revolverTarget += left? +Globals.revolver.oneRotation : -Globals.revolver.oneRotation;
     }
 
-    public int getPattern() {
+    public void getPattern() {
         limelight = hardwareMap.get(Limelight3A.class, "limelight");
         limelight.setPollRateHz(20);
         limelight.pipelineSwitch(0);
         limelight.start();
 
         long start = System.currentTimeMillis();
-        while (System.currentTimeMillis() - start < 2000) {  // 2s timeout
+        while (System.currentTimeMillis() - start < 500) {  // 2s timeout
             LLResult result = limelight.getLatestResult();
             if (result != null && result.isValid()) {
                 if (result.getStaleness() < 500) {
@@ -188,17 +176,18 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
                     if (!tags.isEmpty()) {
                         for (LLResultTypes.FiducialResult tag : tags) {
                             int id = tag.getFiducialId();
-                            if (id == 21) return 3;
-                            if (id == 22) return 2;
-                            if (id == 23) return 1;
+                            if (id == 21) pattern = 3;
+                            if (id == 22) pattern = 2;
+                            if (id == 23) pattern = 1;
                         }
                     }
                 }
             }
         }
-        telemetry.addLine("NO PATTERN FOUND");
-        telemetry.update();
-        return 1;
+        if (pattern == 0) {
+            pattern = 1;
+        }
+        limelight.stop();
     }
 
     public boolean ballcases(int pickupnum, boolean comingin) {
@@ -475,7 +464,7 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
 
                     double err = chosenBearing - Globals.turret.turretLocationError;
 
-                    aligned = Math.abs(err) <= Globals.turret.turretTol;
+                    aligned = Math.abs(err) <= Globals.turret.turretTol+3;
 
                     double delta = aligned ? 0.0 : turretPIDF.calculate(err, 0.0);
 
@@ -692,6 +681,10 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
 
     }
 
+    InstantCommand froggyvision = new InstantCommand(() -> {
+        getPattern();
+    });
+
 
 
 
@@ -700,8 +693,6 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
 
     @Override
     public void initialize() {
-        pattern = getPattern();
-        limelight.stop();
 
         tagProcessor = new AprilTagProcessor.Builder()
                 .setDrawAxes(true)
@@ -721,7 +712,7 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
         telemetry.update();
 
         follower = Constants.createFollower(hardwareMap);
-        follower.setStartingPose(new Pose(18.841, 118.879, Math.toRadians(-36)));
+        follower.setStartingPose(new Pose(18.997, 118.671, Math.toRadians(-36)));
         telemetry.update();
 
         outtakesubsys loopedfunctionsout = new outtakesubsys(hardwareMap);
@@ -736,9 +727,14 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
         SequentialCommandGroup froggyrouteP = new SequentialCommandGroup(
                 new FollowPathCommand(follower, shoot3),
                 new ParallelDeadlineGroup(
+                        new WaitCommand(500),
+                        new InstantCommand(this::getPattern)
+                ),
+                new ParallelDeadlineGroup(
                         new WaitCommand(4500),
                         new froggyspit(new outtakesubsys(hardwareMap), 0)
                 ),
+                new FollowPathCommand(follower, eat3rotate),
                 new ParallelDeadlineGroup(
                                 new FollowPathCommand(follower, eat3),
 
@@ -749,6 +745,7 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
                         new WaitCommand(4500),
                         new froggyspit(new outtakesubsys(hardwareMap), 1)
                 ),
+                new FollowPathCommand(follower, eat6rotate),
                 new ParallelDeadlineGroup(
                                 new FollowPathCommand(follower, eat6),
                         new froggyeat(new intakesubsys(hardwareMap), 2)
@@ -758,16 +755,6 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
                         new WaitCommand(4500),
                         new froggyspit(new outtakesubsys(hardwareMap), 2)
                 )
-//                new ParallelDeadlineGroup(
-//
-//                                new FollowPathCommand(follower, eat9),
-//                        new froggyeat(new intakesubsys(hardwareMap), 3)
-//                ),
-//                new FollowPathCommand(follower, shoot12),
-//                new ParallelDeadlineGroup(
-//                        new WaitCommand(5500),
-//                        new froggyspit(new outtakesubsys(hardwareMap), 3)
-//                )
         );
 
         SequentialCommandGroup froggyrouteG = new SequentialCommandGroup(
@@ -798,16 +785,6 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
                         new WaitCommand(4500),
                         new froggyspit(new outtakesubsys(hardwareMap), 2)
                 )
-//                new ParallelDeadlineGroup(
-//
-//                        new FollowPathCommand(follower, eat9),
-//                        new froggyeat(new intakesubsys(hardwareMap), 3)
-//                ),
-//                new FollowPathCommand(follower, shoot12),
-//                new ParallelDeadlineGroup(
-//                        new WaitCommand(4500),
-//                        new froggyspit(new outtakesubsys(hardwareMap), 3)
-//                )
         );
         if (pattern == 3){
             schedule(froggyrouteG);
@@ -824,6 +801,7 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
         telemetryData.addData("X", follower.getPose().getX());
         telemetryData.addData("Y", follower.getPose().getY());
         telemetryData.addData("Heading", follower.getPose().getHeading());
+        telemetryData.addData("pattern", pattern);
         telemetryData.update();
     }
 }
