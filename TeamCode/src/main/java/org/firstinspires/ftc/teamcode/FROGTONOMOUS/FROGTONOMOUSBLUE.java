@@ -105,54 +105,54 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
     public void buildPaths() {
         shoot3 = follower.pathBuilder()
                 .addPath(
-                        new BezierLine(new Pose(18.997, 118.671), new Pose(45.733, 86.306))
+                        new BezierLine(new Pose(18.790, 119.941), new Pose(44.078, 94.302))
                 )
-                .setLinearHeadingInterpolation(Math.toRadians(-36), Math.toRadians(-77))
+                .setLinearHeadingInterpolation(Math.toRadians(-126), Math.toRadians(-125))
                 .build();
 
         eat3rotate = follower.pathBuilder()
                 .addPath(
-                        new BezierLine(new Pose(45.733, 86.306), new Pose(44.326, 83.726))
+                        new BezierLine(new Pose(44.078, 94.302), new Pose(44.078, 83.941))
                 )
-                .setLinearHeadingInterpolation(Math.toRadians(-77), Math.toRadians(180))
+                .setLinearHeadingInterpolation(Math.toRadians(-125), Math.toRadians(180))
                 .build();
+
 
 
         eat3 = follower.pathBuilder()
                 .addPath(
-                        new BezierLine(new Pose(44.326, 83.726), new Pose(20.404, 83.726))
+                        new BezierLine(new Pose(44.078, 83.941), new Pose(19.844, 83.941))
                 )
                 .setLinearHeadingInterpolation(Math.toRadians(180), Math.toRadians(180))
-                .setTimeoutConstraint(500)
                 .build();
 
 
         shoot6 = follower.pathBuilder()
                 .addPath(
-                        new BezierLine(new Pose(20.404, 83.726), new Pose(42.684, 97.564))
+                        new BezierLine(new Pose(19.844, 83.941), new Pose(38.283, 94.127))
                 )
-                .setLinearHeadingInterpolation(Math.toRadians(180), Math.toRadians(-115))
+                .setLinearHeadingInterpolation(Math.toRadians(180), Math.toRadians(-125))
                 .build();
 
         eat6rotate = follower.pathBuilder()
                 .addPath(
-                        new BezierLine(new Pose(42.684, 97.564), new Pose(42.450, 60.039))
+                        new BezierLine(new Pose(38.283, 94.127), new Pose(44.254, 59.707))
                 )
-                .setLinearHeadingInterpolation(Math.toRadians(-115), Math.toRadians(180))
+                .setLinearHeadingInterpolation(Math.toRadians(-125), Math.toRadians(180))
                 .build();
 
         eat6 = follower.pathBuilder()
                 .addPath(
-                        new BezierLine(new Pose(42.450, 60.039), new Pose(20.404, 60.274))
+                        new BezierLine(new Pose(44.254, 59.707), new Pose(22.654, 59.883))
                 )
                 .setLinearHeadingInterpolation(Math.toRadians(180), Math.toRadians(180))
                 .build();
 
         shoot9 = follower.pathBuilder()
                 .addPath(
-                        new BezierLine(new Pose(20.404, 60.274), new Pose(42.450, 98.033))
+                        new BezierLine(new Pose(22.654, 59.883), new Pose(41.268, 95.532))
                 )
-                .setLinearHeadingInterpolation(Math.toRadians(180), Math.toRadians(-118))
+                .setLinearHeadingInterpolation(Math.toRadians(180), Math.toRadians(-125))
                 .build();
     }
 
