@@ -61,9 +61,9 @@ public class Globals {
 
     @Config
     public static class autotimers {
-        public static float rotationtime = 0.4F;
+        public static float rotationtime = 0.5F;
         public static float fulllaunch = 1.2F;
-        public static float balldown = 1.1F;
+        public static float balldown = 1.2F;
         public static float ejectout = 0.7F;
 
         public static float ejectin = 0.25F;

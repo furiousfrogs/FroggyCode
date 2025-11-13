@@ -107,14 +107,14 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
                 .addPath(
                         new BezierLine(new Pose(18.790, 119.941), new Pose(44.078, 94.302))
                 )
-                .setLinearHeadingInterpolation(Math.toRadians(-126), Math.toRadians(-125))
+                .setLinearHeadingInterpolation(Math.toRadians(-126), Math.toRadians(-110))
                 .build();
 
         eat3rotate = follower.pathBuilder()
                 .addPath(
                         new BezierLine(new Pose(44.078, 94.302), new Pose(44.078, 83.941))
                 )
-                .setLinearHeadingInterpolation(Math.toRadians(-125), Math.toRadians(180))
+                .setLinearHeadingInterpolation(Math.toRadians(-110), Math.toRadians(180))
                 .build();
 
 
@@ -131,14 +131,14 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
                 .addPath(
                         new BezierLine(new Pose(19.844, 83.941), new Pose(38.283, 94.127))
                 )
-                .setLinearHeadingInterpolation(Math.toRadians(180), Math.toRadians(-125))
+                .setLinearHeadingInterpolation(Math.toRadians(180), Math.toRadians(-110))
                 .build();
 
         eat6rotate = follower.pathBuilder()
                 .addPath(
                         new BezierLine(new Pose(38.283, 94.127), new Pose(44.254, 59.707))
                 )
-                .setLinearHeadingInterpolation(Math.toRadians(-125), Math.toRadians(180))
+                .setLinearHeadingInterpolation(Math.toRadians(-110), Math.toRadians(180))
                 .build();
 
         eat6 = follower.pathBuilder()
@@ -152,7 +152,7 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
                 .addPath(
                         new BezierLine(new Pose(22.654, 59.883), new Pose(41.268, 95.532))
                 )
-                .setLinearHeadingInterpolation(Math.toRadians(180), Math.toRadians(-125))
+                .setLinearHeadingInterpolation(Math.toRadians(180), Math.toRadians(-110))
                 .build();
     }
 
@@ -498,7 +498,7 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
         private void shooting(){
             launcher1.set(feedforwardPower);
             launcher2.set(feedforwardPower);
-            if (timer.seconds() < 0.6) {
+            if (timer.seconds() < 0.7) {
                 eject.turnToAngle(Globals.pushServo.eject);
             }
             if (timer.seconds() > Globals.autotimers.rotationtime + Globals.autotimers.ejectin){
