@@ -113,7 +113,7 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
         eat3 = follower.pathBuilder()
                 .addPath(
                         new BezierCurve(
-                                new Pose(36.785, 105.421),
+                                new Pose(36.785, 106.991),
                                 new Pose(52.935, 84.561),
                                 new Pose(21.308, 84.785)
                         )
