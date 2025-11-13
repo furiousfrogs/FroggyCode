@@ -90,6 +90,8 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
     private double bearing = 0.0;
     double turretTarget = 299F; // inital turret angle red
 
+    private boolean launching = false;
+
     private int revolverTarget = 0;
     private double revolverPower;
     private int ballcount = 0;
@@ -117,13 +119,12 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
                 .setLinearHeadingInterpolation(Math.toRadians(-125), Math.toRadians(180))
                 .build();
 
-
-
         eat3 = follower.pathBuilder()
                 .addPath(
                         new BezierLine(new Pose(44.078, 83.941), new Pose(19.844, 83.941))
                 )
                 .setLinearHeadingInterpolation(Math.toRadians(180), Math.toRadians(180))
+                .setTimeoutConstraint(500)
                 .build();
 
 
@@ -146,6 +147,7 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
                         new BezierLine(new Pose(44.254, 59.707), new Pose(22.654, 59.883))
                 )
                 .setLinearHeadingInterpolation(Math.toRadians(180), Math.toRadians(180))
+                .setTimeoutConstraint(500)
                 .build();
 
         shoot9 = follower.pathBuilder()
@@ -288,18 +290,14 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
 
             distanceSensor = hardwareMap.get(DistanceSensor.class, "colour1");
         }
+
         public void intakeon() {
-//            intake.set(Globals.intakePower);
-            intake.set(0.7);
+            intake.set(Globals.intakePower);
             ballcount = 0;
         }
         public void intakeoff() {
             intake.set(0);
             ballcount = 0;
-        }
-
-        public void rotategreen(){
-            onerotation(ballcases(0, false));
         }
 
         @Override
@@ -400,6 +398,7 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
     public class outtakesubsys extends SubsystemBase {
         private Motor launcher1, launcher2, revolver;
         private final ElapsedTime timer = new ElapsedTime();
+        private final ElapsedTime timerservo = new ElapsedTime();
         public outtakesubsys(HardwareMap map) {
             launcher1 = new Motor(hardwareMap, "l1", 28, 6000);
             launcher1.setRunMode(Motor.RunMode.RawPower);
@@ -484,12 +483,13 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
             feedforwardPower = ff.calculate(RPM, power);
             rotate.turnToAngle(turretTarget);
         }
-
         private void timerreset() {
             timer.reset();
+            timerservo.reset();
             ballsshot = 0;
+            launching = false;
+            ejecting = false;
         }
-
         private void endmotor() {
             launcher1.set(0);
             launcher2.set(0);
@@ -498,21 +498,24 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
         private void shooting(){
             launcher1.set(feedforwardPower);
             launcher2.set(feedforwardPower);
-            if (timer.seconds() < 0.6) {
+            if (timer.seconds() < Globals.autotimers.rotationtime + 0.1) {
                 eject.turnToAngle(Globals.pushServo.eject);
             }
-            if (timer.seconds() > Globals.autotimers.rotationtime + Globals.autotimers.ejectin){
-                ejecting=true;
+            if (timer.seconds() > Globals.autotimers.rotationtime + 0.1 + Globals.autotimers.ejectin){
+                ejecting = true;
             }
-
             if (aligned && Math.abs(power - RPM) < Globals.launcher.launcherTol && power > 0 && ejecting) {
                 set.turnToAngle(Globals.launcher.upset);
+                timerservo.reset();
+                launching = true;
             }
-            if (timer.seconds() > Globals.autotimers.balldown) {
+            if (timerservo.seconds() > Globals.autotimers.balldown && launching) {
                 set.turnToAngle(Globals.launcher.downset);
+                launching = false;
             }
-            if (timer.seconds() > Globals.autotimers.ejectout) {
+            if (timer.seconds() > Globals.autotimers.rotationtime + Globals.autotimers.ejectout) {
                 eject.turnToAngle(Globals.pushServo.defualt);
+                ejecting = false;
             }
         }
 
@@ -530,7 +533,6 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
                             if (timer.seconds() > Globals.autotimers.fulllaunch) {
                                         onerotation(ballcases(shootnum, false));
                                         ballsshot += 1;
-                                        ejecting = false;
                                         timer.reset();
                             }
                         } else if (shootnum == 1) {
@@ -538,7 +540,6 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
                             if (timer.seconds() > Globals.autotimers.fulllaunch) {
                                 onerotation(ballcases(shootnum, false));
                                 ballsshot += 1;
-                                ejecting = false;
                                 timer.reset();
                             }
                         } else if (shootnum == 2) {
@@ -546,7 +547,6 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
                             if (timer.seconds() > Globals.autotimers.fulllaunch) {
                                 onerotation(ballcases(shootnum, false));
                                 ballsshot += 1;
-                                ejecting = false;
                                 timer.reset();
                             }
                         } else if (shootnum == 3) {
@@ -554,7 +554,6 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
                             if (timer.seconds() > Globals.autotimers.fulllaunch) {
                                 onerotation(ballcases(shootnum, false));
                                 ballsshot += 1;
-                                ejecting = false;
                                 timer.reset();
                             }
                         }
@@ -564,7 +563,6 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
                             if (timer.seconds() > Globals.autotimers.fulllaunch) {
                                 onerotation(ballcases(shootnum, false));
                                 ballsshot += 1;
-                                ejecting = false;
                                 timer.reset();
                             }
                         } else if (shootnum == 1) {
@@ -572,7 +570,6 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
                             if (timer.seconds() > Globals.autotimers.fulllaunch) {
                                 onerotation(ballcases(shootnum, false));
                                 ballsshot += 1;
-                                ejecting = false;
                                 timer.reset();
                             }
                         } else if (shootnum == 2) {
@@ -580,7 +577,6 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
                             if (timer.seconds() > Globals.autotimers.fulllaunch) {
                                 onerotation(ballcases(shootnum, false));
                                 ballsshot += 1;
-                                ejecting = false;
                                 timer.reset();
                             }
                         } else if (shootnum == 3) {
@@ -588,7 +584,6 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
                             if (timer.seconds() > Globals.autotimers.fulllaunch) {
                                 onerotation(ballcases(shootnum, false));
                                 ballsshot += 1;
-                                ejecting = false;
                                 timer.reset();
                             }
                         }
@@ -598,7 +593,6 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
                             if (timer.seconds() > Globals.autotimers.fulllaunch) {
                                 onerotation(ballcases(shootnum, false));
                                 ballsshot += 1;
-                                ejecting = false;
                                 timer.reset();
                             }
                         } else if (shootnum == 1) {
@@ -606,7 +600,6 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
                             if (timer.seconds() > Globals.autotimers.fulllaunch) {
                                 onerotation(ballcases(shootnum, false));
                                 ballsshot += 1;
-                                ejecting = false;
                                 timer.reset();
                             }
                         } else if (shootnum == 2) {
@@ -622,7 +615,6 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
                             if (timer.seconds() > Globals.autotimers.fulllaunch) {
                                 onerotation(ballcases(shootnum, false));
                                 ballsshot += 1;
-                                ejecting = false;
                                 timer.reset();
                             }
                         }
@@ -667,19 +659,6 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
 
     }//todo
 
-    public static class froggygreen extends CommandBase {
-        private final intakesubsys intake;
-        public froggygreen (intakesubsys intake){
-            this.intake = intake;
-            addRequirements(intake);
-        }
-
-        @Override
-        public void initialize() {
-            intake.rotategreen();
-        }
-
-    }
 
     InstantCommand froggyvision = new InstantCommand(() -> {
         getPattern();
@@ -756,41 +735,8 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
                         new froggyspit(new outtakesubsys(hardwareMap), 2)
                 )
         );
+        schedule(froggyrouteP);
 
-        SequentialCommandGroup froggyrouteG = new SequentialCommandGroup(
-                new ParallelDeadlineGroup(
-                        new FollowPathCommand(follower, shoot3),
-                        new froggygreen(new intakesubsys(hardwareMap))
-                ),
-                new ParallelDeadlineGroup(
-                        new WaitCommand(4500),
-                        new froggyspit(new outtakesubsys(hardwareMap), 0)
-                ),
-                new ParallelDeadlineGroup(
-                        new FollowPathCommand(follower, eat3),
-
-                        new froggyeat(new intakesubsys(hardwareMap), 1)
-                ),
-                new FollowPathCommand(follower, shoot6),
-                new ParallelDeadlineGroup(
-                        new WaitCommand(4500),
-                        new froggyspit(new outtakesubsys(hardwareMap), 1)
-                ),
-                new ParallelDeadlineGroup(
-                        new FollowPathCommand(follower, eat6),
-                        new froggyeat(new intakesubsys(hardwareMap), 2)
-                ),
-                new FollowPathCommand(follower, shoot9),
-                new ParallelDeadlineGroup(
-                        new WaitCommand(4500),
-                        new froggyspit(new outtakesubsys(hardwareMap), 2)
-                )
-        );
-        if (pattern == 3){
-            schedule(froggyrouteG);
-        } else {
-            schedule(froggyrouteP);
-        }
     }
 
     @Override

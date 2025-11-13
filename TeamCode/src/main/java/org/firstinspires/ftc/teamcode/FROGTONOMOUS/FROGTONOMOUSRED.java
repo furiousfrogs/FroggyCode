@@ -506,7 +506,7 @@ public class FROGTONOMOUSRED extends CommandOpMode {
         private void shooting(){
             launcher1.set(feedforwardPower);
             launcher2.set(feedforwardPower);
-            if (timer.seconds() < 0.6) {
+            if (timer.seconds() < Globals.autotimers.rotationtime + 0.1) {
                 eject.turnToAngle(Globals.pushServo.eject);
             }
             if (timer.seconds() > Globals.autotimers.rotationtime + Globals.autotimers.ejectin){
@@ -516,11 +516,12 @@ public class FROGTONOMOUSRED extends CommandOpMode {
             if (aligned && Math.abs(power - RPM) < Globals.launcher.launcherTol && power > 0 && ejecting) {
                 set.turnToAngle(Globals.launcher.upset);
             }
-            if (timer.seconds() > Globals.autotimers.balldown) {
+            if (timerservo.seconds() > Globals.autotimers.balldown) {
                 set.turnToAngle(Globals.launcher.downset);
             }
-            if (timer.seconds() > Globals.autotimers.ejectout) {
+            if (timer.seconds() > Globals.autotimers.rotationtime + Globals.autotimers.ejectout) {
                 eject.turnToAngle(Globals.pushServo.defualt);
+                ejecting = false;
             }
         }
 
