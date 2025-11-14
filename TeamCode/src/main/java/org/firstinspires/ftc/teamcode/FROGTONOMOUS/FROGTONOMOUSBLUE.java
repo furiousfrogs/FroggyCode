@@ -67,10 +67,9 @@ import java.util.*;
 public class FROGTONOMOUSBLUE extends CommandOpMode {
     private Follower follower;
     TelemetryData telemetryData = new TelemetryData(telemetry);
-    private PathChain shoot3, eat3, eat3rotate, shoot6, eat6, eat6rotate, shoot9, eat9, shoot12;
+    private PathChain shoot3, eat3, eat3rotate, shoot6, eat6, eat6rotate, shoot9;
     private boolean aligned = false;
     private boolean revolverReady = true;
-
     private boolean ejecting = false;
     private VisionPortal visionPortal;
     private AprilTagProcessor tagProcessor;
@@ -82,24 +81,18 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
     private double previousRevolverPosition;
     private PIDFController turretPIDF, ff, revolverPID;
     private SimpleServo set, rotate, eject;
-    private NormalizedColorSensor colourSensor, secondColourSensor;
-    private DistanceSensor distanceSensor, secondDistanceSensor;
+    private DistanceSensor distanceSensor;
     private double RPM;
     private double lastTime;
     private int lastPosition;
     private double bearing = 0.0;
     double turretTarget = 299F; // inital turret angle red
-
     private boolean launching = false;
-
     private int revolverTarget = 0;
     private double revolverPower;
     private int ballcount = 0;
-
     private int ballsshot = 0;
     private boolean left;
-
-    private FtcDashboard dashboard = FtcDashboard.getInstance();
     private Limelight3A limelight;
 
     ////////////////////////////////////////////////
@@ -508,14 +501,14 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
                 set.turnToAngle(Globals.launcher.upset);
                 timerservo.reset();
                 launching = true;
+                ejecting = false;
             }
             if (timerservo.seconds() > Globals.autotimers.balldown && launching) {
                 set.turnToAngle(Globals.launcher.downset);
                 launching = false;
             }
-            if (timer.seconds() > Globals.autotimers.rotationtime + Globals.autotimers.ejectout) {
+            if (timer.seconds() > Globals.autotimers.rotationtime + 0.1 + Globals.autotimers.ejectout) {
                 eject.turnToAngle(Globals.pushServo.defualt);
-                ejecting = false;
             }
         }
 
@@ -653,16 +646,8 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
         @Override
         public void end(boolean interrupted) {
             outtake.endmotor();
-
         }
-
-
     }//todo
-
-
-    InstantCommand froggyvision = new InstantCommand(() -> {
-        getPattern();
-    });
 
 
 
@@ -672,7 +657,6 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
 
     @Override
     public void initialize() {
-
         tagProcessor = new AprilTagProcessor.Builder()
                 .setDrawAxes(true)
                 .setDrawTagID(true)
@@ -687,9 +671,6 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
                 .setCameraResolution(new android.util.Size(1280, 720))
                 .build();
 
-        telemetry.addData("Pattern detected", pattern);
-        telemetry.update();
-
         follower = Constants.createFollower(hardwareMap);
         follower.setStartingPose(new Pose(18.790, 119.941, Math.toRadians(-126)));
         telemetry.update();
@@ -703,7 +684,7 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
         buildPaths();
 
 
-        SequentialCommandGroup froggyrouteP = new SequentialCommandGroup(
+        SequentialCommandGroup froggyroute = new SequentialCommandGroup(
                 new FollowPathCommand(follower, shoot3),
                 new ParallelDeadlineGroup(
                         new WaitCommand(500),
@@ -715,8 +696,7 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
                 ),
                 new FollowPathCommand(follower, eat3rotate),
                 new ParallelDeadlineGroup(
-                                new FollowPathCommand(follower, eat3),
-
+                        new FollowPathCommand(follower, eat3),
                         new froggyeat(new intakesubsys(hardwareMap), 1)
                 ),
                 new FollowPathCommand(follower, shoot6),
@@ -735,8 +715,7 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
                         new froggyspit(new outtakesubsys(hardwareMap), 2)
                 )
         );
-        schedule(froggyrouteP);
-
+        schedule(froggyroute);
     }
 
     @Override

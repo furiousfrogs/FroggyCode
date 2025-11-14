@@ -64,7 +64,7 @@ public class Globals {
         public static float rotationtime = 0.6F;
         public static float fulllaunch = 1.4F;
         public static float balldown = 0.3F;
-        public static float ejectout = 0.4F;
+        public static float ejectout = 0.3F;
 
         public static float ejectin = 0.2F;
     }
