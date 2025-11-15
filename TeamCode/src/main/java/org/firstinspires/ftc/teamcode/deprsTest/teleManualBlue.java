@@ -319,7 +319,7 @@ public void intake() {
     revolver.set(revolverPower);
 
     if (!revolverReady &&
-            Math.abs(Math.abs(revolver.getCurrentPosition() - previousRevolverPosition) - Globals.revolver.oneRotation) < 10) {
+            Math.abs(Math.abs(revolver.getCurrentPosition() - previousRevolverPosition) - Globals.revolver.oneRotation) < 3) {
         revolverReady = true;
     }
 
@@ -337,6 +337,7 @@ public void intake() {
         shotsFired = 0;
     } else if (gamepadEx2.getButton(GamepadKeys.Button.CIRCLE) && revolverOn && !prevCircle) {
         revolverOn = false;
+        shootCounterClockwise = true;
     } prevCircle = gamepadEx2.getButton(GamepadKeys.Button.CIRCLE);
     if (revolverOn) {
     int filled = revolverState.size() - Collections.frequency(revolverState, "EMPTY");
@@ -548,10 +549,6 @@ private void doTelemetry() {
     telemetry.addData("aligned? ", aligned);
     telemetry.addData("pattern?: ", currentPattern);
     telemetry.addData("autoaim", autoAimEnabled);
-    telemetry.addData("power,", power);
-    telemetry.addData("ff power", feedforwardPower);
-    telemetry.addData("atspeed", Math.abs(power - RPM) < Globals.launcher.launcherTol);
-    telemetry.addData("shotsFired?", shotsFired);
     telemetry.addData("revolveron", revolverOn);
     telemetry.update();
 

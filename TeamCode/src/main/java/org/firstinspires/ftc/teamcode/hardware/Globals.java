@@ -21,11 +21,11 @@ public class Globals {
 
     @Config
     public static class revolver {
-        public static int oneRotation = 128; //|| Minus is counter-clockwise rotation.
-        public static float revolverKP = 0.007F;
-        public static float revolverKD= 0.0003F;
+        public static int oneRotation = 124; //|| Minus is counter-clockwise rotation.
+        public static float revolverKP = 0.0075F;
+        public static float revolverKD= 0.00048F;
         public static float revolverKI = 0F;
-        public static float revolverKF = 0;
+        public static float revolverKF = 0.00024F;
         public static float revolverNudge = 2F;
     }
 
@@ -43,7 +43,7 @@ public class Globals {
         public static double upset=300;
 
     }
-        public static float intakePower = 0.7F;
+    public static float intakePower = 1.0F;
 
     @Config
     public static class timers {
@@ -61,12 +61,12 @@ public class Globals {
 
     @Config
     public static class autotimers {
-        public static float rotationtime = 0.5F;
-        public static float fulllaunch = 1.2F;
-        public static float balldown = 1.2F;
-        public static float ejectout = 0.7F;
+        public static float rotationtime = 0.6F;
+        public static float fulllaunch = 1.4F;
+        public static float balldown = 0.3F;
+        public static float ejectout = 0.4F;
 
-        public static float ejectin = 0.25F;
+        public static float ejectin = 0.2F;
     }
 
     public static float slowdown = 0.6F;
@@ -74,3 +74,4 @@ public class Globals {
 
 
 }
+
