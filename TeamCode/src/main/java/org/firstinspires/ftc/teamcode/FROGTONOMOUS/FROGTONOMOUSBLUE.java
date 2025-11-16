@@ -144,7 +144,6 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
 
     private boolean two = false;
 
-
     private boolean revolverReady = true;
 
     private boolean ejecting = false;
@@ -169,7 +168,7 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
 
     private SimpleServo set, rotate, eject;
 
-    private DistanceSensor distanceSensor, secondDistanceSensor;
+    private DistanceSensor intakedistone, intakedisttwo, launcherdist;
 
     private double RPM;
 
@@ -548,84 +547,49 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
 
 
     public class intakesubsys extends SubsystemBase {
-
         private final Motor intake, revolver;
 
-
-
         public intakesubsys(HardwareMap map) {
-
             intake = new Motor(map, "intake");
-
             intake.setRunMode(Motor.RunMode.RawPower);
-
             intake.setZeroPowerBehavior(Motor.ZeroPowerBehavior.BRAKE);
-
             intake.set(0.0);
 
-
-
             revolver = new Motor(hardwareMap, "revolver", 28, 1150);
-
             revolver.setRunMode(Motor.RunMode.RawPower);
-
             revolver.resetEncoder();
 
-
-
             revolverPID = new PIDFController(Globals.revolver.revolverKP, Globals.revolver.revolverKI, Globals.revolver.revolverKD, Globals.revolver.revolverKF);
-
             revolverPID.setTolerance(0);
 
-
-
-            distanceSensor = hardwareMap.get(DistanceSensor.class, "colour1");
-
-            secondDistanceSensor = hardwareMap.get(DistanceSensor.class, "colour2");
-
+            intakedistone = hardwareMap.get(DistanceSensor.class, "colour1");
+            intakedisttwo = hardwareMap.get(DistanceSensor.class, "colour2");
+            launcherdist = hardwareMap.get(DistanceSensor.class, "name");//todo
         }
 
-
-
         public void intakeon() {
-
             intake.set(Globals.intakePower);
-
             ballcount = 0;
-
         }
 
         public void intakeoff() {
-
             intake.set(0);
-
             ballcount = 0;
-
         }
-
 
 
         @Override
         public void periodic() {
-
             revolverPID.setTolerance(0);
             revolverPID.setPIDF(Globals.revolver.revolverKP, Globals.revolver.revolverKI, Globals.revolver.revolverKD, Globals.revolver.revolverKF);
 
             revolverPower = revolverPID.calculate(revolver.getCurrentPosition(), revolverTarget);
-
             revolver.set(revolverPower);
 
-
-
             if (!revolverReady && Math.abs(Math.abs(revolver.getCurrentPosition() - previousRevolverPosition) - Globals.revolver.oneRotation) < 4) {
-
                 revolverReady = true;;//detect if the rotation is done
-
             }
-
         }
-
-
 
         public void sort(int pickupnum){//1 = ppg 2 pgp 3 gpp,
             telemetry.addData("", ballcount);
@@ -647,7 +611,7 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
 
             if (ballcount < 2) {
 
-                if ((distanceSensor.getDistance(DistanceUnit.CM) < 3 || secondDistanceSensor.getDistance(DistanceUnit.CM) < 3) && revolverReady) {
+                if ((intakedistone.getDistance(DistanceUnit.CM) < 3 || intakedisttwo.getDistance(DistanceUnit.CM) < 3) && revolverReady) {
 
                     if (pattern == 1) {
 
@@ -738,59 +702,33 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
                 }
 
             }
-
         }
-
     }
 
     public static class froggyeat extends CommandBase {
-
         private final intakesubsys intake;
-
         private int pickupnum;
 
-
-
         public froggyeat(intakesubsys intake, int pickupnum) {
-
             this.intake = intake;
-
             this.pickupnum = pickupnum;
-
             addRequirements(intake);
-
         }
 
-
-
         @Override
-
         public void initialize() {
-
             intake.intakeon();
-
         }
 
-
-
         @Override
-
         public void execute() {
-
             intake.sort(pickupnum);
-
         }
-
-
 
         @Override
-
         public void end(boolean interrupted) {
-
             intake.intakeoff();
-
         }
-
     }
 
 
@@ -999,7 +937,6 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
 
         private void shooting(){
             if (timer.seconds() < Globals.autotimers.rotationtime + 0.1) {
-
                 eject.turnToAngle(Globals.pushServo.eject);
 
             }
@@ -1043,25 +980,15 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
 
 
         private void launch(int shootnum) {
-
             telemetry.addData("time", timer.seconds());
-
             telemetry.addData("balls", ballsshot);
-
             telemetry.update();
-
-
-
 
 
             if (ballsshot < 3) {
                 launcher1.set(feedforwardPower);
-
                 launcher2.set(feedforwardPower);
-
-
                 if (timer.seconds() > Globals.autotimers.rotationtime) {
-
                     if (pattern == 1) {
 
                         if (shootnum == 0) {
