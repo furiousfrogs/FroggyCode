@@ -130,7 +130,7 @@ import java.util.*;
 
 @Configurable
 
-public class FROGTONOMOUSBLUE extends CommandOpMode {
+public class FROGTONOMOUSRED extends CommandOpMode {
 
     private Follower follower;
 
@@ -179,7 +179,7 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
 
     private double bearing = 0.0;
 
-    double turretTarget = 299F; // inital turret angle red
+    double turretTarget = 1F; // inital turret angle red
 
     private boolean launching = false;
 
@@ -207,11 +207,11 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
 
                 .addPath(
 
-                        new BezierLine(new Pose(18.790, 119.941), new Pose(44.078, 94.302))
+                        new BezierLine(new Pose(144-18.790, 119.941), new Pose(144-44.078, 94.302))
 
                 )
 
-                .setLinearHeadingInterpolation(Math.toRadians(-126), Math.toRadians(-115))
+                .setLinearHeadingInterpolation(Math.toRadians(-54), Math.toRadians(-65))
 
                 .build();
 
@@ -221,11 +221,11 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
 
                 .addPath(
 
-                        new BezierLine(new Pose(44.078, 94.302), new Pose(44.078, 84.941))
+                        new BezierLine(new Pose(144-44.078, 94.302), new Pose(144-44.078, 80.941))
 
                 )
 
-                .setLinearHeadingInterpolation(Math.toRadians(-115), Math.toRadians(180))
+                .setLinearHeadingInterpolation(Math.toRadians(-65), Math.toRadians(0))
 
                 .build();
 
@@ -235,11 +235,11 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
 
                 .addPath(
 
-                        new BezierLine(new Pose(44.078, 84.941), new Pose(18.844, 84.941))
+                        new BezierLine(new Pose(144-44.078, 80.941), new Pose(144-18.5, 80.941))
 
                 )
 
-                .setLinearHeadingInterpolation(Math.toRadians(180), Math.toRadians(180))
+                .setLinearHeadingInterpolation(Math.toRadians(0), Math.toRadians(0))
 
                 .setTimeoutConstraint(500)
 
@@ -253,11 +253,11 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
 
                 .addPath(
 
-                        new BezierLine(new Pose(19.844, 84.941), new Pose(38.283, 94.127))
+                        new BezierLine(new Pose(144-18.5, 80.941), new Pose(144-38.283, 94.127))
 
                 )
 
-                .setLinearHeadingInterpolation(Math.toRadians(180), Math.toRadians(-115))
+                .setLinearHeadingInterpolation(Math.toRadians(0), Math.toRadians(-65))
 
                 .build();
 
@@ -267,11 +267,11 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
 
                 .addPath(
 
-                        new BezierLine(new Pose(38.283, 94.127), new Pose(44.254, 60.3))
+                        new BezierLine(new Pose(144-38.283, 94.127), new Pose(144-44.254, 57.707))
 
                 )
 
-                .setLinearHeadingInterpolation(Math.toRadians(-115), Math.toRadians(180))
+                .setLinearHeadingInterpolation(Math.toRadians(-65), Math.toRadians(0))
 
                 .build();
 
@@ -281,11 +281,11 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
 
                 .addPath(
 
-                        new BezierLine(new Pose(44.254, 60.3), new Pose(22.654, 60.3))
+                        new BezierLine(new Pose(144-44.254, 57.707), new Pose(144-21, 57.883))
 
                 )
 
-                .setLinearHeadingInterpolation(Math.toRadians(180), Math.toRadians(180))
+                .setLinearHeadingInterpolation(Math.toRadians(0), Math.toRadians(0))
 
                 .setTimeoutConstraint(500)
 
@@ -297,19 +297,19 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
 
                 .addPath(
 
-                        new BezierLine(new Pose(22.654, 60.3), new Pose(41.268, 95.532))
+                        new BezierLine(new Pose(144-21, 57.883), new Pose(144-41.268, 95.532))
 
                 )
 
-                .setLinearHeadingInterpolation(Math.toRadians(180), Math.toRadians(-115))
+                .setLinearHeadingInterpolation(Math.toRadians(0), Math.toRadians(-65))
 
                 .build();
 
         escape = follower.pathBuilder()
                 .addPath(
-                        new BezierLine(new Pose(41.746, 92.873), new Pose(22.280, 54.645))
+                        new BezierLine(new Pose(144-41.746, 92.873), new Pose(144-22.280, 54.645))
                 )
-                .setLinearHeadingInterpolation(Math.toRadians(-115), Math.toRadians(-115))
+                .setLinearHeadingInterpolation(Math.toRadians(-65), Math.toRadians(-65))
                 .build();
 
     }
@@ -326,7 +326,8 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
         revolverTarget += left? +Globals.revolver.oneRotation : -Globals.revolver.oneRotation;
 
     }
-
+//hao sucks
+    //hao is the worst programmer ive ever seen bro uses chat gpt for everytihng
 
 
     public void getPattern() {
@@ -899,7 +900,7 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
 
                 for (AprilTagDetection d : detections) {
 
-                    if (d.ftcPose != null && d.id == 20) {//blue IS 20 red IS 24
+                    if (d.ftcPose != null && d.id == 24) {//blue IS 20 red IS 24
 
                         distance = d.ftcPose.range;
 
@@ -1388,7 +1389,7 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
 
         follower = Constants.createFollower(hardwareMap);
 
-        follower.setStartingPose(new Pose(18.790, 119.941, Math.toRadians(-126)));
+        follower.setStartingPose(new Pose(144-18.790, 119.941, Math.toRadians(-54)));
 
         telemetry.update();
 

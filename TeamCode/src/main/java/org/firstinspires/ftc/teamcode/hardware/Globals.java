@@ -21,11 +21,11 @@ public class Globals {
 
     @Config
     public static class revolver {
-        public static int oneRotation = 124; //|| Minus is counter-clockwise rotation.
-        public static float revolverKP = 0.0075F;
+        public static int oneRotation = 123; //|| Minus is counter-clockwise rotation.
+        public static float revolverKP = 0.009F;
         public static float revolverKD= 0.00048F;
         public static float revolverKI = 0F;
-        public static float revolverKF = 0.00024F;
+        public static float revolverKF = 0.00038F;
         public static float revolverNudge = 2F;
     }
 

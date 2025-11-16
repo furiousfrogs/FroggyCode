@@ -495,7 +495,7 @@ private boolean prevCircle;
                     }
                 }
             } else {
-                power = 0;
+                power = 3000;
             }
 
             if (chosen != null) {
@@ -515,6 +515,7 @@ private boolean prevCircle;
 
         } else if (!autoAimEnabled) {
             visionPortal.setProcessorEnabled(tagProcessor, false);
+            aligned = true;
         }
 
         if (lb ^ rb) {

@@ -506,7 +506,7 @@ private void autoAimServoMode() {
                 }
             }
         } else {
-            power = 0;
+            power = 3000;
         }
 
         if (chosen != null) {
@@ -526,7 +526,7 @@ private void autoAimServoMode() {
 
     } else if (!autoAimEnabled && !patternDetected) {
         visionPortal.setProcessorEnabled(tagProcessor, false);
-        aligned = false;
+        aligned = true;
     }
 
     if (lb ^ rb) {
