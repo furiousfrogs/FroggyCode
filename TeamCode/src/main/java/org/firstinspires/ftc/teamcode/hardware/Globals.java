@@ -40,7 +40,7 @@ public class Globals {
         public static double flykF = 0.000197; //0.000020
 
         public static double downset=0.0F;
-        public static double upset=300;
+        public static double upset=300.0F;
 
     }
     public static float intakePower = 1.0F;
