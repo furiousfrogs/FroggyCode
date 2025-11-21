@@ -77,7 +77,7 @@ public class teleManualBlue extends OpMode {
     private PIDFController turretPIDF, ff, revolverPID;
     // ----- Motors, servos, sensors -----
     private Motor launcher1, launcher2, revolver, fl, bl, fr, br, intake;
-    private SimpleServo set, rotate, eject;
+    private SimpleServo set, t1, t2, eject;
     private NormalizedColorSensor colourSensor, secondColourSensor;
     private DistanceSensor distanceSensor, secondDistanceSensor;
 
@@ -87,7 +87,7 @@ public class teleManualBlue extends OpMode {
     private int lastPosition;
 
     // ----- turret -----
-    double turretTarget = 150F; // inital turret angle
+    double turretTarget = 180F; // inital turret angle
 
     // ----- revolver -----
     private final float[] hsv1 = new float[3];
@@ -166,8 +166,10 @@ public class teleManualBlue extends OpMode {
         secondColourSensor.setGain(2.0f); //CAMERA SENSITIVITY, increase for darker environemnts
 
         // ----- turret -----
-        rotate = new SimpleServo(hardwareMap, "turret", 0, 300, AngleUnit.DEGREES);
-        rotate.turnToAngle(turretTarget);
+        t1 = new SimpleServo(hardwareMap, "t1", 90, 270, AngleUnit.DEGREES);
+        t1.turnToAngle(turretTarget);
+        t2 = new SimpleServo(hardwareMap, "t2", 90, 270, AngleUnit.DEGREES);
+        t2.turnToAngle(turretTarget);
         turretPIDF = new PIDFController(Globals.turret.turretKP, Globals.turret.turretKI, Globals.turret.turretKD, Globals.turret.turretKF);
 
         // ----- build ov9281 -----
@@ -183,7 +185,7 @@ public class teleManualBlue extends OpMode {
                 .addProcessor(tagProcessor)
                 .setCamera(hardwareMap.get(WebcamName.class, "ov9281"))
                 .setStreamFormat(VisionPortal.StreamFormat.MJPEG)
-                .setCameraResolution(new android.util.Size(1280, 720))
+                .setCameraResolution(new android.util.Size(640, 480))
                 .build();
         gamepadEx2 = new GamepadEx(gamepad2);
         gamepadEx1 = new GamepadEx(gamepad1);
@@ -195,7 +197,7 @@ public class teleManualBlue extends OpMode {
         eject = new SimpleServo(hardwareMap, "eject", 0, 70);
         eject.setInverted(true);
         eject.turnToAngle(Globals.pushServo.defualt);
-        ejectAnalog = (AnalogInput) hardwareMap.get(AnalogSensor.class, "ejectAnalog");  // REAL SENSOR
+        ejectAnalog = hardwareMap.get(AnalogInput.class, "ejectAnalog");  // REAL SENSOR
 
 
         limelight = hardwareMap.get(Limelight3A.class, "limelight");
@@ -220,7 +222,8 @@ public class teleManualBlue extends OpMode {
         gamepadEx2.readButtons();
 
         feedforwardPower = ff.calculate(RPM, power);
-        rotate.turnToAngle(turretTarget);
+        t1.turnToAngle(turretTarget);
+        t2.turnToAngle(turretTarget);
 
     }
 
@@ -503,19 +506,19 @@ public class teleManualBlue extends OpMode {
         }
         prevPad = pad;
 
-        boolean lb = gamepadEx2.getButton(GamepadKeys.Button.LEFT_BUMPER);
-        boolean rb = gamepadEx2.getButton(GamepadKeys.Button.RIGHT_BUMPER);
+        boolean lb = gamepad2.left_bumper;
+        boolean rb = gamepad2.right_bumper;
 
 
         List<AprilTagDetection> detections = tagProcessor.getDetections();
-        if (!lb ^ rb && autoAimEnabled) {
+        if (!(lb || rb) && autoAimEnabled) {
             visionPortal.setProcessorEnabled(tagProcessor, true);
 
             AprilTagDetection chosen = null;
             double chosenBearing = 0.0;
             if (detections != null && !detections.isEmpty()) {
                 for (AprilTagDetection d : detections) {
-                    if (d.ftcPose != null && d.id == 20) {//blue IS 20 red IS 24
+                    if (d.ftcPose != null ) {//blue IS 20 red IS 24 TODO READD ID==20
                         distance = d.ftcPose.range;
                         power = (2547.5 * pow(2.718281828459045, (0.0078 * distance))) / Globals.launcher.launcherTransformation; // here
                         double bearing = d.ftcPose.bearing;
@@ -530,15 +533,12 @@ public class teleManualBlue extends OpMode {
             }
 
             if (chosen != null) {
+                aligned = Math.abs(chosenBearing) <= Globals.turret.turretTol;
 
-                double err = chosenBearing - Globals.turret.turretLocationError;
-
-                aligned = Math.abs(err) <= Globals.turret.turretTol;
-
-                double delta = aligned ? 0.0 : turretPIDF.calculate(err, 0.0);
+                double delta = aligned ? 0.0 : turretPIDF.calculate(chosenBearing, 0.0);
 
 
-                turretTarget -= delta; //THIS IS NEGATIVE
+                turretTarget -= delta; //THIS IS POSITIVE
             } else {
                 aligned = false;
 
@@ -551,14 +551,14 @@ public class teleManualBlue extends OpMode {
 
         if (lb ^ rb) {
             aligned = false;
-            turretTarget += lb ? +Globals.turret.nudge : -Globals.turret.nudge;
+            turretTarget -= lb ? +Globals.turret.nudge : -Globals.turret.nudge; //THIS IS NEGATIVE
 
         }
 
-        if (turretTarget > 300) {
-            turretTarget = 300;
-        } else if (turretTarget < 0) {
-            turretTarget = 0;
+        if (turretTarget > 215) {
+            turretTarget = 215;
+        } else if (turretTarget < 135) {
+            turretTarget = 135;
         }
 
 
@@ -571,6 +571,7 @@ public class teleManualBlue extends OpMode {
         telemetry.addData("autoaim", autoAimEnabled);
         telemetry.addData("revolveron", revolverOn);
         telemetry.addData("eject position", ejectAnalog.getVoltage());
+        telemetry.addData("turret position", t1.getAngle());
         telemetry.update();
 
         TelemetryPacket rpmPacket = new TelemetryPacket();

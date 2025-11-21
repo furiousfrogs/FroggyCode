@@ -8,13 +8,13 @@ public class Globals {
 
     @Config
     public static class turret {
-        public static float turretTol = 4F;
-        public static float nudge = 2F;
-        public static double turretKP = 0.048F;
+        public static float turretTol = 5F;
+        public static float nudge = 4F;
+        public static double turretKP = 0.05F;
         public static double turretKI = 0.000F;
-        public static double turretKD = 0.006F;
+        public static double turretKD = 0.005F;
         public static double turretKF = 0.000F;
-        public static float turretLocationError = -1F;
+        public static float turretLocationError = 0F;
 
         public static float targetRPM = 3000F;
     }
@@ -54,9 +54,10 @@ public class Globals {
 
     @Config // eject is 30, default is 44, push is 51
     public static class pushServo {
-        public static float push = 0F;
-        public static float defualt = 0F;
-        public static float eject = 13F;
+        public static float defualt = 26;
+        public static float eject = 39;
+        public static float push = 26;
+
     }
 
     @Config
