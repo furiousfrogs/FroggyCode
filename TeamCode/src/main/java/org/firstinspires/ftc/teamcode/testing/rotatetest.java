@@ -15,7 +15,6 @@ import com.seattlesolvers.solverslib.hardware.servos.ServoEx;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.teamcode.hardware.Globals;
-@Disabled
 @TeleOp(name = "rotate test")
 public class rotatetest extends OpMode {
     private Motor revolver, intake;
@@ -77,9 +76,9 @@ public class rotatetest extends OpMode {
         gamepadEx.readButtons();
         revolverPID.setPID(Globals.revolver.revolverKP, Globals.revolver.revolverKI, Globals.revolver.revolverKD);
 
-        if (gamepadEx.wasJustPressed(GamepadKeys.Button.SQUARE)) {
+        if (gamepadEx.getButton(GamepadKeys.Button.SQUARE)) {
             revolverTarget += Globals.revolver.oneRotation;  // CW
-        } else if (gamepadEx.wasJustPressed(GamepadKeys.Button.CROSS)) {
+        } else if (gamepadEx.getButton(GamepadKeys.Button.CROSS)) {
             revolverTarget -= Globals.revolver.oneRotation;
         }
 
