@@ -73,6 +73,6 @@ public class Globals {
     public static float slowdown = 0.6F;
     public static float revolverPower = 0;
 
-
+    public static float physicstesting = 0.5F;
 }
 
