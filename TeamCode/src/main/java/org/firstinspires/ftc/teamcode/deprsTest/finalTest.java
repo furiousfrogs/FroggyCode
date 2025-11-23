@@ -55,6 +55,7 @@ public class finalTest extends OpMode {
     private boolean prevCircle;
     private boolean shootcycle = false;
     private boolean rotated = false;
+    private boolean prevPS = false;
 
 
     // ----- action booleans -----
@@ -246,7 +247,7 @@ public class finalTest extends OpMode {
                     set.turnToAngle(Globals.launcher.downset);
                     pushupTimer.startTime();
                     shootcycle = true;
-
+                    rotated = false;
                 } else {
                     shootcycle = false;
                     currentshoot3 = shoot3.idle;
@@ -267,6 +268,7 @@ public class finalTest extends OpMode {
                             eject.turnToAngle(Globals.pushServo.eject);
                             if (ang > 180 || dist < 5.5) {
                                 eject.turnToAngle(Globals.pushServo.defualt);
+                                rotated = false;
                                 currentshoot3 = shoot3.rotate;
                             }
                         }
@@ -377,6 +379,10 @@ public class finalTest extends OpMode {
 
 
     public void intake() {
+        double cDist1 = distanceSensor.getDistance(DistanceUnit.CM);
+        double cDist2 = secondDistanceSensor.getDistance(DistanceUnit.CM);
+        boolean ballExists = cDist1 < 3 && cDist2 < 3;
+
         revolverPID.setTolerance(0);
         revolverPID.setPIDF(Globals.revolver.revolverKP, Globals.revolver.revolverKI, Globals.revolver.revolverKD, Globals.revolver.revolverKF);
         revolverPower = revolverPID.calculate(revolver.getCurrentPosition(), revolverTarget);
@@ -402,13 +408,20 @@ public class finalTest extends OpMode {
             shootCounterClockwise = true;
         }
 
+        if (gamepadEx2.getButton(GamepadKeys.Button.PS) && !revolverOn && !prevPS) {
+            revolverState.set(0, "EMPTY");
+            revolverState.set(1, "EMPTY");
+            revolverState.set(2, "EMPTY");
+        } prevPS = gamepadEx2.getButton(GamepadKeys.Button.PS);
+
         prevCircle = gamepadEx2.getButton(GamepadKeys.Button.CIRCLE);
+
         if (!shootcycle) {
             int filled = revolverState.size() - Collections.frequency(revolverState, "EMPTY");
             String color = senseColour();  // "P", "G", or "EMPTY"
 
             if (patternDetected) {
-                if (!"EMPTY".equals(color) && revolverReady) {
+                if (ballExists&& revolverReady) {
 
                     String wantTop = desiredByPattern()[0];
 
