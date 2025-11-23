@@ -10,13 +10,13 @@ public class Globals {
     public static class turret {
         public static float turretTol = 5F;
         public static float nudge = 4F;
-        public static double turretKP = 0.05F;
+        public static double turretKP = 0.043F;
         public static double turretKI = 0.000F;
-        public static double turretKD = 0.005F;
+        public static double turretKD = 0.0043F;
         public static double turretKF = 0.000F;
         public static float turretLocationError = 0F;
 
-        public static float targetRPM = 3000F;
+
     }
 
     @Config
@@ -55,7 +55,7 @@ public class Globals {
     @Config // eject is 30, default is 44, push is 51
     public static class pushServo {
         public static float defualt = 26;
-        public static float eject = 39;
+        public static float eject = 36;
         public static float push = 26;
 
     }
@@ -72,6 +72,9 @@ public class Globals {
 
     public static float slowdown = 0.6F;
     public static float revolverPower = 0;
+    public static float targetRPM = 3000F;
+    public static float closeGate = 24F;
+    public static float openGate = 75F;
 
     public static float physicstesting = 0.5F;
 }
