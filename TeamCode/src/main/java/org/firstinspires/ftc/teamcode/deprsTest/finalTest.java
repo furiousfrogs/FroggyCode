@@ -126,7 +126,7 @@ public class finalTest extends OpMode {
     private AnalogInput ejectAnalog;
 
     private ElapsedTime pushupTimer = new ElapsedTime();
-
+    private ElapsedTime revolverTimer = new ElapsedTime();
     @Override
     public void init() {
         // ----- drive -----
@@ -259,7 +259,7 @@ public class finalTest extends OpMode {
                     case pushin:
                         if (pushupTimer.seconds() > 0.5) {
                             eject.turnToAngle(Globals.pushServo.eject);
-                            if (ang > 180 || dist < 5.5) {
+                            if (ang > 185 || dist < 5.5) {
                                 eject.turnToAngle(Globals.pushServo.defualt);
                                 rotated = false;
                                 currentshoot3 = shoot3.rotate;
@@ -268,17 +268,24 @@ public class finalTest extends OpMode {
                         break;
 
                     case rotate:
-                        eject.turnToAngle(Globals.pushServo.defualt);
+                        if (ang > 185) {
+                            eject.turnToAngle(Globals.pushServo.defualt);
+                        }
                         if (ang < 163 && !rotated) {
                             revolverReady = false;
                             rotated = true;
                             oneRotationRevolver(true);
                             Collections.rotate(revolverState, 1);
-
+                            revolverTimer.startTime();
                         }
                         if (Math.abs(Math.abs(revolver.getCurrentPosition() - previousRevolverPosition) - Globals.revolver.oneRotation) < 10 && rotated) {
                             currentshoot3 = shoot3.setup;
-                        } if (rotated && Math.abs(revolver.getCurrentPosition() - previousRevolverPosition) < 80)
+                        } else if (rotated && Math.abs(revolver.getCurrentPosition() - previousRevolverPosition) < 80 && revolverTimer.seconds() > 0.5){
+                            oneRotationRevolver(false);
+                            Collections.rotate(revolverState, -1);
+                            eject.turnToAngle(Globals.pushServo.eject);
+                            rotated  = false;
+                        }
                         break;
 
                     case setup:
