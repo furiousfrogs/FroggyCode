@@ -40,11 +40,8 @@ import com.seattlesolvers.solverslib.util.TelemetryData;
 import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
-import org.firstinspires.ftc.teamcode.deprsTest.teleManualBlue;
-import org.firstinspires.ftc.teamcode.deprsTest.twoDriverScrimTele;
 import org.firstinspires.ftc.teamcode.hardware.Globals;
 import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
-import org.firstinspires.ftc.teamcode.testing.finalLaunch3;
 import org.firstinspires.ftc.vision.VisionPortal;
 import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
 import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
@@ -55,6 +52,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.*;
 
+
+//TODO SHOOTING PATHING LIMELIGHT PATTERN DETECT CHECK INTAKE
 @Autonomous
 @Configurable
 public class FROGTONOMOUSTESTING extends CommandOpMode {
@@ -62,6 +61,8 @@ public class FROGTONOMOUSTESTING extends CommandOpMode {
     TelemetryData telemetryData = new TelemetryData(telemetry);
     private PathChain shoot3, eat3, eat3rotate, shoot6, eat6, eat6rotate, shoot9, escape;
     private boolean aligned = false;
+
+    private double previousRPM = 0;
     private boolean one = false;
 
     private boolean two = false;
@@ -88,7 +89,7 @@ public class FROGTONOMOUSTESTING extends CommandOpMode {
 
     private PIDFController turretPIDF, ff, revolverPID;
 
-    private SimpleServo set, rotate, eject;
+    private SimpleServo set, turrot1, turrot2, eject, gate;
 
     private DistanceSensor intakedistone, intakedisttwo, launcherdist;
 
@@ -244,7 +245,11 @@ public class FROGTONOMOUSTESTING extends CommandOpMode {
 
         previousRevolverPosition = revolverTarget;
 
-        revolverTarget += left? +Globals.revolver.oneRotation : -Globals.revolver.oneRotation;
+        if (left) {
+            revolverTarget += Globals.revolver.oneRotation;
+        } else {
+            revolverTarget -= Globals.revolver.oneRotation;
+        }
 
     }
 
@@ -695,10 +700,6 @@ public class FROGTONOMOUSTESTING extends CommandOpMode {
 
             revolver.resetEncoder();
 
-            rotate = new SimpleServo(hardwareMap, "turret", 0, 300, AngleUnit.DEGREES);
-
-            rotate.turnToAngle(turretTarget);
-
             turretPIDF = new PIDFController(Globals.turret.turretKP, Globals.turret.turretKI, Globals.turret.turretKD, Globals.turret.turretKF);
 
             turretPIDF.setTolerance(Globals.turret.turretTol);
@@ -709,130 +710,63 @@ public class FROGTONOMOUSTESTING extends CommandOpMode {
 
             eject.turnToAngle(Globals.pushServo.defualt);
 
+            turrot1 = new SimpleServo(hardwareMap, "t1", 90, 270, AngleUnit.DEGREES);
+            turrot1.turnToAngle(turretTarget);
+            turrot2 = new SimpleServo(hardwareMap, "t2", 90, 270, AngleUnit.DEGREES);
+            turrot2.turnToAngle(turretTarget);
+
+            gate = new SimpleServo(hardwareMap,"gate", 0, 300, AngleUnit.DEGREES);
+            gate.turnToAngle(Globals.closeGate);
+
         }
 
         private void calculateRPM() {
-
             double currentTime = getRuntime();
-
             int currentPosition = launcher1.getCurrentPosition();
 
-
-
             double deltaTime = currentTime - lastTime;
-
             int deltaTicks = currentPosition - lastPosition;
 
-
-
-            if (deltaTime > 0.05) {
-
+            if (deltaTime > 0.02) {
+                previousRPM = RPM;
                 double revs = (double) deltaTicks / 28.0; // GoBILDA CPR
-
                 RPM = (revs / deltaTime) * 60.0;
 
-
-
                 lastTime = currentTime;
-
                 lastPosition = currentPosition;
-
             }
-
         }
 
         private void aiming() {
-
-            List<AprilTagDetection> detections = tagProcessor.getDetections();
-
-
-
+            ff.setPIDF(Globals.launcher.flykP, Globals.launcher.flykI, Globals.launcher.flykD, Globals.launcher.flykF);
+            turretPIDF.setPIDF(Globals.turret.turretKP, Globals.turret.turretKI, Globals.turret.turretKD, Globals.turret.turretKF);
             visionPortal.setProcessorEnabled(tagProcessor, true);
 
 
+            List<AprilTagDetection> detections = tagProcessor.getDetections();
 
-            AprilTagDetection chosen = null;
+                if (detections != null && !detections.isEmpty()) {
+                    for (AprilTagDetection d : detections) {
+                        if (d.ftcPose != null && d.id == 20) {//blue IS 20 red IS 24 TODO READD ID==20
+                            power = (2547.5 * pow(2.718281828459045, (0.0078 * d.ftcPose.range))) / Globals.launcher.launcherTransformation; // here
 
-            double chosenBearing = 0.0;
-
-            if (detections != null && !detections.isEmpty()) {
-
-                for (AprilTagDetection d : detections) {
-
-                    if (d.ftcPose != null && d.id == 20) {//blue IS 20 red IS 24
-
-                        distance = d.ftcPose.range;
-
-                        power = (2547.5 * pow(2.718281828459045, (0.0078 * distance))) / Globals.launcher.launcherTransformation; // here
-
-                        double bearing = d.ftcPose.bearing;
-
-                        if (chosen == null || Math.abs(bearing) < Math.abs(chosenBearing)) {
-
-                            chosen = d;
-
-                            chosenBearing = bearing;
-
+                            aligned = Math.abs(d.ftcPose.bearing) <= Globals.turret.turretTol;
+                            double delta = aligned ? 0.0 : turretPIDF.calculate(d.ftcPose.bearing, 0.0);
+                            turretTarget += delta; //THIS IS POSITIVE
                         }
-
                     }
-
+                } else {
+                    power = 0;
                 }
 
-            } else {
 
-                power = 0;
-
+            if (turretTarget >= 245) {
+                turretTarget = 245;
+            } else if (turretTarget <= 120) {
+                turretTarget = 120;
             }
-
-
-
-            if (chosen != null) {
-
-
-
-                double err = chosenBearing - Globals.turret.turretLocationError;
-
-
-
-                aligned = Math.abs(err) <= Globals.turret.turretTol+3;
-
-
-
-                double delta = aligned ? 0.0 : turretPIDF.calculate(err, 0.0);
-
-
-
-
-
-                turretTarget -= delta; //THIS IS NEGATIVE
-
-            } else {
-
-                aligned = false;
-
-            }
-
-
-
-
-
-            if (turretTarget > 300) {
-
-                turretTarget = 300;
-
-            } else if (turretTarget < 0) {
-
-                turretTarget = 0;
-
-            }
-
-
-
-            feedforwardPower = ff.calculate(RPM, power);
-
-            rotate.turnToAngle(turretTarget);
-
+            turrot1.turnToAngle(turretTarget);
+            turrot2.turnToAngle(turretTarget);
         }
 
         private void timerreset() {
@@ -1112,19 +1046,10 @@ public class FROGTONOMOUSTESTING extends CommandOpMode {
                                 timer.reset();
 
                             }
-
                         }
-
                     }
-
                 }
-
-
-
             }
-
-
-
         }
 
 
@@ -1132,10 +1057,9 @@ public class FROGTONOMOUSTESTING extends CommandOpMode {
         @Override
 
         public void periodic() {
-
             calculateRPM();
-
             aiming();
+            feedforwardPower = ff.calculate(RPM, power);
 
         }
 
@@ -1237,7 +1161,7 @@ public class FROGTONOMOUSTESTING extends CommandOpMode {
 
         follower = Constants.createFollower(hardwareMap);
 
-        follower.setStartingPose(new Pose(18.790, 119.941, Math.toRadians(-126)));
+        follower.setStartingPose(new Pose(18.790, 119.941, Math.toRadians(-126)));//todo
 
         telemetry.update();
 
