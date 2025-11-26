@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode.deprsTest;
+package org.firstinspires.ftc.teamcode.testing;
 
 import static java.lang.Math.pow;
 
@@ -9,10 +9,10 @@ import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
 import com.qualcomm.hardware.limelightvision.LLResult;
 import com.qualcomm.hardware.limelightvision.LLResultTypes;
 import com.qualcomm.hardware.limelightvision.Limelight3A;
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.AnalogInput;
-import com.qualcomm.robotcore.hardware.AnalogSensor;
 import com.qualcomm.robotcore.hardware.DistanceSensor;
 import com.qualcomm.robotcore.hardware.NormalizedColorSensor;
 import com.qualcomm.robotcore.hardware.NormalizedRGBA;
@@ -34,9 +34,8 @@ import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
-
+@Disabled
 @TeleOp(name = "Blue")
 public class teleManualBlue extends OpMode {
 
@@ -185,7 +184,7 @@ public class teleManualBlue extends OpMode {
                 .addProcessor(tagProcessor)
                 .setCamera(hardwareMap.get(WebcamName.class, "ov9281"))
                 .setStreamFormat(VisionPortal.StreamFormat.MJPEG)
-                .setCameraResolution(new android.util.Size(640, 480))
+                .setCameraResolution(new android.util.Size(1280, 720))
                 .build();
         gamepadEx2 = new GamepadEx(gamepad2);
         gamepadEx1 = new GamepadEx(gamepad1);

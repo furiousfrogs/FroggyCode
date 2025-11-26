@@ -1,12 +1,13 @@
 package org.firstinspires.ftc.teamcode.chuckFull.opmodes;
 
 
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.seattlesolvers.solverslib.gamepad.GamepadEx;
 import org.firstinspires.ftc.teamcode.chuckFull.RobotContainer;
 
-
+@Disabled
 @TeleOp(name = "Chuck Tele", group = "Main")
 public class TeleOpMain extends LinearOpMode {
 

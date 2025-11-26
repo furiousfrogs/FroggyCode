@@ -34,44 +34,41 @@ import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
-@TeleOp(name = "TestEverything")
-public class finalTest extends OpMode {
+@TeleOp(name = "Blue Qual")
+public class QualsBlue extends OpMode {
 
     // ----- booleans/toggles
     private boolean aligned = false;
-    private boolean patternDetected = false;
     private boolean autoAimEnabled = true;
-    private boolean prevPad = false;
     private boolean revolverReady = true;
-    private boolean previousRotation;
-    private boolean prevSquare;
-    private boolean prevCross;
-    private boolean launcherSetPower = false;
     private boolean revolverOn = false;
-    private boolean prevCircle;
     private boolean shootcycle = false;
     private boolean rotated = false;
 
 
-    // ----- action booleans -----
-    private boolean shootLoop = false;
+    // ---- prev gamepad's
+    private boolean prevPS = false;
+    private boolean prevPad = false;
+    private boolean prevCircle;
+    private boolean prevCross;
 
     // ----- doubles -----
     private double feedforwardPower = 0;
-    private double distance;
     private double power;
     private double previousRevolverPosition;
-    private double previousRPM = 0;
-
+    private double revolverPower;
     private double dist;
     private double ang;
+    private int revolverTarget = 0;
 
     // ----- pid's -----
     private PIDFController turretPIDF, ff, revolverPID;
+
     // ----- Motors, servos, sensors -----
     private Motor launcher1, launcher2, revolver, fl, bl, fr, br, intake;
     private SimpleServo set, t1, t2, eject, gate;
@@ -80,53 +77,35 @@ public class finalTest extends OpMode {
 
     // ----- launcher -----
     private double RPM;
+    private double previousRPM = 0;
     private double lastTime;
     private int lastPosition;
 
     // ----- turret -----
     double turretTarget = 183F; // inital turret angle
 
-    // ----- revolver -----
-    private final float[] hsv1 = new float[3];
-    private final float[] hsv2 = new float[3];
-
-    private boolean shootCounterClockwise = false;
-    double bearing;
-
 
     //index 0 is the top, 1 is the left, 2 is the right when looking from the front view
     private List<String> revolverState = new ArrayList<>(Arrays.asList("EMPTY", "EMPTY", "EMPTY"));
-    private List<String> finalRevolver = new ArrayList<>(Arrays.asList("EMPTY", "EMPTY", "EMPTY"));
-    private String color;
-    private int revolverTarget = 0;
-    private double revolverPower;
-
-    private boolean prevCrossSpammer = true;
-
-    private enum pattern {
-        PPG,
-        PGP,
-        GPP,
-        noPattern
-    }
-    pattern currentPattern = pattern.noPattern;
 
     private enum shoot3 {
         idle,
         pushin,
         rotate,
+        rotateFailed,
         setup,
 
     } shoot3 currentshoot3 = shoot3.idle;
 
+    // ---- misc imports ----
     private VisionPortal visionPortal;
     private AprilTagProcessor tagProcessor;
-    private Limelight3A limelight;
     private GamepadEx gamepadEx1, gamepadEx2;
     private AnalogInput ejectAnalog;
 
+    // ---- timers ----
     private ElapsedTime pushupTimer = new ElapsedTime();
-
+    private ElapsedTime revolverTimer = new ElapsedTime();
     @Override
     public void init() {
         // ----- drive -----
@@ -154,6 +133,8 @@ public class finalTest extends OpMode {
         launcher2.setZeroPowerBehavior(Motor.ZeroPowerBehavior.FLOAT);
         ff = new PIDFController(Globals.launcher.flykP, Globals.launcher.flykI, Globals.launcher.flykD, Globals.launcher.flykF);
         set = new SimpleServo(hardwareMap, "set", 0, 300, AngleUnit.DEGREES);
+        set.turnToAngle(Globals.launcher.downset);
+
         // ----- launcher helpers -----
         lastTime = getRuntime();
         lastPosition = launcher1.getCurrentPosition();
@@ -163,22 +144,24 @@ public class finalTest extends OpMode {
         revolver.setRunMode(Motor.RunMode.RawPower);
         revolver.resetEncoder();
         revolverPID = new PIDFController(Globals.revolver.revolverKP, Globals.revolver.revolverKI, Globals.revolver.revolverKD, Globals.revolver.revolverKF);
-        // ----- colour sensor -----
-        colourSensor = hardwareMap.get(NormalizedColorSensor.class, "colour1");
-        distanceSensor = hardwareMap.get(DistanceSensor.class, "colour1");
-        colourSensor.setGain(2.0f); //CAMERA SENSITIVITY, increase for darker environemnts
 
-        secondColourSensor = hardwareMap.get(NormalizedColorSensor.class, "colour2");
+        // ----- sensors -----
+        launchDistanceSensor = hardwareMap.get(DistanceSensor.class, "distanceSensor");
+        distanceSensor = hardwareMap.get(DistanceSensor.class, "colour1");
         secondDistanceSensor = hardwareMap.get(DistanceSensor.class, "colour2");
-        secondColourSensor.setGain(2.0f); //CAMERA SENSITIVITY, increase for darker environemnts
 
         // ----- turret -----
         t1 = new SimpleServo(hardwareMap, "t1", 90, 270, AngleUnit.DEGREES);
         t1.turnToAngle(turretTarget);
         t2 = new SimpleServo(hardwareMap, "t2", 90, 270, AngleUnit.DEGREES);
         t2.turnToAngle(turretTarget);
+
         turretPIDF = new PIDFController(Globals.turret.turretKP, Globals.turret.turretKI, Globals.turret.turretKD, Globals.turret.turretKF);
-        gate = new SimpleServo(hardwareMap,"gate", 0, 80, AngleUnit.DEGREES);
+
+
+        // ---- gate ----
+        gate = new SimpleServo(hardwareMap,"gate", 0, 300, AngleUnit.DEGREES);
+        gate.turnToAngle(Globals.closeGate);
 
         // ----- build ov9281 -----
         tagProcessor = new AprilTagProcessor.Builder()
@@ -198,37 +181,30 @@ public class finalTest extends OpMode {
         gamepadEx2 = new GamepadEx(gamepad2);
         gamepadEx1 = new GamepadEx(gamepad1);
 
-
+        // ---- intake ----
         intake = new Motor(hardwareMap, "intake");
         intake.setRunMode(Motor.RunMode.RawPower);
         intake.setZeroPowerBehavior(Motor.ZeroPowerBehavior.BRAKE);
+
+        // ---- eject servo ----
         eject = new SimpleServo(hardwareMap, "eject", 0, 70);
         eject.setInverted(true);
         eject.turnToAngle(Globals.pushServo.defualt);
         ejectAnalog = hardwareMap.get(AnalogInput.class, "ejectAnalog");  // REAL SENSOR
-        launchDistanceSensor = hardwareMap.get(DistanceSensor.class, "distanceSensor");
-
-
-        limelight = hardwareMap.get(Limelight3A.class, "limelight");
-        limelight.setPollRateHz(20);
-        limelight.pipelineSwitch(0);
-        set.turnToAngle(Globals.launcher.downset);
     }
 
     @Override
     public void loop() { // TODO add revolver sequence logic
         calculateRPM();
-
         autoAimServoMode();      // now only reads/controls; does NOT rebuild vision
         doTelemetry();
-        intake();
+        intakeSystem();
         drive();
-
-        findPattern();
+        revolver();
         launch3();
 
-        gamepadEx2.readButtons();
-        revolverTarget += (int) ((gamepadEx2.getTrigger(GamepadKeys.Trigger.RIGHT_TRIGGER) - gamepadEx2.getTrigger(GamepadKeys.Trigger.LEFT_TRIGGER)) * Globals.revolver.revolverNudge);
+
+
         feedforwardPower = ff.calculate(RPM, power);
         t1.turnToAngle(turretTarget);
         t2.turnToAngle(turretTarget);
@@ -244,20 +220,23 @@ public class finalTest extends OpMode {
                     currentshoot3 = shoot3.pushin;
                     eject.turnToAngle(Globals.pushServo.defualt);
                     set.turnToAngle(Globals.launcher.downset);
-                    pushupTimer.startTime();
-                    shootcycle = true;
+                    pushupTimer.reset();
 
+
+                    shootcycle = true;
+                    rotated = false;
                 } else {
                     shootcycle = false;
                     currentshoot3 = shoot3.idle;
                     eject.turnToAngle(Globals.pushServo.defualt);
                     set.turnToAngle(Globals.launcher.downset);
+
                     launcher1.set(0);
                     launcher2.set(0);
                 }
             }prevCross = gamepadEx2.getButton(GamepadKeys.Button.CROSS);
             if (shootcycle) {
-
+                gate.turnToAngle(Globals.openGate);
                 if (Collections.frequency(revolverState, "EMPTY") < 3) {
                 launcher1.set(feedforwardPower);
                 launcher2.set(feedforwardPower);
@@ -265,25 +244,48 @@ public class finalTest extends OpMode {
                     case pushin:
                         if (pushupTimer.seconds() > 0.5) {
                             eject.turnToAngle(Globals.pushServo.eject);
-                            if (ang > 180 || dist < 5.5) {
+                            if ((ang > 183 && ang < 210)|| dist < 5.5) {
                                 eject.turnToAngle(Globals.pushServo.defualt);
+                                rotated = false;
                                 currentshoot3 = shoot3.rotate;
+
+
                             }
                         }
                         break;
 
-                    case rotate:
+                    case rotate: //TODO fix this
+
                         eject.turnToAngle(Globals.pushServo.defualt);
-                        if (ang < 163 && !rotated) {
+
+                        if (ang < 168 && !rotated) {
+                            oneRotationRevolver(true);
+                            Collections.rotate(revolverState, 1);
+                            revolverTimer.reset();
                             revolverReady = false;
                             rotated = true;
-                            oneRotationRevolver(shootCounterClockwise);
-                            Collections.rotate(revolverState, shootCounterClockwise ? 1 : -1);
 
                         }
                         if (Math.abs(Math.abs(revolver.getCurrentPosition() - previousRevolverPosition) - Globals.revolver.oneRotation) < 10 && rotated) {
                             currentshoot3 = shoot3.setup;
+                        } else if (rotated && revolverTimer.seconds() > 1 && Math.abs(revolver.getCurrentPosition() - revolverTarget) < 90){
+                            currentshoot3 = shoot3.rotateFailed;
+                            rotated = false;
+                        }
+                        break;
+                    case rotateFailed:
+                        if (!rotated) {
+                            rotated = true;
+                            oneRotationRevolver(false);
+                            Collections.rotate(revolverState, -1);
+                        }
 
+                        if (Math.abs(Math.abs(revolver.getCurrentPosition() - previousRevolverPosition) - Globals.revolver.oneRotation) < 10 && rotated) {
+                            eject.turnToAngle(Globals.pushServo.eject);
+                            if ((ang > 180 && ang < 210) || dist < 5.5) {
+                                rotated = false;
+                                currentshoot3 = shoot3.rotate;
+                            }
                         }
                         break;
 
@@ -296,7 +298,7 @@ public class finalTest extends OpMode {
                             revolverState.set(0, "EMPTY");
                             set.turnToAngle(Globals.launcher.downset);
                             pushupTimer.reset();
-                            pushupTimer.startTime();
+
                             rotated = false;
                         }
                         break;
@@ -314,56 +316,12 @@ public class finalTest extends OpMode {
                 }
 
 
+            } else {
+                gate.turnToAngle(Globals.closeGate);
             }
 
 
     }
-
-    private String senseColour() {
-        if (distanceSensor.getDistance(DistanceUnit.CM) > 3 && secondDistanceSensor.getDistance(DistanceUnit.CM) > 3)
-            return "EMPTY";
-
-        NormalizedRGBA rgba1 = colourSensor.getNormalizedColors();
-        Color.colorToHSV(rgba1.toColor(), hsv1); // hsv[0]=H, hsv[1]=S, hsv[2]=V
-
-        NormalizedRGBA rgba2 = secondColourSensor.getNormalizedColors();
-        Color.colorToHSV(rgba2.toColor(), hsv2); // hsv[0]=H, hsv[1]=S, hsv[2]=V
-        if ((hsv1[0] >= 150 && hsv1[0] <= 180 &&
-                hsv1[1] >= 0.75 && hsv1[1] <= 1.00 &&
-                hsv1[2] > 0.00 && hsv1[2] < 0.3) ||
-
-                (hsv2[0] >= 150 && hsv2[0] <= 180 &&
-                        hsv2[1] >= 0.75 && hsv2[1] <= 1.00 &&
-                        hsv2[2] > 0.00 && hsv2[2] < 0.3)) {
-            return "G";
-        } // if colour one or colour two return green/purpler
-
-        if ((hsv1[0] >= 220 && hsv1[0] <= 250 &&
-                hsv1[1] >= 0.40 && hsv1[1] <= 0.60 &&
-                hsv1[2] > 0.00 && hsv1[2] < 0.3) ||
-
-                (hsv2[0] >= 220 && hsv2[0] <= 250 &&
-                        hsv2[1] >= 0.40 && hsv2[1] <= 0.60 &&
-                        hsv2[2] > 0.00 && hsv2[2] < 0.3)) {
-            return "P";
-        }
-        return "EMPTY";
-    }
-
-    private String[] desiredByPattern() {
-        // Order: [top (0), left (1), right (2)]
-        switch (currentPattern) {
-            case PPG:
-                return new String[]{"P", "P", "G"};
-            case PGP:
-                return new String[]{"P", "G", "P"};
-            case GPP:
-                return new String[]{"G", "P", "P"};
-            default:
-                return new String[]{"EMPTY", "EMPTY", "EMPTY"};
-        }
-    }
-
     public void oneRotationRevolver(boolean left) {
         // PID setup
 
@@ -375,17 +333,12 @@ public class finalTest extends OpMode {
 
     }
 
-
-    public void intake() {
+    public void intakeSystem() {
         revolverPID.setTolerance(0);
         revolverPID.setPIDF(Globals.revolver.revolverKP, Globals.revolver.revolverKI, Globals.revolver.revolverKD, Globals.revolver.revolverKF);
         revolverPower = revolverPID.calculate(revolver.getCurrentPosition(), revolverTarget);
         revolver.set(revolverPower);
-
-        if (!revolverReady &&
-                Math.abs(Math.abs(revolver.getCurrentPosition() - previousRevolverPosition) - Globals.revolver.oneRotation) < 3) {
-            revolverReady = true;
-        }
+        revolverTarget += (int) ((gamepadEx2.getTrigger(GamepadKeys.Trigger.RIGHT_TRIGGER) - gamepadEx2.getTrigger(GamepadKeys.Trigger.LEFT_TRIGGER)) * Globals.revolver.revolverNudge);
 
         if (gamepadEx1.getButton(GamepadKeys.Button.TRIANGLE) || gamepadEx2.getButton(GamepadKeys.Button.TRIANGLE)) {
             intake.set(Globals.intakePower);
@@ -394,128 +347,39 @@ public class finalTest extends OpMode {
         } else {
             intake.set(0);
         }
+    }
+    public void revolver() {
+        double cDist1 = distanceSensor.getDistance(DistanceUnit.CM);
+        double cDist2 = secondDistanceSensor.getDistance(DistanceUnit.CM);
+        boolean ballExists = cDist1 < 3 || cDist2 < 3;
 
+        if (!revolverReady &&
+                Math.abs(Math.abs(revolver.getCurrentPosition() - previousRevolverPosition) - Globals.revolver.oneRotation) < 9) {
+            revolverReady = true;
+        }
         if (gamepadEx2.getButton(GamepadKeys.Button.CIRCLE) && !revolverOn && !prevCircle) {
             revolverState.set(0, "P");
             revolverState.set(1, "P");
             revolverState.set(2, "P");
-            shootCounterClockwise = true;
         }
 
+        if (gamepadEx2.getButton(GamepadKeys.Button.PS) && !revolverOn && !prevPS) {
+            revolverState.set(0, "EMPTY");
+            revolverState.set(1, "EMPTY");
+            revolverState.set(2, "EMPTY");
+        }
+        prevPS = gamepadEx2.getButton(GamepadKeys.Button.PS);
         prevCircle = gamepadEx2.getButton(GamepadKeys.Button.CIRCLE);
-        if (!shootcycle) {
-            int filled = revolverState.size() - Collections.frequency(revolverState, "EMPTY");
-            String color = senseColour();  // "P", "G", or "EMPTY"
 
-            if (patternDetected) {
-                if (!"EMPTY".equals(color) && revolverReady) {
-
-                    String wantTop = desiredByPattern()[0];
-
-                    switch (filled) {
-                        case 0: {
-                            // put new ball into slot 2, then ALWAYS rotate it to slot 1
-                            revolverReady = false;
-                            revolverState.set(2, color);
-
-                            oneRotationRevolver(false);
-                            Collections.rotate(revolverState, -1);
-
-                            previousRotation = false;
-                            break;
-                        }
-
-                        case 1: {
-                            //same idea just move it into slot 1
-                            revolverReady = false;
-                            revolverState.set(2, color);
-
-                            oneRotationRevolver(false);
-                            Collections.rotate(revolverState, -1);
-                            previousRotation = false;
-
-                            break;
-                        }
-                        case 2: {
-                            revolverState.set(2, color);
-
-                            if (color.equals(wantTop)) {
-                                // new ball IS the one we want on top → bring index 2 -> index 0
-                                revolverReady = false;
-                                oneRotationRevolver(true);
-                                Collections.rotate(revolverState, 1);
-                                previousRotation = true;
-
-                            } else if (revolverState.get(0).equals(wantTop)) {
-                                // already on top → do nothing
-                            } else if (revolverState.get(1).equals(wantTop)) {
-                                // we have it in slot 1 → bring 1 -> 0
-                                revolverReady = false;
-                                oneRotationRevolver(false);
-                                Collections.rotate(revolverState, -1);
-                                previousRotation = false;
-                            } else {
-
-                            }
-
-                            //describes whether to launch clockwise or counter clockwise in launch 3
-                            String[] want = desiredByPattern();
-                            String secondBall = want[1];
-                            if (revolverState.get(1).equals(secondBall)) {
-                                shootCounterClockwise = false;
-                            } else if (revolverState.get(2).equals(secondBall)) {
-                                shootCounterClockwise = true;
-                            }
-
-                            break;
-                        }
-                        case 3:
-                        default: {
-                            break;
-                        }
-                    }
-                }
+        if (!shootcycle) {// "P", "G", or "EMPTY"
+            if (ballExists && revolverReady && Collections.frequency(revolverState, "P") < 3) {
+                revolverReady = false;
+                revolverState.set(2, "P");
+                oneRotationRevolver(true);
+                Collections.rotate(revolverState, 1);
             }
         }
     }
-
-
-    private void findPattern() {
-        if (gamepadEx2.getButton(GamepadKeys.Button.OPTIONS) && !patternDetected) {
-            limelight.start();
-            LLResult result = limelight.getLatestResult();
-            if (result != null && result.isValid()) {
-                if (result.getStaleness() < 500) {
-                    List<LLResultTypes.FiducialResult> tags = result.getFiducialResults();
-                    if (!tags.isEmpty()) {
-                        for (LLResultTypes.FiducialResult tag : tags) {
-                            int id = tag.getFiducialId();
-                            if (id == 21) {
-                                currentPattern = pattern.GPP;
-                                patternDetected = true;
-                                limelight.stop();
-                            } else if (id == 22) {
-                                currentPattern = pattern.PGP;
-                                patternDetected = true;
-                                limelight.stop();
-                            } else if (id == 23) {
-                                currentPattern = pattern.PPG;
-                                patternDetected = true;
-                                limelight.stop();
-                            } else {
-                                patternDetected = false;
-                                telemetry.addLine("NO PATTERN FOUND");
-                            }
-
-
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-
     private void calculateRPM() {
         double currentTime = getRuntime();
         int currentPosition = launcher1.getCurrentPosition();
@@ -532,13 +396,8 @@ public class finalTest extends OpMode {
             lastPosition = currentPosition;
         }
     }
-
     private void autoAimServoMode() {
-
-        ff.setP(Globals.launcher.flykP);
-        ff.setI(Globals.launcher.flykI);
-        ff.setD(Globals.launcher.flykD);
-        ff.setF(Globals.launcher.flykF);
+        ff.setPIDF(Globals.launcher.flykP, Globals.launcher.flykI, Globals.launcher.flykD, Globals.launcher.flykF);
         turretPIDF.setPIDF(Globals.turret.turretKP, Globals.turret.turretKI, Globals.turret.turretKD, Globals.turret.turretKF);
 
         boolean pad = gamepadEx2.getButton(GamepadKeys.Button.DPAD_DOWN);
@@ -557,15 +416,13 @@ public class finalTest extends OpMode {
         boolean lb = gamepad2.left_bumper;
         boolean rb = gamepad2.right_bumper;
 
-
         List<AprilTagDetection> detections = tagProcessor.getDetections();
         if (!(lb || rb) && autoAimEnabled) {
             if (detections != null && !detections.isEmpty()) {
                 for (AprilTagDetection d : detections) {
-                    if (d.ftcPose != null) {//blue IS 20 red IS 24 TODO READD ID==20
+                    if (d.ftcPose != null && d.id == 20) {//blue IS 20 red IS 24 TODO READD ID==20
                         power = (2547.5 * pow(2.718281828459045, (0.0078 * d.ftcPose.range))) / Globals.launcher.launcherTransformation; // here
 
-                        bearing = d.ftcPose.bearing;
                         aligned = Math.abs(d.ftcPose.bearing) <= Globals.turret.turretTol;
                         double delta = aligned ? 0.0 : turretPIDF.calculate(d.ftcPose.bearing, 0.0);
                         turretTarget += delta; //THIS IS POSITIVE
@@ -583,11 +440,11 @@ public class finalTest extends OpMode {
             power = Globals.targetRPM;
         }
 
-            if (turretTarget > 245) {
-                turretTarget = 245;
-            } else if (turretTarget < 120) {
-                turretTarget = 120;
-            }
+        if (turretTarget >= 245) {
+            turretTarget = 245;
+        } else if (turretTarget <= 120) {
+            turretTarget = 120;
+        }
 
 
         }
@@ -599,15 +456,13 @@ public class finalTest extends OpMode {
                 .addData("0", revolverState.get(0))
                 .addData("1", revolverState.get(1))
                 .addData("2", revolverState.get(2));
-        telemetry.addData("launc", currentshoot3);
-        telemetry.addData("ang", ang);
-        telemetry.addData("dist", dist);
-        telemetry.addData("pre", previousRevolverPosition);
-        telemetry.addData("curren", revolver.getCurrentPosition());
-        telemetry.addData("alig", aligned);
-        telemetry.addData("rpmdi", Math.abs(power - RPM) < Globals.launcher.launcherTol);
-        telemetry.addData("rpm drop", Math.abs(previousRPM - RPM) >300);
-        telemetry.addData("seojh    ]", set.getPosition());
+        telemetry.addData("# balls", Collections.frequency(revolverState, "P"));
+        telemetry.addLine(" ");
+        telemetry.addData("aligned? ", aligned);
+        telemetry.addData("autoaim enabled? ", autoAimEnabled);
+        telemetry.addLine(" ");
+        telemetry.addData("launch cycle, ", currentshoot3);
+
         telemetry.update();
 
         TelemetryPacket rpmPacket = new TelemetryPacket();

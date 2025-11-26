@@ -32,7 +32,7 @@ public class Globals {
     @Config
     public static class launcher {
         public static float RPMDipThreshold = 200;
-        public static float launcherTransformation = 1.06F;
+        public static float launcherTransformation = 1.01F;
         public static float launcherTol = 100F;
         public static double flykP =0.0007; //0.00016811
         public static double flykI =0.0F;
@@ -73,8 +73,8 @@ public class Globals {
     public static float slowdown = 0.6F;
     public static float revolverPower = 0;
     public static float targetRPM = 3000F;
-    public static float closeGate = 24F;
-    public static float openGate = 75F;
+    public static float closeGate = 75F;
+    public static float openGate = 24F;
 
     public static float physicstesting = 0.5F;
 }
