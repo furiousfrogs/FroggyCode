@@ -61,7 +61,7 @@ public class FROGTONOMOUSTESTING extends CommandOpMode {
     TelemetryData telemetryData = new TelemetryData(telemetry);
     private PathChain shoot3, eat3, eat3rotate, shoot6, eat6, eat6rotate, shoot9, escape;
     private boolean aligned = false;
-
+    private int revolverindex = 0;
     private double previousRPM = 0;
     private boolean one = false;
 
@@ -239,18 +239,15 @@ public class FROGTONOMOUSTESTING extends CommandOpMode {
 
 
     public void onerotation(boolean left) {
-
-        revolverPID.setTolerance(0);
-        revolverPID.setPIDF(Globals.revolver.revolverKP, Globals.revolver.revolverKI, Globals.revolver.revolverKD, Globals.revolver.revolverKF);
-
-        previousRevolverPosition = revolverTarget;
+        revolverReady= false;
 
         if (left) {
-            revolverTarget += Globals.revolver.oneRotation;
+            revolverindex += 1;
         } else {
-            revolverTarget -= Globals.revolver.oneRotation;
+            revolverindex -= 1;
         }
 
+        revolverTarget = revolverindex*Globals.revolver.oneRotation;
     }
 
 
@@ -487,7 +484,7 @@ public class FROGTONOMOUSTESTING extends CommandOpMode {
             revolver.resetEncoder();
 
             revolverPID = new PIDFController(Globals.revolver.revolverKP, Globals.revolver.revolverKI, Globals.revolver.revolverKD, Globals.revolver.revolverKF);
-            revolverPID.setTolerance(0);
+            revolverPID.setTolerance(2);
 
             intakedistone = hardwareMap.get(DistanceSensor.class, "colour1");
             intakedisttwo = hardwareMap.get(DistanceSensor.class, "colour2");
@@ -507,14 +504,11 @@ public class FROGTONOMOUSTESTING extends CommandOpMode {
 
         @Override
         public void periodic() {
-            revolverPID.setTolerance(0);
-            revolverPID.setPIDF(Globals.revolver.revolverKP, Globals.revolver.revolverKI, Globals.revolver.revolverKD, Globals.revolver.revolverKF);
-
             revolverPower = revolverPID.calculate(revolver.getCurrentPosition(), revolverTarget);
             revolver.set(revolverPower);
 
-            if (!revolverReady && Math.abs(Math.abs(revolver.getCurrentPosition() - previousRevolverPosition) - Globals.revolver.oneRotation) < 4) {
-                revolverReady = true;;//detect if the rotation is done
+            if (!revolverReady && Math.abs(revolver.getCurrentPosition() - revolverTarget) <= 2) {
+                revolverReady = true;
             }
         }
 
@@ -526,7 +520,7 @@ public class FROGTONOMOUSTESTING extends CommandOpMode {
 
             if (ballcount == 2 && revolverReady && pattern == 3 && pickupnum == 1) {
 
-                revolverReady = false;
+
 
                 onerotation(ballcases(pickupnum, true));
 
@@ -544,7 +538,7 @@ public class FROGTONOMOUSTESTING extends CommandOpMode {
 
                         if (pickupnum == 1) {
 
-                            revolverReady = false;
+
 
                             onerotation(ballcases(pickupnum, true));
 
@@ -552,16 +546,11 @@ public class FROGTONOMOUSTESTING extends CommandOpMode {
 
                         } else if (pickupnum == 2) {
 
-                            revolverReady = false;
-
                             onerotation(ballcases(pickupnum, true));
 
                             ballcount += 1;
 
                         } else if (pickupnum == 3) {
-
-                            revolverReady = false;
-
                             onerotation(ballcases(pickupnum, true));
 
                             ballcount += 1;
@@ -572,23 +561,17 @@ public class FROGTONOMOUSTESTING extends CommandOpMode {
 
                         if (pickupnum == 1) {
 
-                            revolverReady = false;
-
                             onerotation(ballcases(pickupnum, true));
 
                             ballcount += 1;
 
                         } else if (pickupnum == 2) {
 
-                            revolverReady = false;
-
                             onerotation(ballcases(pickupnum, true));
 
                             ballcount += 1;
 
                         } else if (pickupnum == 3) {
-
-                            revolverReady = false;
 
                             onerotation(ballcases(pickupnum, true));
 
@@ -600,23 +583,17 @@ public class FROGTONOMOUSTESTING extends CommandOpMode {
 
                         if (pickupnum == 1) {
 
-                            revolverReady = false;
-
                             onerotation(ballcases(pickupnum, true));
 
                             ballcount += 1;
 
                         } else if (pickupnum == 2) {
 
-                            revolverReady = false;
-
                             onerotation(ballcases(pickupnum, true));
 
                             ballcount += 1;
 
                         } else if (pickupnum == 3) {
-
-                            revolverReady = false;
 
                             onerotation(ballcases(pickupnum, true));
 
