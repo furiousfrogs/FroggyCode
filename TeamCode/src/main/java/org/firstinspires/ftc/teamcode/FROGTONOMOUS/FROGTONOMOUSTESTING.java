@@ -102,7 +102,6 @@ public class FROGTONOMOUSTESTING extends CommandOpMode {
     ////////////////////////////////////////////////
 
 
-
     public void buildPaths() {
         shoot3 = follower.pathBuilder()
                 .addPath(
@@ -212,9 +211,6 @@ public class FROGTONOMOUSTESTING extends CommandOpMode {
                 .build();
 
     }
-
-
-
     public void onerotation(boolean left) {
         revolverReady = false;
 
@@ -226,9 +222,6 @@ public class FROGTONOMOUSTESTING extends CommandOpMode {
 
         revolverTarget = revolverindex * Globals.revolver.oneRotation;
     }
-
-
-
     public void getPattern() {
 
         limelight = hardwareMap.get(Limelight3A.class, "limelight");
@@ -284,9 +277,6 @@ public class FROGTONOMOUSTESTING extends CommandOpMode {
         limelight.stop();
 
     }
-
-
-
     public boolean ballcases(int pickupnum, boolean comingin) {
 
         if (pattern == 1){
@@ -440,9 +430,6 @@ public class FROGTONOMOUSTESTING extends CommandOpMode {
     }
 
 
-
-
-
     ///////////////////////////////////////////////
 
 
@@ -465,7 +452,6 @@ public class FROGTONOMOUSTESTING extends CommandOpMode {
 
             intakedistone = hardwareMap.get(DistanceSensor.class, "colour1");
             intakedisttwo = hardwareMap.get(DistanceSensor.class, "colour2");
-            launcherdist = hardwareMap.get(DistanceSensor.class, "distanceSensor");
         }
 
         public void intakeon() {
@@ -476,17 +462,6 @@ public class FROGTONOMOUSTESTING extends CommandOpMode {
         public void intakeoff() {
             intake.set(0);
             ballcount = 0;
-        }
-
-
-        @Override
-        public void periodic() {
-            revolverPower = revolverPID.calculate(revolver.getCurrentPosition(), revolverTarget);
-            revolver.set(revolverPower);
-
-            if (!revolverReady && Math.abs(revolver.getCurrentPosition() - revolverTarget) <= 3) {
-                revolverReady = true;
-            }
         }
 
         public void sort(int pickupnum){//1 = ppg 2 pgp 3 gpp,
@@ -505,7 +480,6 @@ public class FROGTONOMOUSTESTING extends CommandOpMode {
             if (ballcount < 2) {
                 if ((intakedistone.getDistance(DistanceUnit.CM) < 3 || intakedisttwo.getDistance(DistanceUnit.CM) < 3) && revolverReady) {
                     if (pattern == 1) {
-
                         if (pickupnum == 1) {
                             onerotation(ballcases(pickupnum, true));
 
@@ -573,6 +547,18 @@ public class FROGTONOMOUSTESTING extends CommandOpMode {
                 }
 
             }
+
+        }
+
+
+        @Override
+        public void periodic () {
+            revolverPower = revolverPID.calculate(revolver.getCurrentPosition(), revolverTarget);
+            revolver.set(revolverPower);
+
+            if (!revolverReady && Math.abs(revolver.getCurrentPosition() - revolverTarget) <= 5) {
+                revolverReady = true;
+            }
         }
     }
 
@@ -609,62 +595,32 @@ public class FROGTONOMOUSTESTING extends CommandOpMode {
 
 
     public class outtakesubsys extends SubsystemBase {
-
         private Motor launcher1, launcher2, revolver;
-
         private final ElapsedTime timer = new ElapsedTime();
-
-        private final ElapsedTime timerservo = new ElapsedTime();
-
         public outtakesubsys(HardwareMap map) {
-
             launcher1 = new Motor(hardwareMap, "l1", 28, 6000);
-
             launcher1.setRunMode(Motor.RunMode.RawPower);
-
             launcher2 = new Motor(hardwareMap, "l2", 28, 6000);
-
             launcher2.setRunMode(Motor.RunMode.RawPower);
-
             launcher1.setZeroPowerBehavior(Motor.ZeroPowerBehavior.FLOAT);
-
             launcher2.setZeroPowerBehavior(Motor.ZeroPowerBehavior.FLOAT);
-
             ff = new PIDFController(Globals.launcher.flykP, Globals.launcher.flykI, Globals.launcher.flykD, Globals.launcher.flykF);
-
             set = new SimpleServo(hardwareMap, "set", 0, 180, AngleUnit.DEGREES);
-
             lastTime = getRuntime();
             launcherdist = hardwareMap.get(DistanceSensor.class, "distanceSensor");
-
             lastPosition = launcher1.getCurrentPosition();
-
-            revolver = new Motor(hardwareMap, "revolver", 28, 1150);
-
-            revolver.setRunMode(Motor.RunMode.RawPower);
-
-            revolver.resetEncoder();
-
             turretPIDF = new PIDFController(Globals.turret.turretKP, Globals.turret.turretKI, Globals.turret.turretKD, Globals.turret.turretKF);
-
             turretPIDF.setTolerance(Globals.turret.turretTol);
-
             eject = new SimpleServo(hardwareMap, "eject", 0, 70);
-
             eject.setInverted(true);
-
             eject.turnToAngle(Globals.pushServo.defualt);
-
             turrot1 = new SimpleServo(hardwareMap, "t1", 90, 270, AngleUnit.DEGREES);
             turrot1.turnToAngle(turretTarget);
             turrot2 = new SimpleServo(hardwareMap, "t2", 90, 270, AngleUnit.DEGREES);
             turrot2.turnToAngle(turretTarget);
-
             gate = new SimpleServo(hardwareMap,"gate", 0, 300, AngleUnit.DEGREES);
             gate.turnToAngle(Globals.openGate);
-
             ejectAnalog = hardwareMap.get(AnalogInput.class, "ejectAnalog");
-
         }
 
         private void calculateRPM() {
@@ -692,40 +648,33 @@ public class FROGTONOMOUSTESTING extends CommandOpMode {
 
             List<AprilTagDetection> detections = tagProcessor.getDetections();
 
-                if (detections != null && !detections.isEmpty()) {
-                    for (AprilTagDetection d : detections) {
-                        if (d.ftcPose != null && d.id == 20) {//blue IS 20 red IS 24 TODO READD ID==20
-                            power = (2547.5 * pow(2.718281828459045, (0.0078 * d.ftcPose.range))) / Globals.launcher.launcherTransformation; // here
+            if (detections != null && !detections.isEmpty()) {
+                for (AprilTagDetection d : detections) {
+                    if (d.ftcPose != null && d.id == 20) {//blue IS 20 red IS 24 TODO READD ID==20
+                        power = (2547.5 * pow(2.718281828459045, (0.0078 * d.ftcPose.range))) / Globals.launcher.launcherTransformation; // here
 
-                            aligned = Math.abs(d.ftcPose.bearing) <= Globals.turret.turretTol;
-                            double delta = aligned ? 0.0 : turretPIDF.calculate(d.ftcPose.bearing, 0.0);
-                            turretTarget += delta; //THIS IS POSITIVE
-                        }
+                        aligned = Math.abs(d.ftcPose.bearing) <= Globals.turret.turretTol;
+                        double delta = aligned ? 0.0 : turretPIDF.calculate(d.ftcPose.bearing, 0.0);
+                        turretTarget += delta; //THIS IS POSITIVE
                     }
-                } else {
-                    power = 0;
                 }
+            } else {
+                power = 0;
+            }
 
             turrot1.turnToAngle(turretTarget);
             turrot2.turnToAngle(turretTarget);
         }
 
-        private void timerreset() {
-
+        private void outtakeon() {
             timer.reset();
-
             ballsshot = 0;
-
         }
 
-        private void endmotor() {
-
+        private void outtakeoff() {
             launcher1.set(0);
-
             launcher2.set(0);
-
             ballsshot = 0;
-
         }
 
         private void shooting(int shootnum){
@@ -741,7 +690,7 @@ public class FROGTONOMOUSTESTING extends CommandOpMode {
                     cumdown = true;//dist is inconsistent
                 }
 
-                if (Math.abs(previousRPM - RPM) > Globals.launcher.RPMDipThreshold) {
+                if (Math.abs(previousRPM - RPM) > Globals.launcher.RPMDipThreshold && cumdown) {
                     set.turnToAngle(Globals.launcher.downset);
                     launching = false;
                     timer.reset();
@@ -787,74 +736,46 @@ public class FROGTONOMOUSTESTING extends CommandOpMode {
                                 ballsshot += 1;
                             }
                         }
-
-
                     }
                 }
             }
         }
 
 
-
         @Override
-
         public void periodic() {
-            calculateRPM();
             aiming();
 
             feedforwardPower = ff.calculate(RPM, power);
-
         }
-
-    }//todo
+    }
 
     public static class froggyspit extends CommandBase {
-
         private final outtakesubsys outtake;
-
         private int shootnum;
 
         public froggyspit(outtakesubsys outtake, int shootnum) {
-
             this.outtake = outtake;
-
             this.shootnum = shootnum;
-
             addRequirements(outtake);
-
         }
 
-
-
         @Override
-
         public void initialize() {
-
-            outtake.timerreset();
-
+            outtake.outtakeon();
         }
 
-
-
         @Override
-
         public void execute() {
-
+            outtake.calculateRPM();
             outtake.launch(shootnum);
-
         }
-
-
 
         @Override
-
         public void end(boolean interrupted) {
-
-            outtake.endmotor();
-
+            outtake.outtakeoff();
         }
-
-    }//todo
+    }
 
 
 
@@ -1020,4 +941,5 @@ public class FROGTONOMOUSTESTING extends CommandOpMode {
     }
 
 }
+
 
