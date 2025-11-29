@@ -73,8 +73,8 @@ public class Globals {
     public static float slowdown = 0.6F;
     public static float revolverPower = 0;
     public static float targetRPM = 3000F;
-    public static float closeGate = 75F;
-    public static float openGate = 24F;
+    public static float closeGate = 24F;
+    public static float openGate = 75F;
 
     public static float physicstesting = 0.5F;
 }

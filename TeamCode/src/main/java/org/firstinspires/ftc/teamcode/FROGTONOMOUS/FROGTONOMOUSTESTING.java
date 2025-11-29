@@ -14,6 +14,7 @@ import com.qualcomm.hardware.limelightvision.LLResult;
 import com.qualcomm.hardware.limelightvision.LLResultTypes;
 import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
+import com.qualcomm.robotcore.hardware.AnalogInput;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DistanceSensor;
 import com.qualcomm.robotcore.hardware.HardwareMap;
@@ -62,59 +63,38 @@ public class FROGTONOMOUSTESTING extends CommandOpMode {
     private PathChain shoot3, eat3, eat3rotate, shoot6, eat6, eat6rotate, shoot9, escape;
     private boolean aligned = false;
     private int revolverindex = 0;
+    private boolean launchfinished = false;
+    private boolean cumdown = false;
+    private double ang;
     private double previousRPM = 0;
     private boolean one = false;
-
     private boolean two = false;
-
     private boolean revolverReady = true;
-
     private boolean ejecting = false;
-
     private VisionPortal visionPortal;
-
     private AprilTagProcessor tagProcessor;
-
     private double feedforwardPower = 0;
-
-    private static int pattern;
-
+    private static int pattern = 1;
     private double distance;
-
     private double power;
-
+    private AnalogInput ejectAnalog;
+    private boolean ejectreturn = true;
     private boolean launcherready = true;
-
     private double previousRevolverPosition;
-
     private PIDFController turretPIDF, ff, revolverPID;
-
     private SimpleServo set, turrot1, turrot2, eject, gate;
-
     private DistanceSensor intakedistone, intakedisttwo, launcherdist;
-
     private double RPM;
-
     private double lastTime;
-
     private int lastPosition;
-
     private double bearing = 0.0;
-
-    double turretTarget = 299F; // inital turret angle red
-
+    double turretTarget = 180F; // inital turret angle red
     private boolean launching = false;
-
     private int revolverTarget = 0;
-
     private double revolverPower;
-
     private int ballcount = 0;
-
     private int ballsshot = 0;
-
     private boolean left;
-
     private Limelight3A limelight;
 
 
@@ -124,15 +104,12 @@ public class FROGTONOMOUSTESTING extends CommandOpMode {
 
 
     public void buildPaths() {
-
         shoot3 = follower.pathBuilder()
-
                 .addPath(
 
                         new BezierLine(new Pose(18.790, 119.941), new Pose(44.078, 94.302))
 
                 )
-
                 .setLinearHeadingInterpolation(Math.toRadians(-126), Math.toRadians(-115))
 
                 .build();
@@ -247,7 +224,7 @@ public class FROGTONOMOUSTESTING extends CommandOpMode {
             revolverindex -= 1;
         }
 
-        revolverTarget = revolverindex*Globals.revolver.oneRotation;
+        revolverTarget = revolverindex * Globals.revolver.oneRotation;
     }
 
 
@@ -484,11 +461,11 @@ public class FROGTONOMOUSTESTING extends CommandOpMode {
             revolver.resetEncoder();
 
             revolverPID = new PIDFController(Globals.revolver.revolverKP, Globals.revolver.revolverKI, Globals.revolver.revolverKD, Globals.revolver.revolverKF);
-            revolverPID.setTolerance(2);
+            revolverPID.setTolerance(5);
 
             intakedistone = hardwareMap.get(DistanceSensor.class, "colour1");
             intakedisttwo = hardwareMap.get(DistanceSensor.class, "colour2");
-            launcherdist = hardwareMap.get(DistanceSensor.class, "name");//todo
+            launcherdist = hardwareMap.get(DistanceSensor.class, "distanceSensor");
         }
 
         public void intakeon() {
@@ -507,7 +484,7 @@ public class FROGTONOMOUSTESTING extends CommandOpMode {
             revolverPower = revolverPID.calculate(revolver.getCurrentPosition(), revolverTarget);
             revolver.set(revolverPower);
 
-            if (!revolverReady && Math.abs(revolver.getCurrentPosition() - revolverTarget) <= 2) {
+            if (!revolverReady && Math.abs(revolver.getCurrentPosition() - revolverTarget) <= 5) {
                 revolverReady = true;
             }
         }
@@ -519,27 +496,17 @@ public class FROGTONOMOUSTESTING extends CommandOpMode {
 
 
             if (ballcount == 2 && revolverReady && pattern == 3 && pickupnum == 1) {
-
-
-
                 onerotation(ballcases(pickupnum, true));
-
                 ballcount += 1;
-
             }
 
 
 
             if (ballcount < 2) {
-
                 if ((intakedistone.getDistance(DistanceUnit.CM) < 3 || intakedisttwo.getDistance(DistanceUnit.CM) < 3) && revolverReady) {
-
                     if (pattern == 1) {
 
                         if (pickupnum == 1) {
-
-
-
                             onerotation(ballcases(pickupnum, true));
 
                             ballcount += 1;
@@ -668,6 +635,7 @@ public class FROGTONOMOUSTESTING extends CommandOpMode {
             set = new SimpleServo(hardwareMap, "set", 0, 180, AngleUnit.DEGREES);
 
             lastTime = getRuntime();
+            launcherdist = hardwareMap.get(DistanceSensor.class, "distanceSensor");
 
             lastPosition = launcher1.getCurrentPosition();
 
@@ -693,7 +661,9 @@ public class FROGTONOMOUSTESTING extends CommandOpMode {
             turrot2.turnToAngle(turretTarget);
 
             gate = new SimpleServo(hardwareMap,"gate", 0, 300, AngleUnit.DEGREES);
-            gate.turnToAngle(Globals.closeGate);
+            gate.turnToAngle(Globals.openGate);
+
+            ejectAnalog = hardwareMap.get(AnalogInput.class, "ejectAnalog");
 
         }
 
@@ -736,12 +706,6 @@ public class FROGTONOMOUSTESTING extends CommandOpMode {
                     power = 0;
                 }
 
-
-            if (turretTarget >= 245) {
-                turretTarget = 245;
-            } else if (turretTarget <= 120) {
-                turretTarget = 120;
-            }
             turrot1.turnToAngle(turretTarget);
             turrot2.turnToAngle(turretTarget);
         }
@@ -768,46 +732,37 @@ public class FROGTONOMOUSTESTING extends CommandOpMode {
 
         }
 
-        private void shooting(){
-            if (timer.seconds() < Globals.autotimers.rotationtime + 0.1) {
+        private void shooting(int shootnum){
+            if (!ejecting) {
                 eject.turnToAngle(Globals.pushServo.eject);
-
-            }
-
-            if (timer.seconds() > Globals.autotimers.rotationtime + 0.2 + Globals.autotimers.ejectin && !one){
-
                 ejecting = true;
-
-                one = true;
-
             }
 
-            if (aligned && Math.abs(power - RPM) < Globals.launcher.launcherTol && power > 0 && ejecting ) {
-
+            if (aligned && Math.abs(power - RPM) < Globals.launcher.launcherTol && power > 0 && ejecting && launcherdist.getDistance(DistanceUnit.CM) < 6 && cumdown == false) {
                 set.turnToAngle(Globals.launcher.upset);
-
-                ejecting = false;
-
+                telemetry.addData("eject", ejectAnalog.getVoltage());
+                telemetry.update();
                 launching = true;
-
-                timerservo.reset();
-
+                ejectreturn = false;
+                cumdown = true;//dist is inconsistent
             }
 
-            if (timerservo.seconds() > Globals.autotimers.balldown && launching) {
-
+            if (aligned && Math.abs(previousRPM - RPM) > Globals.launcher.RPMDipThreshold) {
                 set.turnToAngle(Globals.launcher.downset);
-
+                telemetry.addData("efon;wja'kgW", cumdown);
+                telemetry.update();
                 launching = false;
-
             }
 
-            if (timer.seconds() > Globals.autotimers.rotationtime + 0.1 + Globals.autotimers.ejectout) {
-
+            if (!ejectreturn) {
                 eject.turnToAngle(Globals.pushServo.defualt);
-
             }
 
+            if (ang < 165 && !ejectreturn){
+                onerotation(ballcases(shootnum, false));
+                launchfinished = true;
+                ejectreturn = true;
+            }
         }
 
 
@@ -815,215 +770,28 @@ public class FROGTONOMOUSTESTING extends CommandOpMode {
         private void launch(int shootnum) {
             telemetry.addData("time", timer.seconds());
             telemetry.addData("balls", ballsshot);
+            telemetry.addData("revready", revolverReady);
             telemetry.update();
-
+            ang = (ejectAnalog.getVoltage()/3.3) * 360;
 
             if (ballsshot < 3) {
                 launcher1.set(feedforwardPower);
                 launcher2.set(feedforwardPower);
-                if (timer.seconds() > Globals.autotimers.rotationtime) {
+                if (revolverReady) {
                     if (pattern == 1) {
-
                         if (shootnum == 0) {
-
-                            shooting();
-
-                            if (timer.seconds() > Globals.autotimers.fulllaunch) {
-
-                                onerotation(ballcases(shootnum, false));
-
+                            shooting(shootnum);
+                            if (launchfinished) {
+                                ejecting = false;
+                                launchfinished = false;
+                                launching = false;
+                                ejectreturn = true;
+                                cumdown = false;
                                 ballsshot += 1;
-
-                                one = false;
-
-                                timer.reset();
-
                             }
-
-                        } else if (shootnum == 1) {
-
-                            shooting();
-
-                            if (timer.seconds() > Globals.autotimers.fulllaunch) {
-
-                                onerotation(ballcases(shootnum, false));
-
-                                ballsshot += 1;
-
-                                one = false;
-
-                                timer.reset();
-
-                            }
-
-                        } else if (shootnum == 2) {
-
-                            shooting();
-
-                            if (timer.seconds() > Globals.autotimers.fulllaunch) {
-
-                                onerotation(ballcases(shootnum, false));
-
-                                ballsshot += 1;
-
-                                one = false;
-
-                                timer.reset();
-
-                            }
-
-                        } else if (shootnum == 3) {
-
-                            shooting();
-
-                            if (timer.seconds() > Globals.autotimers.fulllaunch) {
-
-                                onerotation(ballcases(shootnum, false));
-
-                                ballsshot += 1;
-
-                                one = false;
-
-                                timer.reset();
-
-                            }
-
                         }
 
-                    } else  if (pattern == 2) {
 
-                        if (shootnum == 0) {
-
-                            shooting();
-
-                            if (timer.seconds() > Globals.autotimers.fulllaunch) {
-
-                                onerotation(ballcases(shootnum, false));
-
-                                ballsshot += 1;
-
-                                one = false;
-
-                                timer.reset();
-
-                            }
-
-                        } else if (shootnum == 1) {
-
-                            shooting();
-
-                            if (timer.seconds() > Globals.autotimers.fulllaunch) {
-
-                                onerotation(ballcases(shootnum, false));
-
-                                ballsshot += 1;
-
-                                one = false;
-
-                                timer.reset();
-
-                            }
-
-                        } else if (shootnum == 2) {
-
-                            shooting();
-
-                            if (timer.seconds() > Globals.autotimers.fulllaunch) {
-
-                                onerotation(ballcases(shootnum, false));
-
-                                ballsshot += 1;
-
-                                one = false;
-
-                                timer.reset();
-
-                            }
-
-                        } else if (shootnum == 3) {
-
-                            shooting();
-
-                            if (timer.seconds() > Globals.autotimers.fulllaunch) {
-
-                                onerotation(ballcases(shootnum, false));
-
-                                ballsshot += 1;
-
-                                one = false;
-
-                                timer.reset();
-
-                            }
-
-                        }
-
-                    } else  if (pattern == 3) {
-
-                        if (shootnum == 0) {
-
-                            shooting();
-
-                            if (timer.seconds() > Globals.autotimers.fulllaunch) {
-
-                                onerotation(ballcases(shootnum, false));
-
-                                ballsshot += 1;
-
-                                one = false;
-
-                                timer.reset();
-
-                            }
-
-                        } else if (shootnum == 1) {
-
-                            shooting();
-
-                            if (timer.seconds() > Globals.autotimers.fulllaunch) {
-
-                                onerotation(ballcases(shootnum, false));
-
-                                ballsshot += 1;
-
-                                one = false;
-
-                                timer.reset();
-
-                            }
-
-                        } else if (shootnum == 2) {
-
-                            shooting();
-
-                            if (timer.seconds() > Globals.autotimers.fulllaunch) {
-
-                                onerotation(ballcases(shootnum, false));
-
-                                ballsshot += 1;
-
-                                one = false;
-
-                                timer.reset();
-
-                            }
-
-                        } else if (shootnum == 3) {
-
-                            shooting();
-
-                            if (timer.seconds() > Globals.autotimers.fulllaunch) {
-
-                                onerotation(ballcases(shootnum, false));
-
-                                ballsshot += 1;
-
-                                one = false;
-
-                                timer.reset();
-
-                            }
-                        }
                     }
                 }
             }
@@ -1036,6 +804,7 @@ public class FROGTONOMOUSTESTING extends CommandOpMode {
         public void periodic() {
             calculateRPM();
             aiming();
+
             feedforwardPower = ff.calculate(RPM, power);
 
         }
@@ -1164,64 +933,65 @@ public class FROGTONOMOUSTESTING extends CommandOpMode {
 
         SequentialCommandGroup froggyroute = new SequentialCommandGroup(
 
-                new FollowPathCommand(follower, shoot3),
-
+//              new FollowPathCommand(follower, shoot3),
+//
+//                new ParallelDeadlineGroup(
+//
+//                        new WaitCommand(100),
+//
+//                        new InstantCommand(this::getPattern)
+//
+//                ),
+//
                 new ParallelDeadlineGroup(
 
-                        new WaitCommand(100),
-
-                        new InstantCommand(this::getPattern)
-
-                ),
-
-                new ParallelDeadlineGroup(
-
-                        new WaitCommand(4300),
+                        new WaitCommand(20000),
 
                         new froggyspit(new outtakesubsys(hardwareMap), 0)
 
                 ),
-
-                new FollowPathCommand(follower, eat3rotate),
-
+//
+//                new FollowPathCommand(follower, eat3rotate),
+//
                 new ParallelDeadlineGroup(
+                        new WaitCommand(10000),
 
-                        new FollowPathCommand(follower, eat3),
+                        //new FollowPathCommand(follower, eat3),
 
                         new froggyeat(new intakesubsys(hardwareMap), 1)
 
-                ),
-
-                new FollowPathCommand(follower, shoot6),
-
-                new ParallelDeadlineGroup(
-
-                        new WaitCommand(4300),
-
-                        new froggyspit(new outtakesubsys(hardwareMap), 1)
-
-                ),
-
-                new FollowPathCommand(follower, eat6rotate),
-
-                new ParallelDeadlineGroup(
-
-                        new FollowPathCommand(follower, eat6),
-
-                        new froggyeat(new intakesubsys(hardwareMap), 2)
-
-                ),
-
-                new FollowPathCommand(follower, shoot9),
-
-                new ParallelDeadlineGroup(
-
-                        new WaitCommand(4300),
-
-                        new froggyspit(new outtakesubsys(hardwareMap), 2)
-
-                ),
-                new FollowPathCommand(follower, escape)
+                )
+//
+//                new FollowPathCommand(follower, shoot6),
+//
+//                new ParallelDeadlineGroup(
+//
+//                        new WaitCommand(4300),
+//
+//                        new froggyspit(new outtakesubsys(hardwareMap), 1)
+//
+//                ),
+//
+//                new FollowPathCommand(follower, eat6rotate),
+//
+//                new ParallelDeadlineGroup(
+//
+//                        new FollowPathCommand(follower, eat6),
+//
+//                        new froggyeat(new intakesubsys(hardwareMap), 2)
+//
+//                ),
+//
+//                new FollowPathCommand(follower, shoot9),
+//
+//                new ParallelDeadlineGroup(
+//
+//                        new WaitCommand(4300),
+//
+//                        new froggyspit(new outtakesubsys(hardwareMap), 2)
+//
+//                ),
+//                new FollowPathCommand(follower, escape)
 
         );
 
