@@ -57,7 +57,7 @@ import java.util.*;
 //TODO SHOOTING PATHING LIMELIGHT PATTERN DETECT CHECK INTAKE
 @Autonomous
 @Configurable
-public class FROGTONOMOUSTESTING extends CommandOpMode {
+public class FROGTONOMOUSTESTINGV3 extends CommandOpMode {
     private Follower follower;
     TelemetryData telemetryData = new TelemetryData(telemetry);
     private PathChain shoot3, eat3, eat3rotate, shoot6, eat6, eat6rotate, shoot9, escape;
@@ -67,8 +67,8 @@ public class FROGTONOMOUSTESTING extends CommandOpMode {
     private boolean cumdown = false;
     private double ang;
     private double previousRPM = 0;
-    private boolean one = false;
-    private boolean two = false;
+    private boolean rotated = false;
+    private boolean camedown = false;
     private boolean revolverReady = true;
     private boolean ejecting = false;
     private VisionPortal visionPortal;
@@ -96,6 +96,16 @@ public class FROGTONOMOUSTESTING extends CommandOpMode {
     private int ballsshot = 0;
     private boolean left;
     private Limelight3A limelight;
+
+    private enum launchseq {
+        NOTREADY,
+       READY,
+        SHOOTING,
+        RESET,
+        COOLDOWN,
+        FINISHED
+    } private launchseq froggylaunch = launchseq.READY;
+
 
 
 
@@ -211,6 +221,7 @@ public class FROGTONOMOUSTESTING extends CommandOpMode {
                 .build();
 
     }
+
     public void onerotation(boolean left) {
         revolverReady = false;
 
@@ -469,13 +480,10 @@ public class FROGTONOMOUSTESTING extends CommandOpMode {
             telemetry.addData("", revolverReady);
             telemetry.update();
 
-
             if (ballcount == 2 && revolverReady && pattern == 3 && pickupnum == 1) {
                 onerotation(ballcases(pickupnum, true));
                 ballcount += 1;
             }
-
-
 
             if (ballcount < 2) {
                 if ((intakedistone.getDistance(DistanceUnit.CM) < 3 || intakedisttwo.getDistance(DistanceUnit.CM) < 3) && revolverReady) {
@@ -618,75 +626,67 @@ public class FROGTONOMOUSTESTING extends CommandOpMode {
         }
 
         private void shooting(int shootnum){
-            if (!launchfinished) {
-                if (!ejecting) {
+            switch (froggylaunch) {
+                case NOTREADY:
+                    if (revolverReady){
+                        froggylaunch = launchseq.READY;
+                        rotated = false;
+                        camedown = false;
+                    }
+                    break;
+                case READY:
                     eject.turnToAngle(Globals.pushServo.eject);
-                    ejecting = true;
-                }
-
-                if (aligned && Math.abs(power - RPM) < Globals.launcher.launcherTol && power > 0 && ejecting && launcherdist.getDistance(DistanceUnit.CM) < 6 && !cumdown) {
-                    set.turnToAngle(Globals.launcher.upset);
-                    ejectreturn = true;
-                    cumdown = true;//dist is inconsistent
-                }
-
-                if (Math.abs(previousRPM - RPM) > Globals.launcher.RPMDipThreshold && cumdown) {
-                    set.turnToAngle(Globals.launcher.downset);
-                    launching = false;
-                    timer.reset();
-                }
-
-                if (ejectreturn) {
+                    if ((ang > 183 && ang < 210) || launcherdist.getDistance(DistanceUnit.CM) < 5){
+                        froggylaunch = launchseq.SHOOTING;
+                    }
+                    break;
+                case SHOOTING:
                     eject.turnToAngle(Globals.pushServo.defualt);
-                }
-
-                if (ang < 165 && ejectreturn) {//fix
-                    onerotation(ballcases(shootnum, false));
-                    ejectreturn = false;
-                }
-
-                if (timer.seconds() > 0.5 && !launching){
-                    launchfinished = true;
-                }
+                    set.turnToAngle(Globals.launcher.upset);
+                    froggylaunch = launchseq.RESET;
+                    break;
+                case RESET:
+                    if (!camedown && Math.abs(previousRPM - RPM) > Globals.launcher.RPMDipThreshold){
+                        set.turnToAngle(Globals.launcher.downset);
+                        camedown = true;
+                    }
+                    if (!rotated && ang < 165){
+                        onerotation(ballcases(shootnum, false));
+                        rotated = true;
+                    }
+                    if (camedown && rotated) {
+                        timer.reset();
+                        froggylaunch = launchseq.COOLDOWN;
+                    }
+                    break;
+                case COOLDOWN:
+                    if (timer.seconds() > 0.5){//can be optimized by moving timer.reset to rpm dip part
+                        ballsshot++;
+                        if (ballsshot < 3){
+                            froggylaunch = launchseq.NOTREADY;
+                        } else {
+                            froggylaunch = launchseq.FINISHED;
+                        }
+                    }
+                    break;
+                case FINISHED:
+                    break;
             }
         }
 
-
-
         private void launch(int shootnum) {
-            telemetry.addData("time", timer.seconds());
-            telemetry.addData("balls", ballsshot);
-            telemetry.addData("revready", revolverReady);
-            telemetry.update();
+            calculateRPM();
+            feedforwardPower = ff.calculate(RPM, power);
             ang = (ejectAnalog.getVoltage()/3.3) * 360;
             launcher1.set(feedforwardPower);
             launcher2.set(feedforwardPower);
-
-            if (ballsshot < 3) {
-                if (revolverReady) {
-                    if (pattern == 1) {
-                        if (shootnum == 0) {
-                            shooting(shootnum);
-                            if (launchfinished) {
-                                ejecting = false;
-                                launchfinished = false;
-                                ejectreturn = false;
-                                cumdown = false;
-                                launching = true;
-                                ballsshot += 1;
-                            }
-                        }
-                    }
-                }
-            }
+            shooting(shootnum);
         }
 
 
         @Override
         public void periodic() {
             aiming();
-
-            feedforwardPower = ff.calculate(RPM, power);
         }
     }
 
@@ -707,7 +707,6 @@ public class FROGTONOMOUSTESTING extends CommandOpMode {
 
         @Override
         public void execute() {
-            outtake.calculateRPM();
             outtake.launch(shootnum);
         }
 
@@ -881,5 +880,6 @@ public class FROGTONOMOUSTESTING extends CommandOpMode {
     }
 
 }
+
 
 
