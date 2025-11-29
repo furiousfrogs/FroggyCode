@@ -65,6 +65,7 @@ public class QualsBlue extends OpMode {
     private double dist;
     private double ang;
     private int revolverTarget = 0;
+    double bearing = 0;
 
     // ----- pid's -----
     private PIDFController turretPIDF, ff, revolverPID;
@@ -397,6 +398,7 @@ public class QualsBlue extends OpMode {
         }
     }
     private void autoAimServoMode() {
+
         ff.setPIDF(Globals.launcher.flykP, Globals.launcher.flykI, Globals.launcher.flykD, Globals.launcher.flykF);
         turretPIDF.setPIDF(Globals.turret.turretKP, Globals.turret.turretKI, Globals.turret.turretKD, Globals.turret.turretKF);
 
@@ -422,7 +424,8 @@ public class QualsBlue extends OpMode {
                 for (AprilTagDetection d : detections) {
                     if (d.ftcPose != null && d.id == 20) {//blue IS 20 red IS 24 TODO READD ID==20
                         power = (2547.5 * pow(2.718281828459045, (0.0078 * d.ftcPose.range))) / Globals.launcher.launcherTransformation; // here
-
+                        
+                        bearing = d.ftcPose.bearing;
                         aligned = Math.abs(d.ftcPose.bearing) <= Globals.turret.turretTol;
                         double delta = aligned ? 0.0 : turretPIDF.calculate(d.ftcPose.bearing, 0.0);
                         turretTarget += delta; //THIS IS POSITIVE
@@ -431,13 +434,14 @@ public class QualsBlue extends OpMode {
             } else {
                 power = Globals.targetRPM;
             }
-
         } else if (lb ^ rb) {
             aligned = false;
             turretTarget -= lb ? +Globals.turret.nudge : -Globals.turret.nudge; //THIS IS NEGATIVE
         } else if (!autoAimEnabled) {
             aligned = true;
             power = Globals.targetRPM;
+        } else {
+            bearing = 0;
         }
 
         if (turretTarget >= 245) {
