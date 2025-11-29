@@ -89,7 +89,7 @@ public class FROGTONOMOUSTESTING extends CommandOpMode {
     private int lastPosition;
     private double bearing = 0.0;
     double turretTarget = 180F; // inital turret angle red
-    private boolean launching = false;
+    private boolean launching = true;
     private int revolverTarget = 0;
     private double revolverPower;
     private int ballcount = 0;
@@ -716,10 +716,6 @@ public class FROGTONOMOUSTESTING extends CommandOpMode {
 
             ballsshot = 0;
 
-            ejecting = false;
-
-            launching = false;
-
         }
 
         private void endmotor() {
@@ -747,6 +743,8 @@ public class FROGTONOMOUSTESTING extends CommandOpMode {
 
                 if (Math.abs(previousRPM - RPM) > Globals.launcher.RPMDipThreshold) {
                     set.turnToAngle(Globals.launcher.downset);
+                    launching = false;
+                    timer.reset();
                 }
 
                 if (ejectreturn) {
@@ -755,8 +753,11 @@ public class FROGTONOMOUSTESTING extends CommandOpMode {
 
                 if (ang < 165 && ejectreturn) {//fix
                     onerotation(ballcases(shootnum, false));
-                    launchfinished = true;
                     ejectreturn = false;
+                }
+
+                if (timer.seconds() > 0.5 && !launching){
+                    launchfinished = true;
                 }
             }
         }
@@ -780,9 +781,9 @@ public class FROGTONOMOUSTESTING extends CommandOpMode {
                             if (launchfinished) {
                                 ejecting = false;
                                 launchfinished = false;
-                                launching = false;
-                                ejectreturn = true;
+                                ejectreturn = false;
                                 cumdown = false;
+                                launching = true;
                                 ballsshot += 1;
                             }
                         }
@@ -1014,7 +1015,6 @@ public class FROGTONOMOUSTESTING extends CommandOpMode {
         telemetryData.addData("Heading", follower.getPose().getHeading());
 
         telemetryData.addData("pattern", pattern);
-
         telemetryData.update();
 
     }
