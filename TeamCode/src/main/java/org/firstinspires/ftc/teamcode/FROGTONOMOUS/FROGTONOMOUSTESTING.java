@@ -78,7 +78,7 @@ public class FROGTONOMOUSTESTING extends CommandOpMode {
     private double distance;
     private double power;
     private AnalogInput ejectAnalog;
-    private boolean ejectreturn = true;
+    private boolean ejectreturn = false;
     private boolean launcherready = true;
     private double previousRevolverPosition;
     private PIDFController turretPIDF, ff, revolverPID;
@@ -216,7 +216,7 @@ public class FROGTONOMOUSTESTING extends CommandOpMode {
 
 
     public void onerotation(boolean left) {
-        revolverReady= false;
+        revolverReady = false;
 
         if (left) {
             revolverindex += 1;
@@ -484,7 +484,7 @@ public class FROGTONOMOUSTESTING extends CommandOpMode {
             revolverPower = revolverPID.calculate(revolver.getCurrentPosition(), revolverTarget);
             revolver.set(revolverPower);
 
-            if (!revolverReady && Math.abs(revolver.getCurrentPosition() - revolverTarget) <= 5) {
+            if (!revolverReady && Math.abs(revolver.getCurrentPosition() - revolverTarget) <= 3) {
                 revolverReady = true;
             }
         }
@@ -733,35 +733,31 @@ public class FROGTONOMOUSTESTING extends CommandOpMode {
         }
 
         private void shooting(int shootnum){
-            if (!ejecting) {
-                eject.turnToAngle(Globals.pushServo.eject);
-                ejecting = true;
-            }
+            if (!launchfinished) {
+                if (!ejecting) {
+                    eject.turnToAngle(Globals.pushServo.eject);
+                    ejecting = true;
+                }
 
-            if (aligned && Math.abs(power - RPM) < Globals.launcher.launcherTol && power > 0 && ejecting && launcherdist.getDistance(DistanceUnit.CM) < 6 && cumdown == false) {
-                set.turnToAngle(Globals.launcher.upset);
-                telemetry.addData("eject", ejectAnalog.getVoltage());
-                telemetry.update();
-                launching = true;
-                ejectreturn = false;
-                cumdown = true;//dist is inconsistent
-            }
+                if (aligned && Math.abs(power - RPM) < Globals.launcher.launcherTol && power > 0 && ejecting && launcherdist.getDistance(DistanceUnit.CM) < 6 && !cumdown) {
+                    set.turnToAngle(Globals.launcher.upset);
+                    ejectreturn = true;
+                    cumdown = true;//dist is inconsistent
+                }
 
-            if (aligned && Math.abs(previousRPM - RPM) > Globals.launcher.RPMDipThreshold) {
-                set.turnToAngle(Globals.launcher.downset);
-                telemetry.addData("efon;wja'kgW", cumdown);
-                telemetry.update();
-                launching = false;
-            }
+                if (Math.abs(previousRPM - RPM) > Globals.launcher.RPMDipThreshold) {
+                    set.turnToAngle(Globals.launcher.downset);
+                }
 
-            if (!ejectreturn) {
-                eject.turnToAngle(Globals.pushServo.defualt);
-            }
+                if (ejectreturn) {
+                    eject.turnToAngle(Globals.pushServo.defualt);
+                }
 
-            if (ang < 165 && !ejectreturn){
-                onerotation(ballcases(shootnum, false));
-                launchfinished = true;
-                ejectreturn = true;
+                if (ang < 165 && ejectreturn) {//fix
+                    onerotation(ballcases(shootnum, false));
+                    launchfinished = true;
+                    ejectreturn = false;
+                }
             }
         }
 
@@ -773,10 +769,10 @@ public class FROGTONOMOUSTESTING extends CommandOpMode {
             telemetry.addData("revready", revolverReady);
             telemetry.update();
             ang = (ejectAnalog.getVoltage()/3.3) * 360;
+            launcher1.set(feedforwardPower);
+            launcher2.set(feedforwardPower);
 
             if (ballsshot < 3) {
-                launcher1.set(feedforwardPower);
-                launcher2.set(feedforwardPower);
                 if (revolverReady) {
                     if (pattern == 1) {
                         if (shootnum == 0) {
