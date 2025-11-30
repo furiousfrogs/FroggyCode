@@ -114,14 +114,14 @@ public class FROGTONOMOUSTESTINGV3 extends CommandOpMode {
     public void buildPaths() {
         shoot3 = follower.pathBuilder()
                 .addPath(
-                        new BezierLine(new Pose(21.073, 122.927), new Pose(43.200, 85.873))
+                        new BezierLine(new Pose(21.073, 122.927), new Pose(43.388, 86.072))
                 )
                 .setLinearHeadingInterpolation(Math.toRadians(-126), Math.toRadians(-180))
                 .build();
 
         eat3 = follower.pathBuilder()
                 .addPath(
-                        new BezierLine(new Pose(43.200, 85.873), new Pose(20.020, 85.698))
+                        new BezierLine(new Pose(43.388, 86.072), new Pose(20.020, 85.698))
                 )
                 .setLinearHeadingInterpolation(Math.toRadians(180), Math.toRadians(180))
                 .setTimeoutConstraint(0.5)
@@ -129,14 +129,14 @@ public class FROGTONOMOUSTESTINGV3 extends CommandOpMode {
 
         shoot6 = follower.pathBuilder()
                 .addPath(
-                        new BezierLine(new Pose(20.020, 85.698), new Pose(43.290, 85.682))
+                        new BezierLine(new Pose(20.020, 85.698), new Pose(43.388, 86.072))
                 )
                 .setLinearHeadingInterpolation(Math.toRadians(180), Math.toRadians(180))
                 .build();
 
         eat6rotate = follower.pathBuilder()
                 .addPath(
-                        new BezierLine(new Pose(43.290, 85.682), new Pose(41.795, 61.639))
+                        new BezierLine(new Pose(43.388, 86.072), new Pose(41.795, 61.639))
                 )
                 .setLinearHeadingInterpolation(Math.toRadians(180), Math.toRadians(180))
                 .build();
@@ -151,14 +151,14 @@ public class FROGTONOMOUSTESTINGV3 extends CommandOpMode {
 
         shoot9 = follower.pathBuilder()
                 .addPath(
-                        new BezierLine(new Pose(19.317, 61.463), new Pose(43.290, 85.907))
+                        new BezierLine(new Pose(19.317, 61.463), new Pose(43.388, 86.072))
                 )
                 .setLinearHeadingInterpolation(Math.toRadians(180), Math.toRadians(180))
                 .build();
 
         escape = follower.pathBuilder()
                 .addPath(
-                        new BezierLine(new Pose(43.290, 85.907), new Pose(29.678, 85.873))
+                        new BezierLine(new Pose(43.388, 86.072), new Pose(29.678, 85.873))
                 )
                 .setLinearHeadingInterpolation(Math.toRadians(180), Math.toRadians(180))
                 .build();
@@ -554,7 +554,7 @@ public class FROGTONOMOUSTESTINGV3 extends CommandOpMode {
                     }
                     break;
                 case COOLDOWN:
-                    if (timer.seconds() > 0.4){//can be optimized by moving timer.reset to rpm dip part
+                    if (timer.seconds() > 0.5){//can be optimized by moving timer.reset to rpm dip part
                         ballsshot++;
                         if (ballsshot < 3){
                             froggylaunch = launchseq.NOTREADY;

@@ -379,14 +379,14 @@ public class QualsBlue extends OpMode {
                 revolverReady = false;
                 oneRotationRevolver(true);
                 Collections.rotate(revolverState, 1);
-            } prevSquare2 = gamepadEx2.getButton(GamepadKeys.Button.SQUARE);
+            }
             if (ballExists && revolverReady && Collections.frequency(revolverState, "P") < 3 && !gamepadEx2.getButton(GamepadKeys.Button.SQUARE)) {
                 revolverReady = false;
                 revolverState.set(2, "P");
                 oneRotationRevolver(true);
                 Collections.rotate(revolverState, 1);
             }
-        }
+        } prevSquare2 = gamepadEx2.getButton(GamepadKeys.Button.SQUARE);
     }
     private void calculateRPM() {
         double currentTime = getRuntime();

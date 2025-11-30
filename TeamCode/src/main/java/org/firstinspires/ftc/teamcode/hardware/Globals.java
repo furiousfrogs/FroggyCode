@@ -14,7 +14,7 @@ public class Globals {
         public static double turretKI = 0.000F;
         public static double turretKD = 0.0043F;
         public static double turretKF = 0.000F;
-        public static float turretLocationError = 0F;
+        public static float turretLocationError = 4F;
 
 
     }
