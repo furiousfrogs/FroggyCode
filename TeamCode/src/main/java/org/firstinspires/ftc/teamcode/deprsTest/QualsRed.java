@@ -414,7 +414,7 @@ public class QualsRed extends OpMode {
                         power = (2547.5 * pow(2.718281828459045, (0.0078 * d.ftcPose.range))) / Globals.launcher.launcherTransformation; // here
 
                         aligned = Math.abs(d.ftcPose.bearing) <= Globals.turret.turretTol;
-                        double delta = aligned ? 0.0 : turretPIDF.calculate(d.ftcPose.bearing, 0.0);
+                        double delta = aligned ? 0.0 : turretPIDF.calculate(d.ftcPose.bearing, Globals.turret.turretLocationError);
                         turretTarget += delta; //THIS IS POSITIVE
                     }
                 }

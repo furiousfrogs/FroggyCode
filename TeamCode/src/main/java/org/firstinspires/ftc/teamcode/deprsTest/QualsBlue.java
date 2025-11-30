@@ -56,6 +56,7 @@ public class QualsBlue extends OpMode {
     private boolean prevPad = false;
     private boolean prevCircle;
     private boolean prevCross;
+    private boolean prevSquare2 = false;
 
     // ----- doubles -----
     private double feedforwardPower = 0;
@@ -245,7 +246,7 @@ public class QualsBlue extends OpMode {
                     case pushin:
                         if (pushupTimer.seconds() > 0.5) {
                             eject.turnToAngle(Globals.pushServo.eject);
-                            if ((ang > 183 && ang < 210)|| dist < 5.5) {
+                            if ((ang > 176 && ang < 210)|| dist < 5.5) {
                                 eject.turnToAngle(Globals.pushServo.defualt);
                                 rotated = false;
                                 currentshoot3 = shoot3.rotate;
@@ -373,7 +374,13 @@ public class QualsBlue extends OpMode {
         prevCircle = gamepadEx2.getButton(GamepadKeys.Button.CIRCLE);
 
         if (!shootcycle) {// "P", "G", or "EMPTY"
-            if (ballExists && revolverReady && Collections.frequency(revolverState, "P") < 3) {
+
+            if (gamepadEx2.getButton(GamepadKeys.Button.SQUARE) && !prevSquare2 && revolverReady) {
+                revolverReady = false;
+                oneRotationRevolver(true);
+                Collections.rotate(revolverState, 1);
+            } prevSquare2 = gamepadEx2.getButton(GamepadKeys.Button.SQUARE);
+            if (ballExists && revolverReady && Collections.frequency(revolverState, "P") < 3 && !gamepadEx2.getButton(GamepadKeys.Button.SQUARE)) {
                 revolverReady = false;
                 revolverState.set(2, "P");
                 oneRotationRevolver(true);
@@ -427,7 +434,7 @@ public class QualsBlue extends OpMode {
                         
                         bearing = d.ftcPose.bearing;
                         aligned = Math.abs(d.ftcPose.bearing) <= Globals.turret.turretTol;
-                        double delta = aligned ? 0.0 : turretPIDF.calculate(d.ftcPose.bearing, 0.0);
+                        double delta = aligned ? 0.0 : turretPIDF.calculate(d.ftcPose.bearing, -Globals.turret.turretLocationError);
                         turretTarget += delta; //THIS IS POSITIVE
                     }
                 }
@@ -467,6 +474,7 @@ public class QualsBlue extends OpMode {
         telemetry.addLine(" ");
         telemetry.addData("launch cycle, ", currentshoot3);
 
+        telemetry.addData("ang ", (ejectAnalog.getVoltage()/3.3) * 360);
         telemetry.update();
 
         TelemetryPacket rpmPacket = new TelemetryPacket();
