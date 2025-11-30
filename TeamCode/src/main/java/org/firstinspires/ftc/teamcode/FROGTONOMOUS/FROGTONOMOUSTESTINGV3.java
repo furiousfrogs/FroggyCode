@@ -95,7 +95,6 @@ public class FROGTONOMOUSTESTINGV3 extends CommandOpMode {
     private int ballcount = 0;
     private int ballsshot = 0;
     private boolean left;
-    private Limelight3A limelight;
 
     private enum launchseq {
         NOTREADY,
@@ -175,61 +174,6 @@ public class FROGTONOMOUSTESTINGV3 extends CommandOpMode {
         }
 
         revolverTarget = revolverindex * Globals.revolver.oneRotation;
-    }
-    public void getPattern() {
-
-        limelight = hardwareMap.get(Limelight3A.class, "limelight");
-
-        limelight.setPollRateHz(20);
-
-        limelight.pipelineSwitch(0);
-
-        limelight.start();
-
-
-
-        long start = System.currentTimeMillis();
-
-        while (System.currentTimeMillis() - start < 500) {  // 2s timeout
-
-            LLResult result = limelight.getLatestResult();
-
-            if (result != null && result.isValid()) {
-
-                if (result.getStaleness() < 500) {
-
-                    List<LLResultTypes.FiducialResult> tags = result.getFiducialResults();
-
-                    if (!tags.isEmpty()) {
-
-                        for (LLResultTypes.FiducialResult tag : tags) {
-
-                            int id = tag.getFiducialId();
-
-                            if (id == 21) pattern = 3;
-
-                            if (id == 22) pattern = 2;
-
-                            if (id == 23) pattern = 1;
-
-                        }
-
-                    }
-
-                }
-
-            }
-
-        }
-
-        if (pattern == 0) {
-
-            pattern = 1;
-
-        }
-
-        limelight.stop();
-
     }
     public boolean ballcases(int pickupnum, boolean comingin) {
 
@@ -640,7 +584,6 @@ public class FROGTONOMOUSTESTINGV3 extends CommandOpMode {
         @Override
         public void periodic() {
             //aiming();
-
         }
     }
 
@@ -671,6 +614,60 @@ public class FROGTONOMOUSTESTINGV3 extends CommandOpMode {
     }
 
 
+    //////////////////////////////////////
+
+
+    public class visionsubsystem extends SubsystemBase {
+        private Limelight3A limelight;
+        public visionsubsystem(HardwareMap map) {
+            limelight = hardwareMap.get(Limelight3A.class, "limelight");
+            limelight.setPollRateHz(20);
+            limelight.pipelineSwitch(0);
+            limelight.start();
+        }
+
+        public void getpattern(){
+                LLResult result = limelight.getLatestResult();
+                if (result != null && result.isValid()) {
+                    if (result.getStaleness() < 500) {
+                        List<LLResultTypes.FiducialResult> tags = result.getFiducialResults();
+                        if (!tags.isEmpty()) {
+                            for (LLResultTypes.FiducialResult tag : tags) {
+                                int id = tag.getFiducialId();
+                                if (id == 21) pattern = 3;
+                                if (id == 22) pattern = 2;
+                                if (id == 23) pattern = 1;
+                            }
+                        }
+                    }
+                }
+        }
+
+        public void visionend(){
+            limelight.stop();
+        }
+
+    }
+
+    public static class froggyvision extends CommandBase{
+        private final visionsubsystem visionsubsystem;
+
+        public froggyvision(visionsubsystem visionsubsystem){
+            this.visionsubsystem = visionsubsystem;
+            addRequirements(visionsubsystem);
+        }
+
+        @Override
+        public void execute() {
+            visionsubsystem.getpattern();
+        }
+
+        @Override
+        public void end(boolean interrupted) {
+            visionsubsystem.visionend();
+        }
+    }
+
 
 
 
@@ -687,54 +684,30 @@ public class FROGTONOMOUSTESTINGV3 extends CommandOpMode {
     @Override
 
     public void initialize() {
-
         tagProcessor = new AprilTagProcessor.Builder()
-
                 .setDrawAxes(true)
-
                 .setDrawTagID(true)
-
                 .setDrawTagOutline(true)
-
                 .setDrawCubeProjection(true)
-
                 .setLensIntrinsics(914.101, 914.101, 645.664, 342.333)
-
                 .build();
 
         visionPortal = new VisionPortal.Builder()
-
                 .addProcessor(tagProcessor)
-
                 .setCamera(hardwareMap.get(WebcamName.class, "ov9281"))
-
                 .setStreamFormat(VisionPortal.StreamFormat.MJPEG)
-
                 .setCameraResolution(new android.util.Size(1280, 720))
-
                 .build();
 
-
-
         follower = Constants.createFollower(hardwareMap);
-
-        follower.setStartingPose(new Pose(21.073, 122.927, Math.toRadians(-126)));//todo
-
+        follower.setStartingPose(new Pose(19.738, 122.019, Math.toRadians(-126)));//todo
         telemetry.update();
 
-
-
         outtakesubsys loopedfunctionsout = new outtakesubsys(hardwareMap);
-
         register(loopedfunctionsout);
 
-
-
         outtakesubsys loopedfunctionsin = new outtakesubsys(hardwareMap);
-
         register(loopedfunctionsin);
-
-
 
         buildPaths();
 
@@ -743,20 +716,15 @@ public class FROGTONOMOUSTESTINGV3 extends CommandOpMode {
 
 
         SequentialCommandGroup froggyroute = new SequentialCommandGroup(
-
-              new FollowPathCommand(follower, shoot3),
-
                 new ParallelDeadlineGroup(
-
-                        new WaitCommand(100),
-
-                        new InstantCommand(this::getPattern)
+                        new FollowPathCommand(follower, shoot3),
+                        new froggyvision(new visionsubsystem(hardwareMap))
 
                 ),
 
                 new ParallelDeadlineGroup(
 
-                        new WaitCommand(4000),
+                        new WaitCommand(2500),
                         new froggyspit(new outtakesubsys(hardwareMap), 0)
                 ),
 
@@ -770,7 +738,7 @@ public class FROGTONOMOUSTESTINGV3 extends CommandOpMode {
                 new FollowPathCommand(follower, shoot6),
 
                 new ParallelDeadlineGroup(
-                        new WaitCommand(4000),
+                        new WaitCommand(2500),
 
                         new froggyspit(new outtakesubsys(hardwareMap), 1)
                 ),
@@ -788,7 +756,7 @@ public class FROGTONOMOUSTESTINGV3 extends CommandOpMode {
 
                 new ParallelDeadlineGroup(
 
-                        new WaitCommand(4000),
+                        new WaitCommand(2500),
 
                         new froggyspit(new outtakesubsys(hardwareMap), 2)
 
