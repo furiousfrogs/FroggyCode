@@ -65,6 +65,7 @@ public class FROGTONOMOUSTESTINGV3 extends CommandOpMode {
     private int revolverindex = 0;
     private boolean launchfinished = false;
     private boolean cumdown = false;
+    private double revolverposition;
     private double ang;
     private double previousRPM = 0;
     private boolean rotated = false;
@@ -167,13 +168,8 @@ public class FROGTONOMOUSTESTINGV3 extends CommandOpMode {
     public void onerotation(boolean left) {
         revolverReady = false;
 
-        if (left) {
-            revolverindex += 1;
-        } else {
-            revolverindex -= 1;
-        }
-
-        revolverTarget = revolverindex * Globals.revolver.oneRotation;
+        previousRevolverPosition = revolverposition;
+        revolverTarget += left ? +Globals.revolver.oneRotation : -Globals.revolver.oneRotation;
     }
     public boolean ballcases(int pickupnum, boolean comingin) {
 
@@ -390,10 +386,12 @@ public class FROGTONOMOUSTESTINGV3 extends CommandOpMode {
 
         @Override
         public void periodic () {
+            revolverposition = revolver.getCurrentPosition();
             revolverPower = revolverPID.calculate(revolver.getCurrentPosition(), revolverTarget);
             revolver.set(revolverPower);
 
-            if (!revolverReady && Math.abs(revolver.getCurrentPosition() - revolverTarget) <= 7) {
+            if (!revolverReady &&
+                    Math.abs(Math.abs(revolver.getCurrentPosition() - previousRevolverPosition) - Globals.revolver.oneRotation) < 7) {
                 revolverReady = true;
             }
         }
@@ -508,6 +506,8 @@ public class FROGTONOMOUSTESTINGV3 extends CommandOpMode {
         private void outtakeon() {
             timer.reset();
             ballsshot = 0;
+
+            froggylaunch = launchseq.NOTREADY;
         }
 
         private void outtakeoff() {
