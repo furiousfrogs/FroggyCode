@@ -60,7 +60,7 @@ import java.util.*;
 public class FROGTONOMOUSTESTINGV3 extends CommandOpMode {
     private Follower follower;
     TelemetryData telemetryData = new TelemetryData(telemetry);
-    private PathChain shoot3, eat3, eat3rotate, shoot6, eat6, eat6rotate, shoot9, escape;
+    private PathChain shoot3, eat3, shoot6, eat6setup, eat6, shoot9, eat9setup, eat9, shoot12;
     private boolean aligned = false;
     private int revolverindex = 0;
     private boolean launchfinished = false;
@@ -89,13 +89,15 @@ public class FROGTONOMOUSTESTINGV3 extends CommandOpMode {
     private double lastTime;
     private int lastPosition;
     private double bearing = 0.0;
-    double turretTarget = 220F; // inital turret angle red
+    double turretTarget = 210F; // inital turret angle red
     private boolean launching = true;
     private int revolverTarget = 0;
     private double revolverPower;
     private int ballcount = 0;
     private int ballsshot = 0;
     private boolean left;
+    private boolean pattern3turned = false;
+
 
     private enum launchseq {
         NOTREADY,
@@ -115,55 +117,73 @@ public class FROGTONOMOUSTESTINGV3 extends CommandOpMode {
     public void buildPaths() {
         shoot3 = follower.pathBuilder()
                 .addPath(
-                        new BezierLine(new Pose(20.371, 122.927), new Pose(46.185, 85.522))
+                        new BezierLine(new Pose(19.738, 122.019), new Pose(45.308, 86.131))
                 )
                 .setLinearHeadingInterpolation(Math.toRadians(-126), Math.toRadians(-180))
                 .build();
 
         eat3 = follower.pathBuilder()
                 .addPath(
-                        new BezierLine(new Pose(46.185, 85.522), new Pose(20.020, 85.698))
+                        new BezierLine(new Pose(45.308, 86.131), new Pose(20.020, 85.698))
                 )
-                .setLinearHeadingInterpolation(Math.toRadians(180), Math.toRadians(180))
+                .setConstantHeadingInterpolation(Math.toRadians(180))
                 .setTimeoutConstraint(0.5)
                 .build();
 
         shoot6 = follower.pathBuilder()
                 .addPath(
-                        new BezierLine(new Pose(20.020, 85.698), new Pose(46.361, 85.346))
+                        new BezierLine(new Pose(20.020, 85.698), new Pose(45.308, 86.131))
                 )
-                .setLinearHeadingInterpolation(Math.toRadians(180), Math.toRadians(180))
+                .setConstantHeadingInterpolation(Math.toRadians(180))
                 .build();
 
-        eat6rotate = follower.pathBuilder()
+        eat6setup = follower.pathBuilder()
                 .addPath(
-                        new BezierLine(new Pose(46.361, 85.346), new Pose(41.795, 61.639))
+                        new BezierLine(new Pose(45.308, 86.131), new Pose(41.795, 61.639))
                 )
-                .setLinearHeadingInterpolation(Math.toRadians(180), Math.toRadians(180))
+                .setConstantHeadingInterpolation(Math.toRadians(180))
                 .build();
 
         eat6 = follower.pathBuilder()
                 .addPath(
                         new BezierLine(new Pose(41.795, 61.639), new Pose(19.317, 61.463))
                 )
-                .setLinearHeadingInterpolation(Math.toRadians(180), Math.toRadians(180))
+                .setConstantHeadingInterpolation(Math.toRadians(180))
                 .setTimeoutConstraint(500)
                 .build();
 
         shoot9 = follower.pathBuilder()
                 .addPath(
-                        new BezierLine(new Pose(19.317, 61.463), new Pose(46.361, 85.346))
+                        new BezierLine(new Pose(19.317, 61.463), new Pose(45.308, 86.131))
                 )
-                .setLinearHeadingInterpolation(Math.toRadians(180), Math.toRadians(180))
+                .setConstantHeadingInterpolation(Math.toRadians(180))
                 .build();
 
-        escape = follower.pathBuilder()
+        eat9setup = follower.pathBuilder()
                 .addPath(
-                        new BezierLine(new Pose(46.361, 85.346), new Pose(29.678, 85.873))
+                        new BezierLine(new Pose(45.308, 86.131), new Pose(41.944, 37.234))
                 )
-                .setLinearHeadingInterpolation(Math.toRadians(180), Math.toRadians(180))
+                .setConstantHeadingInterpolation(Math.toRadians(180))
+                .build();
+
+        eat9 = follower
+                .pathBuilder()
+                .addPath(
+                        new BezierLine(new Pose(41.944, 37.234), new Pose(18.841, 37.234))
+                )
+                .setConstantHeadingInterpolation(Math.toRadians(180))
+                .setTimeoutConstraint(500)
+                .build();
+
+        shoot12 = follower
+                .pathBuilder()
+                .addPath(
+                        new BezierLine(new Pose(18.841, 37.234), new Pose(45.308, 86.131))
+                )
+                .setConstantHeadingInterpolation(Math.toRadians(180))
                 .build();
     }
+
 
     public void onerotation(boolean left) {
         revolverReady = false;
@@ -461,7 +481,6 @@ public class FROGTONOMOUSTESTINGV3 extends CommandOpMode {
         private void calculateRPM() {
             double currentTime = getRuntime();
             int currentPosition = launcher1.getCurrentPosition();
-
             double deltaTime = currentTime - lastTime;
             int deltaTicks = currentPosition - lastPosition;
 
@@ -469,7 +488,6 @@ public class FROGTONOMOUSTESTINGV3 extends CommandOpMode {
                 previousRPM = RPM;
                 double revs = (double) deltaTicks / 28.0; // GoBILDA CPR
                 RPM = (revs / deltaTime) * 60.0;
-
                 lastTime = currentTime;
                 lastPosition = currentPosition;
             }
@@ -577,6 +595,10 @@ public class FROGTONOMOUSTESTINGV3 extends CommandOpMode {
             ang = (ejectAnalog.getVoltage()/3.3) * 360;
             launcher1.set(feedforwardPower);
             launcher2.set(feedforwardPower);
+//            if (pattern == 3 && shootnum == 0 && !pattern3turned){
+//                onerotation(true);
+//                pattern3turned = true;
+//            }
             shooting(shootnum);
         }
 
@@ -700,7 +722,7 @@ public class FROGTONOMOUSTESTINGV3 extends CommandOpMode {
                 .build();
 
         follower = Constants.createFollower(hardwareMap);
-        follower.setStartingPose(new Pose(20.371, 122.927, Math.toRadians(-126)));//todo
+        follower.setStartingPose(new Pose(19.738, 122.019, Math.toRadians(-126)));//todo
         telemetry.update();
 
         outtakesubsys loopedfunctionsout = new outtakesubsys(hardwareMap);
@@ -742,7 +764,7 @@ public class FROGTONOMOUSTESTINGV3 extends CommandOpMode {
 
                         new froggyspit(new outtakesubsys(hardwareMap), 1)
                 ),
-               new FollowPathCommand(follower, eat6rotate),
+               new FollowPathCommand(follower, eat6setup),
 //
                 new ParallelDeadlineGroup(
 
@@ -761,7 +783,16 @@ public class FROGTONOMOUSTESTINGV3 extends CommandOpMode {
                         new froggyspit(new outtakesubsys(hardwareMap), 2)
 
                 ),
-                new FollowPathCommand(follower, escape)
+                new FollowPathCommand(follower, eat9setup)//TODO ADD COMMA FOR 12BALL
+//                new ParallelDeadlineGroup(
+//                        new FollowPathCommand(follower, eat9),
+//                        new froggyeat(new intakesubsys(hardwareMap), 3)
+//                ),
+//                new FollowPathCommand(follower, shoot12),
+//                new ParallelDeadlineGroup(
+//                        new WaitCommand(2500),
+//                        new froggyspit(new outtakesubsys(hardwareMap), 2)
+//                )TODO 12BALL
 
         );
 
