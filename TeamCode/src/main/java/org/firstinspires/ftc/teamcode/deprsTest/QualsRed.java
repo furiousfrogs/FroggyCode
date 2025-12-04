@@ -2,18 +2,26 @@ package org.firstinspires.ftc.teamcode.deprsTest;
 
 import static java.lang.Math.pow;
 
+import android.graphics.Color;
+
 import com.acmerobotics.dashboard.FtcDashboard;
 import com.acmerobotics.dashboard.telemetry.TelemetryPacket;
+import com.qualcomm.hardware.limelightvision.LLResult;
+import com.qualcomm.hardware.limelightvision.LLResultTypes;
+import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.AnalogInput;
+import com.qualcomm.robotcore.hardware.AnalogSensor;
 import com.qualcomm.robotcore.hardware.DistanceSensor;
 import com.qualcomm.robotcore.hardware.NormalizedColorSensor;
+import com.qualcomm.robotcore.hardware.NormalizedRGBA;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.seattlesolvers.solverslib.controller.PIDFController;
 import com.seattlesolvers.solverslib.gamepad.GamepadEx;
 import com.seattlesolvers.solverslib.gamepad.GamepadKeys;
 import com.seattlesolvers.solverslib.hardware.SimpleServo;
+import com.seattlesolvers.solverslib.hardware.SimpleServoExtKt;
 import com.seattlesolvers.solverslib.hardware.motors.Motor;
 
 import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
@@ -26,7 +34,9 @@ import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
 @TeleOp(name = "Red Qual")
@@ -46,6 +56,7 @@ public class QualsRed extends OpMode {
     private boolean prevPad = false;
     private boolean prevCircle;
     private boolean prevCross;
+    private boolean prevSquare2 = false;
 
     // ----- doubles -----
     private double feedforwardPower = 0;
@@ -55,6 +66,7 @@ public class QualsRed extends OpMode {
     private double dist;
     private double ang;
     private int revolverTarget = 0;
+    double bearing = 0;
 
     // ----- pid's -----
     private PIDFController turretPIDF, ff, revolverPID;
@@ -205,36 +217,36 @@ public class QualsRed extends OpMode {
         ang = (ejectAnalog.getVoltage()/3.3) * 360;
         dist = launchDistanceSensor.getDistance(DistanceUnit.CM);
 
-            if (gamepadEx2.getButton(GamepadKeys.Button.CROSS) && !prevCross) {
-                if (!shootcycle) {
-                    currentshoot3 = shoot3.pushin;
-                    eject.turnToAngle(Globals.pushServo.defualt);
-                    set.turnToAngle(Globals.launcher.downset);
-                    pushupTimer.reset();
+        if (gamepadEx2.getButton(GamepadKeys.Button.CROSS) && !prevCross) {
+            if (!shootcycle) {
+                currentshoot3 = shoot3.pushin;
+                eject.turnToAngle(Globals.pushServo.defualt);
+                set.turnToAngle(Globals.launcher.downset);
+                pushupTimer.reset();
 
 
-                    shootcycle = true;
-                    rotated = false;
-                } else {
-                    shootcycle = false;
-                    currentshoot3 = shoot3.idle;
-                    eject.turnToAngle(Globals.pushServo.defualt);
-                    set.turnToAngle(Globals.launcher.downset);
+                shootcycle = true;
+                rotated = false;
+            } else {
+                shootcycle = false;
+                currentshoot3 = shoot3.idle;
+                eject.turnToAngle(Globals.pushServo.defualt);
+                set.turnToAngle(Globals.launcher.downset);
 
-                    launcher1.set(0);
-                    launcher2.set(0);
-                }
-            }prevCross = gamepadEx2.getButton(GamepadKeys.Button.CROSS);
-            if (shootcycle) {
-                gate.turnToAngle(Globals.openGate);
-                if (Collections.frequency(revolverState, "EMPTY") < 3) {
+                launcher1.set(0);
+                launcher2.set(0);
+            }
+        }prevCross = gamepadEx2.getButton(GamepadKeys.Button.CROSS);
+        if (shootcycle) {
+            gate.turnToAngle(Globals.openGate);
+            if (Collections.frequency(revolverState, "EMPTY") < 3) {
                 launcher1.set(feedforwardPower);
                 launcher2.set(feedforwardPower);
                 switch (currentshoot3) {
                     case pushin:
                         if (pushupTimer.seconds() > 0.5) {
                             eject.turnToAngle(Globals.pushServo.eject);
-                            if ((ang > 183 && ang < 210)|| dist < 5.5) {
+                            if ((ang > 176 && ang < 210)|| dist < 5.5) {
                                 eject.turnToAngle(Globals.pushServo.defualt);
                                 rotated = false;
                                 currentshoot3 = shoot3.rotate;
@@ -297,18 +309,18 @@ public class QualsRed extends OpMode {
                         break;
                 }
 
-                } else {
-
-                    currentshoot3 = shoot3.idle;
-                    shootcycle = false;
-                    launcher1.set(0);
-                    launcher2.set(0);
-                }
-
-
             } else {
-                gate.turnToAngle(Globals.closeGate);
+
+                currentshoot3 = shoot3.idle;
+                shootcycle = false;
+                launcher1.set(0);
+                launcher2.set(0);
             }
+
+
+        } else {
+            gate.turnToAngle(Globals.closeGate);
+        }
 
 
     }
@@ -362,13 +374,19 @@ public class QualsRed extends OpMode {
         prevCircle = gamepadEx2.getButton(GamepadKeys.Button.CIRCLE);
 
         if (!shootcycle) {// "P", "G", or "EMPTY"
-            if (ballExists && revolverReady && Collections.frequency(revolverState, "P") < 3) {
+
+            if (gamepadEx2.getButton(GamepadKeys.Button.SQUARE) && !prevSquare2 && revolverReady) {
+                revolverReady = false;
+                oneRotationRevolver(true);
+                Collections.rotate(revolverState, 1);
+            }
+            if (ballExists && revolverReady && Collections.frequency(revolverState, "P") < 3 && !gamepadEx2.getButton(GamepadKeys.Button.SQUARE)) {
                 revolverReady = false;
                 revolverState.set(2, "P");
                 oneRotationRevolver(true);
                 Collections.rotate(revolverState, 1);
             }
-        }
+        } prevSquare2 = gamepadEx2.getButton(GamepadKeys.Button.SQUARE);
     }
     private void calculateRPM() {
         double currentTime = getRuntime();
@@ -387,6 +405,7 @@ public class QualsRed extends OpMode {
         }
     }
     private void autoAimServoMode() {
+
         ff.setPIDF(Globals.launcher.flykP, Globals.launcher.flykI, Globals.launcher.flykD, Globals.launcher.flykF);
         turretPIDF.setPIDF(Globals.turret.turretKP, Globals.turret.turretKI, Globals.turret.turretKD, Globals.turret.turretKF);
 
@@ -413,21 +432,23 @@ public class QualsRed extends OpMode {
                     if (d.ftcPose != null && d.id == 24) {//blue IS 20 red IS 24 TODO READD ID==20
                         power = (2547.5 * pow(2.718281828459045, (0.0078 * d.ftcPose.range))) / Globals.launcher.launcherTransformation; // here
 
+                        bearing = d.ftcPose.bearing;
                         aligned = Math.abs(d.ftcPose.bearing) <= Globals.turret.turretTol;
-                        double delta = aligned ? 0.0 : turretPIDF.calculate(d.ftcPose.bearing, Globals.turret.turretLocationError);
+                        double delta = aligned ? 0.0 : turretPIDF.calculate(d.ftcPose.bearing, -Globals.turret.turretLocationError);
                         turretTarget += delta; //THIS IS POSITIVE
                     }
                 }
             } else {
                 power = Globals.targetRPM;
             }
-
         } else if (lb ^ rb) {
             aligned = false;
             turretTarget -= lb ? +Globals.turret.nudge : -Globals.turret.nudge; //THIS IS NEGATIVE
         } else if (!autoAimEnabled) {
             aligned = true;
             power = Globals.targetRPM;
+        } else {
+            bearing = 0;
         }
 
         if (turretTarget >= 245) {
@@ -437,7 +458,7 @@ public class QualsRed extends OpMode {
         }
 
 
-        }
+    }
 
 
 
@@ -453,6 +474,7 @@ public class QualsRed extends OpMode {
         telemetry.addLine(" ");
         telemetry.addData("launch cycle, ", currentshoot3);
 
+        telemetry.addData("ang ", (ejectAnalog.getVoltage()/3.3) * 360);
         telemetry.update();
 
         TelemetryPacket rpmPacket = new TelemetryPacket();
