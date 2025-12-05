@@ -89,7 +89,7 @@ public class FROGTONOMOUSTESTINGV3 extends CommandOpMode {
     private double lastTime;
     private int lastPosition;
     private double bearing = 0.0;
-    double turretTarget = 210F; // inital turret angle red
+    double turretTarget = 222F; // inital turret angle red
     private boolean launching = true;
     private int revolverTarget = 0;
     private double revolverPower;
@@ -746,7 +746,7 @@ public class FROGTONOMOUSTESTINGV3 extends CommandOpMode {
 
                 new ParallelDeadlineGroup(
 
-                        new WaitCommand(2500),
+                        new WaitCommand(3000),
                         new froggyspit(new outtakesubsys(hardwareMap), 0)
                 ),
 
@@ -760,7 +760,7 @@ public class FROGTONOMOUSTESTINGV3 extends CommandOpMode {
                 new FollowPathCommand(follower, shoot6),
 
                 new ParallelDeadlineGroup(
-                        new WaitCommand(2500),
+                        new WaitCommand(3000),
 
                         new froggyspit(new outtakesubsys(hardwareMap), 1)
                 ),
@@ -778,21 +778,21 @@ public class FROGTONOMOUSTESTINGV3 extends CommandOpMode {
 
                 new ParallelDeadlineGroup(
 
-                        new WaitCommand(2500),
+                        new WaitCommand(3000),
 
                         new froggyspit(new outtakesubsys(hardwareMap), 2)
 
                 ),
-                new FollowPathCommand(follower, eat9setup)//TODO ADD COMMA FOR 12BALL
-//                new ParallelDeadlineGroup(
-//                        new FollowPathCommand(follower, eat9),
-//                        new froggyeat(new intakesubsys(hardwareMap), 3)
-//                ),
-//                new FollowPathCommand(follower, shoot12),
-//                new ParallelDeadlineGroup(
-//                        new WaitCommand(2500),
-//                        new froggyspit(new outtakesubsys(hardwareMap), 2)
-//                )TODO 12BALL
+                new FollowPathCommand(follower, eat9setup),//TODO ADD COMMA FOR 12BALL
+                new ParallelDeadlineGroup(
+                        new FollowPathCommand(follower, eat9),
+                        new froggyeat(new intakesubsys(hardwareMap), 1)
+                ),
+                new FollowPathCommand(follower, shoot12),
+                new ParallelDeadlineGroup(
+                        new WaitCommand(2500),
+                        new froggyspit(new outtakesubsys(hardwareMap), 1)
+                )
 
         );
 
