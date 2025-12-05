@@ -62,7 +62,6 @@ public class FROGTONOMOUSTESTINGV3 extends CommandOpMode {
     TelemetryData telemetryData = new TelemetryData(telemetry);
     private PathChain shoot3, eat3, shoot6, eat6setup, eat6, shoot9, eat9setup, eat9, shoot12;
     private boolean aligned = false;
-    private int revolverindex = 0;
     private boolean launchfinished = false;
     private boolean cumdown = false;
     private double revolverposition;
@@ -96,10 +95,7 @@ public class FROGTONOMOUSTESTINGV3 extends CommandOpMode {
     private double revolverPower;
     private int ballcount = 0;
     private int ballsshot = 0;
-    private boolean left;
     private boolean pattern3turned = false;
-
-
     private enum launchseq {
         NOTREADY,
        READY,
@@ -181,7 +177,6 @@ public class FROGTONOMOUSTESTINGV3 extends CommandOpMode {
                 .setConstantHeadingInterpolation(Math.toRadians(180))
                 .build();
     }
-
 
     public void onerotation(boolean left) {
         revolverReady = false;
@@ -345,10 +340,8 @@ public class FROGTONOMOUSTESTINGV3 extends CommandOpMode {
     ///////////////////////////////////////////////
 
 
-
     public class intakesubsys extends SubsystemBase {
         private final Motor intake, revolver;
-
         public intakesubsys(HardwareMap map) {
             intake = new Motor(map, "intake");
             intake.setRunMode(Motor.RunMode.RawPower);
@@ -390,13 +383,9 @@ public class FROGTONOMOUSTESTINGV3 extends CommandOpMode {
         }
 
         public void sort(int pickupnum){//1 = ppg 2 pgp 3 gpp,
-            telemetry.addData("", ballcount);
-            telemetry.addData("", revolverReady);
-            telemetry.update();
-
-            if (ballcount == 2 && revolverReady && pattern == 3 && pickupnum == 1) {
+            if (ballcount == 2 && pattern == 3 && pickupnum == 1) {
                 onerotation(ballcases(pickupnum, true));
-                ballcount += 1;
+                ballcount ++;
             }
 
             if (ballcount < 2) {
@@ -408,7 +397,6 @@ public class FROGTONOMOUSTESTINGV3 extends CommandOpMode {
             }
 
         }
-
 
         @Override
         public void periodic () {
@@ -735,22 +723,21 @@ public class FROGTONOMOUSTESTINGV3 extends CommandOpMode {
 
 
     @Override
-
     public void initialize() {
-        tagProcessor = new AprilTagProcessor.Builder()
-                .setDrawAxes(true)
-                .setDrawTagID(true)
-                .setDrawTagOutline(true)
-                .setDrawCubeProjection(true)
-                .setLensIntrinsics(914.101, 914.101, 645.664, 342.333)
-                .build();
-
-        visionPortal = new VisionPortal.Builder()
-                .addProcessor(tagProcessor)
-                .setCamera(hardwareMap.get(WebcamName.class, "ov9281"))
-                .setStreamFormat(VisionPortal.StreamFormat.MJPEG)
-                .setCameraResolution(new android.util.Size(1280, 720))
-                .build();
+//        tagProcessor = new AprilTagProcessor.Builder()
+//                .setDrawAxes(true)
+//                .setDrawTagID(true)
+//                .setDrawTagOutline(true)
+//                .setDrawCubeProjection(true)
+//                .setLensIntrinsics(914.101, 914.101, 645.664, 342.333)
+//                .build();
+//
+//        visionPortal = new VisionPortal.Builder()
+//                .addProcessor(tagProcessor)
+//                .setCamera(hardwareMap.get(WebcamName.class, "ov9281"))
+//                .setStreamFormat(VisionPortal.StreamFormat.MJPEG)
+//                .setCameraResolution(new android.util.Size(1280, 720))
+//                .build();
 
         follower = Constants.createFollower(hardwareMap);
         follower.setStartingPose(new Pose(19.738, 122.019, Math.toRadians(-126)));//todo
