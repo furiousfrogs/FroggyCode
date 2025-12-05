@@ -94,6 +94,10 @@ public class FROGTONOMOUSTESTINGV2 extends CommandOpMode {
     private int ballcount = 0;
     private int ballsshot = 0;
     private boolean pattern3turned = false;
+    private intakesubsys froggyintake;
+    private outtakesubsys froggyouttake;
+    private visionsubsystem froggyvision;
+
     private enum launchseq {
         NOTREADY,
         READY,
@@ -739,15 +743,16 @@ public class FROGTONOMOUSTESTINGV2 extends CommandOpMode {
 //                .setCameraResolution(new android.util.Size(1280, 720))
 //                .build();
 
+        froggyintake = new intakesubsys(hardwareMap);
+        froggyouttake = new outtakesubsys(hardwareMap, froggyintake);
+        froggyvision = new visionsubsystem(hardwareMap);
+
         follower = Constants.createFollower(hardwareMap);
         follower.setStartingPose(new Pose(19.738, 122.019, Math.toRadians(-126)));//todo
         telemetry.update();
 
-        outtakesubsys loopedfunctionsout = new outtakesubsys(hardwareMap, new intakesubsys(hardwareMap));
-        register(loopedfunctionsout);
-
-        intakesubsys loopedfunctionsin = new intakesubsys(hardwareMap);
-        register(loopedfunctionsin);
+        register(froggyintake);
+        register(froggyouttake);
 
         buildPaths();
 
@@ -758,60 +763,54 @@ public class FROGTONOMOUSTESTINGV2 extends CommandOpMode {
         SequentialCommandGroup froggyroute = new SequentialCommandGroup(
                 new ParallelDeadlineGroup(
                         new FollowPathCommand(follower, shoot3),
-                        new froggyvision(new visionsubsystem(hardwareMap))
+                        new froggyvision(froggyvision)
                 ),
                 new ParallelDeadlineGroup(
                         new WaitCommand(3300),
-                        new froggyspit(new outtakesubsys(hardwareMap, new intakesubsys(hardwareMap)), 0)
+                        new froggyspit(froggyouttake, 0)
                 ),
                 new ParallelDeadlineGroup(
                         new FollowPathCommand(follower, eat3),
-                        new froggyeat(new intakesubsys(hardwareMap), 1)
+                        new froggyeat(froggyintake, 1)
                 ),
                 new ParallelDeadlineGroup(
                         new FollowPathCommand(follower, shoot6),
-                        new froggyintakeon(new intakesubsys(hardwareMap))
+                        new froggyintakeon(froggyintake)
                 ),
 
                 new ParallelDeadlineGroup(
                         new WaitCommand(3300),
-
-                        new froggyspit(new outtakesubsys(hardwareMap, new intakesubsys(hardwareMap)), 1)
+                        new froggyspit(froggyouttake, 1)
                 ),
                 new FollowPathCommand(follower, eat6setup),
 //
                 new ParallelDeadlineGroup(
-
                         new FollowPathCommand(follower, eat6),
-
-                        new froggyeat(new intakesubsys(hardwareMap), 2)
-
+                        new froggyeat(froggyintake, 2)
                 ),
 //
                 new ParallelDeadlineGroup(
                         new FollowPathCommand(follower, shoot9),
-                        new froggyintakeon(new intakesubsys(hardwareMap))
+                        new froggyintakeon(froggyintake)
                 ),
 
                 new ParallelDeadlineGroup(
-
                         new WaitCommand(3300),
-
-                        new froggyspit(new outtakesubsys(hardwareMap, new intakesubsys(hardwareMap)), 2)
-
+                        new froggyspit(froggyouttake, 2)
                 ),
                 new FollowPathCommand(follower, eat9setup),//TODO ADD COMMA FOR 12BALL
+
                 new ParallelDeadlineGroup(
                         new FollowPathCommand(follower, eat9),
-                        new froggyeat(new intakesubsys(hardwareMap), 1)
+                        new froggyeat(froggyintake, 1)
                 ),
                 new ParallelDeadlineGroup(
                         new FollowPathCommand(follower, shoot12),
-                        new froggyintakeon(new intakesubsys(hardwareMap))
+                        new froggyintakeon(froggyintake)
                 ),
                 new ParallelDeadlineGroup(
                         new WaitCommand(2500),
-                        new froggyspit(new outtakesubsys(hardwareMap, new intakesubsys(hardwareMap)), 1)
+                        new froggyspit(froggyouttake, 1)
                 )
 
         );
