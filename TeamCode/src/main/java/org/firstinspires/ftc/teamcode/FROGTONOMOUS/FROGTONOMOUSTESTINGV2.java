@@ -75,10 +75,11 @@ public class FROGTONOMOUSTESTINGV2 extends CommandOpMode {
     private double feedforwardPower = 0;
     private static int pattern = 1;
     private double distance;
+    private int revolverindex = 0;
+    private int revolvertarget = 0;
+    private static final int revolvertol = 5;
     private double power;
     private AnalogInput ejectAnalog;
-    private boolean ejectreturn = false;
-    private boolean launcherready = true;
     private double previousRevolverPosition;
     private PIDFController turretPIDF, ff, revolverPID;
     private SimpleServo set, turrot1, turrot2, eject, gate;
@@ -89,7 +90,6 @@ public class FROGTONOMOUSTESTINGV2 extends CommandOpMode {
     private double bearing = 0.0;
     double turretTarget = 222F; // inital turret angle red
     private boolean launching = true;
-    private int revolverTarget = 0;
     private double revolverPower;
     private int ballcount = 0;
     private int ballsshot = 0;
@@ -347,13 +347,18 @@ public class FROGTONOMOUSTESTINGV2 extends CommandOpMode {
             revolver.resetEncoder();
 
             revolverPID = new PIDFController(Globals.revolver.revolverKP, Globals.revolver.revolverKI, Globals.revolver.revolverKD, Globals.revolver.revolverKF);
-            revolverPID.setTolerance(10);
+            revolverPID.setTolerance(revolvertol);
 
             intakedistone = hardwareMap.get(DistanceSensor.class, "colour1");
             intakedisttwo = hardwareMap.get(DistanceSensor.class, "colour2");
 
             gate = new SimpleServo(hardwareMap,"gate", 0, 300, AngleUnit.DEGREES);
             gate.turnToAngle(Globals.openGate);
+
+            revolverindex = 0;
+            revolvertarget = 0;
+
+            revolverReady = true;
         }
 
         public void intakeon() {
@@ -376,15 +381,8 @@ public class FROGTONOMOUSTESTINGV2 extends CommandOpMode {
             intake.set(0);
         }
 
-        public void onerotation(boolean left) {
-            revolverReady = false;
-
-            previousRevolverPosition = revolverposition;
-            revolverTarget += left ? +Globals.revolver.oneRotation : -Globals.revolver.oneRotation;
-        }
-
         public void sort(int pickupnum){//1 = ppg 2 pgp 3 gpp,
-            if (ballcount == 2 && pattern == 3 && pickupnum == 1) {
+            if (ballcount == 2 && pattern == 3 && pickupnum == 1 && revolverReady) {
                 onerotation(ballcases(pickupnum, true));
                 ballcount ++;
             }
@@ -394,19 +392,22 @@ public class FROGTONOMOUSTESTINGV2 extends CommandOpMode {
                     onerotation(ballcases(pickupnum, true));
                     ballcount ++;
                 }
-
             }
+        }
 
+        public void onerotation(boolean left) {
+            revolverReady = false;
+            revolverindex += left ? 1 : -1;
+            revolvertarget = revolverindex * Globals.revolver.oneRotation;
         }
 
         @Override
         public void periodic () {
-            revolverposition = revolver.getCurrentPosition();
-            revolverPower = revolverPID.calculate(revolver.getCurrentPosition(), revolverTarget);
+            revolverPower = revolverPID.calculate(revolver.getCurrentPosition(), revolvertarget);
             revolver.set(revolverPower);
 
             if (!revolverReady &&
-                    Math.abs(Math.abs(revolver.getCurrentPosition() - previousRevolverPosition) - Globals.revolver.oneRotation) < 10) {
+                    Math.abs(revolver.getCurrentPosition() - revolvertarget) < revolvertol) {
                 revolverReady = true;
             }
         }
@@ -510,34 +511,6 @@ public class FROGTONOMOUSTESTINGV2 extends CommandOpMode {
             }
         }
 
-        private void aiming() {
-            ff.setPIDF(Globals.launcher.flykP, Globals.launcher.flykI, Globals.launcher.flykD, Globals.launcher.flykF);
-            turretPIDF.setPIDF(Globals.turret.turretKP, Globals.turret.turretKI, Globals.turret.turretKD, Globals.turret.turretKF);
-            visionPortal.setProcessorEnabled(tagProcessor, true);
-
-
-            List<AprilTagDetection> detections = tagProcessor.getDetections();
-
-            if (detections != null && !detections.isEmpty()) {
-                for (AprilTagDetection d : detections) {
-                    if (d.ftcPose != null && d.id == 20) {//blue IS 20 red IS 24 TODO READD ID==20
-                        power = (2547.5 * pow(2.718281828459045, (0.0078 * d.ftcPose.range))) / Globals.launcher.launcherTransformation; // here
-
-                        aligned = Math.abs(d.ftcPose.bearing) <= Globals.turret.turretTol;
-                        double delta = aligned ? 0.0 : turretPIDF.calculate(d.ftcPose.bearing, -Globals.turret.turretLocationError);
-                        turretTarget += delta;
-                    }
-                }
-            } else {
-                power = 0;
-            }
-
-//            turrot1.turnToAngle(turretTarget);
-//            turrot2.turnToAngle(turretTarget);
-            turrot1.turnToAngle(180);
-            turrot2.turnToAngle(180);
-        }
-
         private void outtakeon() {
             timer.reset();
             ballsshot = 0;
@@ -569,6 +542,9 @@ public class FROGTONOMOUSTESTINGV2 extends CommandOpMode {
                     eject.turnToAngle(Globals.pushServo.eject);
                     if (timer.seconds() > 0.1) {
                         if ((ang > 175 && ang < 195) || launcherdist.getDistance(DistanceUnit.CM) < 5) {
+                            froggylaunch = launchseq.SHOOTING;
+                            break;
+                        } else if (timer.seconds() > 0.3){
                             froggylaunch = launchseq.SHOOTING;
                             break;
                         }
@@ -618,10 +594,10 @@ public class FROGTONOMOUSTESTINGV2 extends CommandOpMode {
             ang = (ejectAnalog.getVoltage()/3.3) * 360;
             launcher1.set(feedforwardPower);
             launcher2.set(feedforwardPower);
-//            if (pattern == 3 && shootnum == 0 && !pattern3turned){
-//                onerotation(true);
-//                pattern3turned = true;
-//            }
+            if (pattern == 3 && shootnum == 0 && !pattern3turned){
+                intake.onerotation(true);
+                pattern3turned = true;
+            }
             shooting(shootnum);
         }
 
@@ -728,21 +704,6 @@ public class FROGTONOMOUSTESTINGV2 extends CommandOpMode {
 
     @Override
     public void initialize() {
-//        tagProcessor = new AprilTagProcessor.Builder()
-//                .setDrawAxes(true)
-//                .setDrawTagID(true)
-//                .setDrawTagOutline(true)
-//                .setDrawCubeProjection(true)
-//                .setLensIntrinsics(914.101, 914.101, 645.664, 342.333)
-//                .build();
-//
-//        visionPortal = new VisionPortal.Builder()
-//                .addProcessor(tagProcessor)
-//                .setCamera(hardwareMap.get(WebcamName.class, "ov9281"))
-//                .setStreamFormat(VisionPortal.StreamFormat.MJPEG)
-//                .setCameraResolution(new android.util.Size(1280, 720))
-//                .build();
-
         froggyintake = new intakesubsys(hardwareMap);
         froggyouttake = new outtakesubsys(hardwareMap, froggyintake);
         froggyvision = new visionsubsystem(hardwareMap);
