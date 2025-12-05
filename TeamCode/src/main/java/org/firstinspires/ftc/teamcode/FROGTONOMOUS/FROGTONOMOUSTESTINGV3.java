@@ -66,6 +66,7 @@ public class FROGTONOMOUSTESTINGV3 extends CommandOpMode {
     private boolean launchfinished = false;
     private boolean cumdown = false;
     private double revolverposition;
+    private boolean ejected = false;
     private double ang;
     private double previousRPM = 0;
     private boolean rotated = false;
@@ -127,7 +128,6 @@ public class FROGTONOMOUSTESTINGV3 extends CommandOpMode {
                         new BezierLine(new Pose(45.308, 86.131), new Pose(20.020, 85.698))
                 )
                 .setConstantHeadingInterpolation(Math.toRadians(180))
-                .setTimeoutConstraint(0.5)
                 .build();
 
         shoot6 = follower.pathBuilder()
@@ -139,17 +139,16 @@ public class FROGTONOMOUSTESTINGV3 extends CommandOpMode {
 
         eat6setup = follower.pathBuilder()
                 .addPath(
-                        new BezierLine(new Pose(45.308, 86.131), new Pose(41.795, 61.639))
+                        new BezierLine(new Pose(45.308, 86.131), new Pose(43.795, 61.639))
                 )
                 .setConstantHeadingInterpolation(Math.toRadians(180))
                 .build();
 
         eat6 = follower.pathBuilder()
                 .addPath(
-                        new BezierLine(new Pose(41.795, 61.639), new Pose(19.317, 61.463))
+                        new BezierLine(new Pose(43.795, 61.639), new Pose(19.317, 61.463))
                 )
                 .setConstantHeadingInterpolation(Math.toRadians(180))
-                .setTimeoutConstraint(500)
                 .build();
 
         shoot9 = follower.pathBuilder()
@@ -161,7 +160,7 @@ public class FROGTONOMOUSTESTINGV3 extends CommandOpMode {
 
         eat9setup = follower.pathBuilder()
                 .addPath(
-                        new BezierLine(new Pose(45.308, 86.131), new Pose(41.944, 37.234))
+                        new BezierLine(new Pose(45.308, 86.131), new Pose(43.944, 37.234))
                 )
                 .setConstantHeadingInterpolation(Math.toRadians(180))
                 .build();
@@ -169,10 +168,9 @@ public class FROGTONOMOUSTESTINGV3 extends CommandOpMode {
         eat9 = follower
                 .pathBuilder()
                 .addPath(
-                        new BezierLine(new Pose(41.944, 37.234), new Pose(18.841, 37.234))
+                        new BezierLine(new Pose(43.944, 37.234), new Pose(18.841, 37.234))
                 )
                 .setConstantHeadingInterpolation(Math.toRadians(180))
-                .setTimeoutConstraint(500)
                 .build();
 
         shoot12 = follower
@@ -362,7 +360,7 @@ public class FROGTONOMOUSTESTINGV3 extends CommandOpMode {
             revolver.resetEncoder();
 
             revolverPID = new PIDFController(Globals.revolver.revolverKP, Globals.revolver.revolverKI, Globals.revolver.revolverKD, Globals.revolver.revolverKF);
-            revolverPID.setTolerance(7);
+            revolverPID.setTolerance(10);
 
             intakedistone = hardwareMap.get(DistanceSensor.class, "colour1");
             intakedisttwo = hardwareMap.get(DistanceSensor.class, "colour2");
@@ -377,10 +375,18 @@ public class FROGTONOMOUSTESTINGV3 extends CommandOpMode {
             ballcount = 0;
         }
 
+        public void intake() {
+            intake.set(Globals.intakePower);
+        }
+
         public void intakeoff() {
             intake.set(0);
             gate.turnToAngle(Globals.openGate);
             ballcount = 0;
+        }
+
+        public void outtake() {
+            intake.set(0);
         }
 
         public void sort(int pickupnum){//1 = ppg 2 pgp 3 gpp,
@@ -394,7 +400,7 @@ public class FROGTONOMOUSTESTINGV3 extends CommandOpMode {
             }
 
             if (ballcount < 2) {
-                if ((intakedistone.getDistance(DistanceUnit.CM) < 3 || intakedisttwo.getDistance(DistanceUnit.CM) < 3) && revolverReady) {
+                if ((intakedistone.getDistance(DistanceUnit.CM) < 2 || intakedisttwo.getDistance(DistanceUnit.CM) < 2) && revolverReady) {
                             onerotation(ballcases(pickupnum, true));
                             ballcount ++;
                 }
@@ -411,7 +417,7 @@ public class FROGTONOMOUSTESTINGV3 extends CommandOpMode {
             revolver.set(revolverPower);
 
             if (!revolverReady &&
-                    Math.abs(Math.abs(revolver.getCurrentPosition() - previousRevolverPosition) - Globals.revolver.oneRotation) < 7) {
+                    Math.abs(Math.abs(revolver.getCurrentPosition() - previousRevolverPosition) - Globals.revolver.oneRotation) < 10) {
                 revolverReady = true;
             }
         }
@@ -440,6 +446,25 @@ public class FROGTONOMOUSTESTINGV3 extends CommandOpMode {
         @Override
         public void end(boolean interrupted) {
             intake.intakeoff();
+        }
+    }
+
+    public static class froggyintakeon extends CommandBase {
+        private final intakesubsys intake;
+
+        public froggyintakeon(intakesubsys intake) {
+            this.intake = intake;
+            addRequirements(intake);
+        }
+
+        @Override
+        public void initialize() {
+            intake.intake();
+        }
+
+        @Override
+        public void end(boolean interrupted) {
+            intake.outtake();
         }
     }
 
@@ -545,10 +570,16 @@ public class FROGTONOMOUSTESTINGV3 extends CommandOpMode {
                     }
                     break;
                 case READY:
+                    if (!ejected){
+                        timer.reset();
+                        ejected = true;
+                    }
                     eject.turnToAngle(Globals.pushServo.eject);
-                    if ((ang > 180 && ang < 210) || launcherdist.getDistance(DistanceUnit.CM) < 5){
-                        froggylaunch = launchseq.SHOOTING;
-                        break;
+                    if (timer.seconds() > 0.1) {
+                        if ((ang > 175 && ang < 195) || launcherdist.getDistance(DistanceUnit.CM) < 5) {
+                            froggylaunch = launchseq.SHOOTING;
+                            break;
+                        }
                     }
                     break;
                 case SHOOTING:
@@ -591,7 +622,7 @@ public class FROGTONOMOUSTESTINGV3 extends CommandOpMode {
         private void launch(int shootnum) {
             calculateRPM();
             //feedforwardPower = ff.calculate(RPM, power);
-            feedforwardPower = ff.calculate(RPM, 3600);
+            feedforwardPower = ff.calculate(RPM, 3500);
             ang = (ejectAnalog.getVoltage()/3.3) * 360;
             launcher1.set(feedforwardPower);
             launcher2.set(feedforwardPower);
@@ -741,26 +772,22 @@ public class FROGTONOMOUSTESTINGV3 extends CommandOpMode {
                 new ParallelDeadlineGroup(
                         new FollowPathCommand(follower, shoot3),
                         new froggyvision(new visionsubsystem(hardwareMap))
-
                 ),
-
                 new ParallelDeadlineGroup(
-
-                        new WaitCommand(3000),
+                        new WaitCommand(3300),
                         new froggyspit(new outtakesubsys(hardwareMap), 0)
                 ),
-
                 new ParallelDeadlineGroup(
                         new FollowPathCommand(follower, eat3),
-
                         new froggyeat(new intakesubsys(hardwareMap), 1)
-
+                ),
+                new ParallelDeadlineGroup(
+                        new FollowPathCommand(follower, shoot6),
+                        new froggyintakeon(new intakesubsys(hardwareMap))
                 ),
 
-                new FollowPathCommand(follower, shoot6),
-
                 new ParallelDeadlineGroup(
-                        new WaitCommand(3000),
+                        new WaitCommand(3300),
 
                         new froggyspit(new outtakesubsys(hardwareMap), 1)
                 ),
@@ -774,11 +801,14 @@ public class FROGTONOMOUSTESTINGV3 extends CommandOpMode {
 
                 ),
 //
-                new FollowPathCommand(follower, shoot9),
+                new ParallelDeadlineGroup(
+                        new FollowPathCommand(follower, shoot9),
+                        new froggyintakeon(new intakesubsys(hardwareMap))
+                ),
 
                 new ParallelDeadlineGroup(
 
-                        new WaitCommand(3000),
+                        new WaitCommand(3300),
 
                         new froggyspit(new outtakesubsys(hardwareMap), 2)
 
@@ -788,7 +818,10 @@ public class FROGTONOMOUSTESTINGV3 extends CommandOpMode {
                         new FollowPathCommand(follower, eat9),
                         new froggyeat(new intakesubsys(hardwareMap), 1)
                 ),
-                new FollowPathCommand(follower, shoot12),
+                new ParallelDeadlineGroup(
+                        new FollowPathCommand(follower, shoot12),
+                        new froggyintakeon(new intakesubsys(hardwareMap))
+                ),
                 new ParallelDeadlineGroup(
                         new WaitCommand(2500),
                         new froggyspit(new outtakesubsys(hardwareMap), 1)

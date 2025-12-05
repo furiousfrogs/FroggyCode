@@ -475,6 +475,7 @@ public class QualsBlue extends OpMode {
         telemetry.addData("launch cycle, ", currentshoot3);
 
         telemetry.addData("ang ", (ejectAnalog.getVoltage()/3.3) * 360);
+        telemetry.addData("dist ", launchDistanceSensor.getDistance(DistanceUnit.CM));
         telemetry.update();
 
         TelemetryPacket rpmPacket = new TelemetryPacket();
