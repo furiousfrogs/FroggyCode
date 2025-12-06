@@ -356,7 +356,7 @@ public class QualsBlue extends OpMode {
         boolean ballExists = cDist1 < 3 || cDist2 < 3;
 
         if (!revolverReady &&
-                Math.abs(Math.abs(revolver.getCurrentPosition() - previousRevolverPosition) - Globals.revolver.oneRotation) < 9) {
+                Math.abs(Math.abs(revolver.getCurrentPosition() - previousRevolverPosition) - Globals.revolver.oneRotation) < 10) {
             revolverReady = true;
         }
         if (gamepadEx2.getButton(GamepadKeys.Button.CIRCLE) && !revolverOn && !prevCircle) {
@@ -475,6 +475,7 @@ public class QualsBlue extends OpMode {
         telemetry.addData("launch cycle, ", currentshoot3);
 
         telemetry.addData("ang ", (ejectAnalog.getVoltage()/3.3) * 360);
+        telemetry.addData("dist ", launchDistanceSensor.getDistance(DistanceUnit.CM));
         telemetry.update();
 
         TelemetryPacket rpmPacket = new TelemetryPacket();

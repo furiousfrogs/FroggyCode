@@ -21,17 +21,18 @@ public class Globals {
 
     @Config
     public static class revolver {
-        public static int oneRotation = 123; //|| Minus is counter-clockwise rotation.
-        public static float revolverKP = 0.009F;
-        public static float revolverKD= 0.00048F;
-        public static float revolverKI = 0F;
-        public static float revolverKF = 0.00038F;
-        public static float revolverNudge = 2F;
+        public static int oneRotation = 128;
+        public static float revolverKD = 0.0003F;
+        public static float revolverKF = 0;
+        public static float revolverKI = 0;
+        public static float revolverKP = 0.006F;
+        public static float revolverNudge = 2;
+
     }
 
     @Config
     public static class launcher {
-        public static float RPMDipThreshold = 300;
+        public static float RPMDipThreshold = 200;
         public static float launcherTransformation = 1.03F;
         public static float launcherTol = 100F;
         public static double flykP =0.00038; //0.00016811 OR 0.00038
