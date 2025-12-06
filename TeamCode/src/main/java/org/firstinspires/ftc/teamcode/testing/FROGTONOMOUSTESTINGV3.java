@@ -1,12 +1,9 @@
-package org.firstinspires.ftc.teamcode.FROGTONOMOUS;
+package org.firstinspires.ftc.teamcode.testing;
 import static java.lang.Math.addExact;
 import static java.lang.Math.pow;
-import android.graphics.Color;
-import android.util.Size;
-import com.acmerobotics.dashboard.FtcDashboard;
+
 import com.bylazar.configurables.annotations.Configurable;
 import com.pedropathing.follower.Follower;
-import com.pedropathing.geometry.BezierCurve;
 import com.pedropathing.geometry.BezierLine;
 import com.pedropathing.geometry.Pose;
 import com.pedropathing.paths.PathChain;
@@ -14,31 +11,23 @@ import com.qualcomm.hardware.limelightvision.LLResult;
 import com.qualcomm.hardware.limelightvision.LLResultTypes;
 import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.hardware.AnalogInput;
-import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DistanceSensor;
 import com.qualcomm.robotcore.hardware.HardwareMap;
-import com.qualcomm.robotcore.hardware.NormalizedColorSensor;
-import com.qualcomm.robotcore.hardware.NormalizedRGBA;
-import com.qualcomm.robotcore.robocol.Command;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.seattlesolvers.solverslib.command.CommandBase;
-import com.seattlesolvers.solverslib.command.CommandGroupBase;
 import com.seattlesolvers.solverslib.command.CommandOpMode;
-import com.seattlesolvers.solverslib.command.InstantCommand;
-import com.seattlesolvers.solverslib.command.ParallelCommandGroup;
 import com.seattlesolvers.solverslib.command.ParallelDeadlineGroup;
 import com.seattlesolvers.solverslib.command.SequentialCommandGroup;
 import com.seattlesolvers.solverslib.command.SubsystemBase;
 import com.seattlesolvers.solverslib.command.WaitCommand;
-import com.seattlesolvers.solverslib.controller.PIDController;
 import com.seattlesolvers.solverslib.controller.PIDFController;
-import com.seattlesolvers.solverslib.gamepad.GamepadKeys;
 import com.seattlesolvers.solverslib.hardware.SimpleServo;
 import com.seattlesolvers.solverslib.hardware.motors.Motor;
 import com.seattlesolvers.solverslib.pedroCommand.FollowPathCommand;
 import com.seattlesolvers.solverslib.util.TelemetryData;
-import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
+
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.teamcode.hardware.Globals;
@@ -46,16 +35,15 @@ import org.firstinspires.ftc.teamcode.pedroPathing.Constants;
 import org.firstinspires.ftc.vision.VisionPortal;
 import org.firstinspires.ftc.vision.apriltag.AprilTagDetection;
 import org.firstinspires.ftc.vision.apriltag.AprilTagProcessor;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.*;
 
+import java.util.List;
+
+
+//TODO SHOOTING PATHING LIMELIGHT PATTERN DETECT CHECK INTAKE
 @Autonomous
+@Disabled
 @Configurable
-public class FROGTONOMOUSTESTINGV2 extends CommandOpMode {
+public class FROGTONOMOUSTESTINGV3 extends CommandOpMode {
     private Follower follower;
     TelemetryData telemetryData = new TelemetryData(telemetry);
     private PathChain shoot3, eat3, shoot6, eat6setup, eat6, shoot9, eat9setup, eat9, shoot12;
@@ -75,11 +63,10 @@ public class FROGTONOMOUSTESTINGV2 extends CommandOpMode {
     private double feedforwardPower = 0;
     private static int pattern = 1;
     private double distance;
-    private int revolverindex = 0;
-    private int revolvertarget = 0;
-    private static final int revolvertol = 8;
     private double power;
     private AnalogInput ejectAnalog;
+    private boolean ejectreturn = false;
+    private boolean launcherready = true;
     private double previousRevolverPosition;
     private PIDFController turretPIDF, ff, revolverPID;
     private SimpleServo set, turrot1, turrot2, eject, gate;
@@ -90,22 +77,20 @@ public class FROGTONOMOUSTESTINGV2 extends CommandOpMode {
     private double bearing = 0.0;
     double turretTarget = 222F; // inital turret angle red
     private boolean launching = true;
+    private int revolverTarget = 0;
     private double revolverPower;
     private int ballcount = 0;
     private int ballsshot = 0;
     private boolean pattern3turned = false;
-    private intakesubsys froggyintake;
-    private outtakesubsys froggyouttake;
-    private visionsubsystem froggyvision;
-
     private enum launchseq {
         NOTREADY,
-        READY,
+       READY,
         SHOOTING,
         RESET,
         COOLDOWN,
         FINISHED
     } private launchseq froggylaunch = launchseq.READY;
+
 
 
 
@@ -136,21 +121,21 @@ public class FROGTONOMOUSTESTINGV2 extends CommandOpMode {
 
         eat6setup = follower.pathBuilder()
                 .addPath(
-                        new BezierLine(new Pose(45.308, 86.131), new Pose(43.795, 57.639))
+                        new BezierLine(new Pose(45.308, 86.131), new Pose(43.795, 61.639))
                 )
                 .setConstantHeadingInterpolation(Math.toRadians(180))
                 .build();
 
         eat6 = follower.pathBuilder()
                 .addPath(
-                        new BezierLine(new Pose(43.795, 57.639), new Pose(19.317, 57.463))
+                        new BezierLine(new Pose(43.795, 61.639), new Pose(19.317, 61.463))
                 )
                 .setConstantHeadingInterpolation(Math.toRadians(180))
                 .build();
 
         shoot9 = follower.pathBuilder()
                 .addPath(
-                        new BezierLine(new Pose(19.317, 57.463), new Pose(45.308, 86.131))
+                        new BezierLine(new Pose(19.317, 61.463), new Pose(45.308, 86.131))
                 )
                 .setConstantHeadingInterpolation(Math.toRadians(180))
                 .build();
@@ -177,6 +162,13 @@ public class FROGTONOMOUSTESTINGV2 extends CommandOpMode {
                 )
                 .setConstantHeadingInterpolation(Math.toRadians(180))
                 .build();
+    }
+
+    public void onerotation(boolean left) {
+        revolverReady = false;
+
+        previousRevolverPosition = revolverposition;
+        revolverTarget += left ? +Globals.revolver.oneRotation : -Globals.revolver.oneRotation;
     }
     public boolean ballcases(int pickupnum, boolean comingin) {
 
@@ -336,8 +328,8 @@ public class FROGTONOMOUSTESTINGV2 extends CommandOpMode {
 
     public class intakesubsys extends SubsystemBase {
         private final Motor intake, revolver;
-        public intakesubsys(HardwareMap hardwareMap) {
-            intake = new Motor(hardwareMap, "intake");
+        public intakesubsys(HardwareMap map) {
+            intake = new Motor(map, "intake");
             intake.setRunMode(Motor.RunMode.RawPower);
             intake.setZeroPowerBehavior(Motor.ZeroPowerBehavior.BRAKE);
             intake.set(0.0);
@@ -347,18 +339,13 @@ public class FROGTONOMOUSTESTINGV2 extends CommandOpMode {
             revolver.resetEncoder();
 
             revolverPID = new PIDFController(Globals.revolver.revolverKP, Globals.revolver.revolverKI, Globals.revolver.revolverKD, Globals.revolver.revolverKF);
-            revolverPID.setTolerance(revolvertol);
+            revolverPID.setTolerance(10);
 
             intakedistone = hardwareMap.get(DistanceSensor.class, "colour1");
             intakedisttwo = hardwareMap.get(DistanceSensor.class, "colour2");
 
             gate = new SimpleServo(hardwareMap,"gate", 0, 300, AngleUnit.DEGREES);
             gate.turnToAngle(Globals.openGate);
-
-            revolverindex = 0;
-            revolvertarget = 0;
-
-            revolverReady = true;
         }
 
         public void intakeon() {
@@ -382,32 +369,29 @@ public class FROGTONOMOUSTESTINGV2 extends CommandOpMode {
         }
 
         public void sort(int pickupnum){//1 = ppg 2 pgp 3 gpp,
-            if (ballcount == 2 && pattern == 3 && pickupnum == 1 && revolverReady) {
+            if (ballcount == 2 && pattern == 3 && pickupnum == 1) {
                 onerotation(ballcases(pickupnum, true));
                 ballcount ++;
             }
 
             if (ballcount < 2) {
-                if ((intakedistone.getDistance(DistanceUnit.CM) < 2.3 || intakedisttwo.getDistance(DistanceUnit.CM) < 2.3) && revolverReady) {
-                    onerotation(ballcases(pickupnum, true));
-                    ballcount ++;
+                if ((intakedistone.getDistance(DistanceUnit.CM) < 2 || intakedisttwo.getDistance(DistanceUnit.CM) < 2) && revolverReady) {
+                            onerotation(ballcases(pickupnum, true));
+                            ballcount ++;
                 }
-            }
-        }
 
-        public void onerotation(boolean left) {
-            revolverReady = false;
-            revolverindex += left ? 1 : -1;
-            revolvertarget = revolverindex * Globals.revolver.oneRotation;
+            }
+
         }
 
         @Override
         public void periodic () {
-            revolverPower = revolverPID.calculate(revolver.getCurrentPosition(), revolvertarget);
+            revolverposition = revolver.getCurrentPosition();
+            revolverPower = revolverPID.calculate(revolver.getCurrentPosition(), revolverTarget);
             revolver.set(revolverPower);
 
             if (!revolverReady &&
-                    Math.abs(revolver.getCurrentPosition() - revolvertarget) < revolvertol) {
+                    Math.abs(Math.abs(revolver.getCurrentPosition() - previousRevolverPosition) - Globals.revolver.oneRotation) < 10) {
                 revolverReady = true;
             }
         }
@@ -465,12 +449,9 @@ public class FROGTONOMOUSTESTINGV2 extends CommandOpMode {
 
 
     public class outtakesubsys extends SubsystemBase {
-        private Motor launcher1, launcher2;
-        private final intakesubsys intake;
+        private Motor launcher1, launcher2, revolver;
         private final ElapsedTime timer = new ElapsedTime();
-        public outtakesubsys(HardwareMap hardwareMap, intakesubsys intake) {
-            this.intake = intake;
-
+        public outtakesubsys(HardwareMap map) {
             launcher1 = new Motor(hardwareMap, "l1", 28, 6000);
             launcher1.setRunMode(Motor.RunMode.RawPower);
             launcher2 = new Motor(hardwareMap, "l2", 28, 6000);
@@ -511,6 +492,34 @@ public class FROGTONOMOUSTESTINGV2 extends CommandOpMode {
             }
         }
 
+        private void aiming() {
+            ff.setPIDF(Globals.launcher.flykP, Globals.launcher.flykI, Globals.launcher.flykD, Globals.launcher.flykF);
+            turretPIDF.setPIDF(Globals.turret.turretKP, Globals.turret.turretKI, Globals.turret.turretKD, Globals.turret.turretKF);
+            visionPortal.setProcessorEnabled(tagProcessor, true);
+
+
+            List<AprilTagDetection> detections = tagProcessor.getDetections();
+
+            if (detections != null && !detections.isEmpty()) {
+                for (AprilTagDetection d : detections) {
+                    if (d.ftcPose != null && d.id == 20) {//blue IS 20 red IS 24 TODO READD ID==20
+                        power = (2547.5 * pow(2.718281828459045, (0.0078 * d.ftcPose.range))) / Globals.launcher.launcherTransformation; // here
+
+                        aligned = Math.abs(d.ftcPose.bearing) <= Globals.turret.turretTol;
+                        double delta = aligned ? 0.0 : turretPIDF.calculate(d.ftcPose.bearing, -Globals.turret.turretLocationError);
+                        turretTarget += delta;
+                    }
+                }
+            } else {
+                power = 0;
+            }
+
+//            turrot1.turnToAngle(turretTarget);
+//            turrot2.turnToAngle(turretTarget);
+            turrot1.turnToAngle(180);
+            turrot2.turnToAngle(180);
+        }
+
         private void outtakeon() {
             timer.reset();
             ballsshot = 0;
@@ -521,7 +530,6 @@ public class FROGTONOMOUSTESTINGV2 extends CommandOpMode {
         private void outtakeoff() {
             launcher1.set(0);
             launcher2.set(0);
-            set.turnToAngle(Globals.launcher.downset);
             ballsshot = 0;
         }
 
@@ -541,8 +549,8 @@ public class FROGTONOMOUSTESTINGV2 extends CommandOpMode {
                         ejected = true;
                     }
                     eject.turnToAngle(Globals.pushServo.eject);
-                    if (timer.seconds() > 0.4) {
-                        if ((ang > 180 && ang < 195) || launcherdist.getDistance(DistanceUnit.CM) < 6) {
+                    if (timer.seconds() > 0.1) {
+                        if ((ang > 175 && ang < 195) || launcherdist.getDistance(DistanceUnit.CM) < 5) {
                             froggylaunch = launchseq.SHOOTING;
                             break;
                         }
@@ -560,7 +568,7 @@ public class FROGTONOMOUSTESTINGV2 extends CommandOpMode {
                         camedown = true;
                     }
                     if (!rotated && ang < 165){
-                        intake.onerotation(ballcases(shootnum, false));
+                        onerotation(ballcases(shootnum, false));
                         rotated = true;
                     }
                     if (camedown && rotated) {
@@ -588,14 +596,14 @@ public class FROGTONOMOUSTESTINGV2 extends CommandOpMode {
         private void launch(int shootnum) {
             calculateRPM();
             //feedforwardPower = ff.calculate(RPM, power);
-            feedforwardPower = ff.calculate(RPM, 3300);
+            feedforwardPower = ff.calculate(RPM, 3500);
             ang = (ejectAnalog.getVoltage()/3.3) * 360;
             launcher1.set(feedforwardPower);
             launcher2.set(feedforwardPower);
-            if (pattern == 3 && shootnum == 0 && !pattern3turned){
-                intake.onerotation(true);
-                pattern3turned = true;
-            }
+//            if (pattern == 3 && shootnum == 0 && !pattern3turned){
+//                onerotation(true);
+//                pattern3turned = true;
+//            }
             shooting(shootnum);
         }
 
@@ -646,20 +654,20 @@ public class FROGTONOMOUSTESTINGV2 extends CommandOpMode {
         }
 
         public void getpattern(){
-            LLResult result = limelight.getLatestResult();
-            if (result != null && result.isValid()) {
-                if (result.getStaleness() < 500) {
-                    List<LLResultTypes.FiducialResult> tags = result.getFiducialResults();
-                    if (!tags.isEmpty()) {
-                        for (LLResultTypes.FiducialResult tag : tags) {
-                            int id = tag.getFiducialId();
-                            if (id == 21) pattern = 3;
-                            if (id == 22) pattern = 2;
-                            if (id == 23) pattern = 1;
+                LLResult result = limelight.getLatestResult();
+                if (result != null && result.isValid()) {
+                    if (result.getStaleness() < 500) {
+                        List<LLResultTypes.FiducialResult> tags = result.getFiducialResults();
+                        if (!tags.isEmpty()) {
+                            for (LLResultTypes.FiducialResult tag : tags) {
+                                int id = tag.getFiducialId();
+                                if (id == 21) pattern = 3;
+                                if (id == 22) pattern = 2;
+                                if (id == 23) pattern = 1;
+                            }
                         }
                     }
                 }
-            }
         }
 
         public void visionend(){
@@ -702,16 +710,30 @@ public class FROGTONOMOUSTESTINGV2 extends CommandOpMode {
 
     @Override
     public void initialize() {
-        froggyintake = new intakesubsys(hardwareMap);
-        froggyouttake = new outtakesubsys(hardwareMap, froggyintake);
-        froggyvision = new visionsubsystem(hardwareMap);
+//        tagProcessor = new AprilTagProcessor.Builder()
+//                .setDrawAxes(true)
+//                .setDrawTagID(true)
+//                .setDrawTagOutline(true)
+//                .setDrawCubeProjection(true)
+//                .setLensIntrinsics(914.101, 914.101, 645.664, 342.333)
+//                .build();
+//
+//        visionPortal = new VisionPortal.Builder()
+//                .addProcessor(tagProcessor)
+//                .setCamera(hardwareMap.get(WebcamName.class, "ov9281"))
+//                .setStreamFormat(VisionPortal.StreamFormat.MJPEG)
+//                .setCameraResolution(new android.util.Size(1280, 720))
+//                .build();
 
         follower = Constants.createFollower(hardwareMap);
         follower.setStartingPose(new Pose(19.738, 122.019, Math.toRadians(-126)));//todo
         telemetry.update();
 
-        register(froggyintake);
-        register(froggyouttake);
+        outtakesubsys loopedfunctionsout = new outtakesubsys(hardwareMap);
+        register(loopedfunctionsout);
+
+        outtakesubsys loopedfunctionsin = new outtakesubsys(hardwareMap);
+        register(loopedfunctionsin);
 
         buildPaths();
 
@@ -722,54 +744,60 @@ public class FROGTONOMOUSTESTINGV2 extends CommandOpMode {
         SequentialCommandGroup froggyroute = new SequentialCommandGroup(
                 new ParallelDeadlineGroup(
                         new FollowPathCommand(follower, shoot3),
-                        new froggyvision(froggyvision)
+                        new froggyvision(new visionsubsystem(hardwareMap))
                 ),
                 new ParallelDeadlineGroup(
-                        new WaitCommand(4200),
-                        new froggyspit(froggyouttake, 0)
+                        new WaitCommand(3300),
+                        new froggyspit(new outtakesubsys(hardwareMap), 0)
                 ),
                 new ParallelDeadlineGroup(
                         new FollowPathCommand(follower, eat3),
-                        new froggyeat(froggyintake, 1)
+                        new froggyeat(new intakesubsys(hardwareMap), 1)
                 ),
                 new ParallelDeadlineGroup(
                         new FollowPathCommand(follower, shoot6),
-                        new froggyintakeon(froggyintake)
+                        new froggyintakeon(new intakesubsys(hardwareMap))
                 ),
 
                 new ParallelDeadlineGroup(
-                        new WaitCommand(4000),
-                        new froggyspit(froggyouttake, 1)
+                        new WaitCommand(3300),
+
+                        new froggyspit(new outtakesubsys(hardwareMap), 1)
                 ),
-                new FollowPathCommand(follower, eat6setup),
+               new FollowPathCommand(follower, eat6setup),
 //
                 new ParallelDeadlineGroup(
+
                         new FollowPathCommand(follower, eat6),
-                        new froggyeat(froggyintake, 2)
+
+                        new froggyeat(new intakesubsys(hardwareMap), 2)
+
                 ),
 //
                 new ParallelDeadlineGroup(
                         new FollowPathCommand(follower, shoot9),
-                        new froggyintakeon(froggyintake)
+                        new froggyintakeon(new intakesubsys(hardwareMap))
                 ),
 
                 new ParallelDeadlineGroup(
-                        new WaitCommand(4000),
-                        new froggyspit(froggyouttake, 2)
+
+                        new WaitCommand(3300),
+
+                        new froggyspit(new outtakesubsys(hardwareMap), 2)
+
                 ),
                 new FollowPathCommand(follower, eat9setup),//TODO ADD COMMA FOR 12BALL
-
                 new ParallelDeadlineGroup(
                         new FollowPathCommand(follower, eat9),
-                        new froggyeat(froggyintake, 2)
+                        new froggyeat(new intakesubsys(hardwareMap), 1)
                 ),
                 new ParallelDeadlineGroup(
                         new FollowPathCommand(follower, shoot12),
-                        new froggyintakeon(froggyintake)
+                        new froggyintakeon(new intakesubsys(hardwareMap))
                 ),
                 new ParallelDeadlineGroup(
-                        new WaitCommand(4000),
-                        new froggyspit(froggyouttake, 1)
+                        new WaitCommand(2500),
+                        new froggyspit(new outtakesubsys(hardwareMap), 1)
                 )
 
         );

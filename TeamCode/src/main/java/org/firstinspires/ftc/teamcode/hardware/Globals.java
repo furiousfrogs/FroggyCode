@@ -32,7 +32,7 @@ public class Globals {
 
     @Config
     public static class launcher {
-        public static float RPMDipThreshold = 300;
+        public static float RPMDipThreshold = 280;
         public static float launcherTransformation = 1.03F;
         public static float launcherTol = 100F;
         public static double flykP =0.00038; //0.00016811 OR 0.00038
