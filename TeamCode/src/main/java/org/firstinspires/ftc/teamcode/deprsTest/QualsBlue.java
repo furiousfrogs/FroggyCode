@@ -246,12 +246,13 @@ public class QualsBlue extends OpMode {
                     case pushin:
                         if (pushupTimer.seconds() > 0.5) {
                             eject.turnToAngle(Globals.pushServo.eject);
-                            if ((ang > 176 && ang < 210)|| dist < 5.5) {
-                                eject.turnToAngle(Globals.pushServo.defualt);
-                                rotated = false;
-                                currentshoot3 = shoot3.rotate;
+                            if (pushupTimer.seconds() > 0.7) {
+                                if ((ang > 176 && ang < 210)|| dist < 5.3) {
+                                    eject.turnToAngle(Globals.pushServo.defualt);
+                                    rotated = false;
+                                    currentshoot3 = shoot3.rotate;
 
-
+                                }
                             }
                         }
                         break;

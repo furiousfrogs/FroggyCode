@@ -55,7 +55,7 @@ import java.util.*;
 
 @Autonomous
 @Configurable
-public class FROGTONOMOUSRED extends CommandOpMode {
+public class FROGTONOMOUSREDRIGHT extends CommandOpMode {
     private Follower follower;
     TelemetryData telemetryData = new TelemetryData(telemetry);
     private PathChain shoot3, eat3, shoot6, eat6setup, eat6, shoot9, eat9setup, eat9, shoot12;
@@ -88,7 +88,7 @@ public class FROGTONOMOUSRED extends CommandOpMode {
     private double lastTime;
     private int lastPosition;
     private double bearing = 0.0;
-    double turretTarget = 222F; // inital turret angle red
+    double turretTarget = 147F; // inital turret angle red
     private boolean launching = true;
     private double revolverPower;
     private int ballcount = 0;
@@ -115,21 +115,21 @@ public class FROGTONOMOUSRED extends CommandOpMode {
     public void buildPaths() {
         shoot3 = follower.pathBuilder()
                 .addPath(
-                        new BezierLine(new Pose(144-19.738, 122.019), new Pose(144-45.308, 86.131))
+                        new BezierLine(new Pose(144-19.738, 122.019), new Pose(144-45.308, 83.531))
                 )
                 .setLinearHeadingInterpolation(Math.toRadians(-54), Math.toRadians(0))
                 .build();
 
         eat3 = follower.pathBuilder()
                 .addPath(
-                        new BezierLine(new Pose(144-45.308, 86.131), new Pose(144-20.020, 85.698))
+                        new BezierLine(new Pose(144-45.308, 83.531), new Pose(144-20.020, 83.598))
                 )
                 .setConstantHeadingInterpolation(Math.toRadians(0))
                 .build();
 
         shoot6 = follower.pathBuilder()
                 .addPath(
-                        new BezierLine(new Pose(144-20.020, 85.698), new Pose(144-45.308, 86.131))
+                        new BezierLine(new Pose(144-20.020, 83.598), new Pose(144-45.308, 86.131))
                 )
                 .setConstantHeadingInterpolation(Math.toRadians(0))
                 .build();
@@ -543,7 +543,7 @@ public class FROGTONOMOUSRED extends CommandOpMode {
                     }
                     eject.turnToAngle(Globals.pushServo.eject);
                     if (timer.seconds() > 0.3 && ejected) {
-                        if ((ang > 180 && ang < 195) || launcherdist.getDistance(DistanceUnit.CM) < 6) {
+                        if ((ang > 180 && ang < 195) || launcherdist.getDistance(DistanceUnit.CM) < 5.5) {
                             froggylaunch = launchseq.SHOOTING;
                             break;
                         }
@@ -589,7 +589,7 @@ public class FROGTONOMOUSRED extends CommandOpMode {
         private void launch(int shootnum) {
             calculateRPM();
             //feedforwardPower = ff.calculate(RPM, power);
-            feedforwardPower = ff.calculate(RPM, 3250);
+            feedforwardPower = ff.calculate(RPM, 3350);
             ang = (ejectAnalog.getVoltage()/3.3) * 360;
             launcher1.set(feedforwardPower);
             launcher2.set(feedforwardPower);
@@ -708,7 +708,7 @@ public class FROGTONOMOUSRED extends CommandOpMode {
         froggyvision = new visionsubsystem(hardwareMap);
 
         follower = Constants.createFollower(hardwareMap);
-        follower.setStartingPose(new Pose(19.738, 122.019, Math.toRadians(-126)));//todo
+        follower.setStartingPose(new Pose(144-19.738, 122.019, Math.toRadians(-54)));//todo
         telemetry.update();
 
         register(froggyintake);

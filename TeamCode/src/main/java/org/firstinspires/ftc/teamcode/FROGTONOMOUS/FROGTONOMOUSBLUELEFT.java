@@ -55,7 +55,7 @@ import java.util.*;
 
 @Autonomous
 @Configurable
-public class FROGTONOMOUSBLUE extends CommandOpMode {
+public class FROGTONOMOUSBLUELEFT extends CommandOpMode {
     private Follower follower;
     TelemetryData telemetryData = new TelemetryData(telemetry);
     private PathChain shoot3, eat3, shoot6, eat6setup, eat6, shoot9, eat9setup, eat9, shoot12;
@@ -115,14 +115,14 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
     public void buildPaths() {
         shoot3 = follower.pathBuilder()
                 .addPath(
-                        new BezierLine(new Pose(19.738, 122.019), new Pose(45.308, 86.131))
+                        new BezierLine(new Pose(19.738, 122.019), new Pose(45.308, 85.131))
                 )
                 .setLinearHeadingInterpolation(Math.toRadians(-126), Math.toRadians(180))
                 .build();
 
         eat3 = follower.pathBuilder()
                 .addPath(
-                        new BezierLine(new Pose(45.308, 86.131), new Pose(20.020, 85.698))
+                        new BezierLine(new Pose(45.308, 85.131), new Pose(20.020, 85.698))
                 )
                 .setConstantHeadingInterpolation(Math.toRadians(180))
                 .build();
@@ -136,21 +136,21 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
 
         eat6setup = follower.pathBuilder()
                 .addPath(
-                        new BezierLine(new Pose(45.308, 86.131), new Pose(43.795, 57.639))
+                        new BezierLine(new Pose(45.308, 86.131), new Pose(43.795, 59))
                 )
                 .setConstantHeadingInterpolation(Math.toRadians(180))
                 .build();
 
         eat6 = follower.pathBuilder()
                 .addPath(
-                        new BezierLine(new Pose(43.795, 57.639), new Pose(17.317, 57.463))
+                        new BezierLine(new Pose(43.795, 59), new Pose(19.317, 59))
                 )
                 .setConstantHeadingInterpolation(Math.toRadians(180))
                 .build();
 
         shoot9 = follower.pathBuilder()
                 .addPath(
-                        new BezierLine(new Pose(19.317, 57.463), new Pose(45.308, 86.131))
+                        new BezierLine(new Pose(19.317, 59), new Pose(45.308, 86.131))
                 )
                 .setConstantHeadingInterpolation(Math.toRadians(180))
                 .build();
@@ -543,7 +543,7 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
                     }
                     eject.turnToAngle(Globals.pushServo.eject);
                     if (timer.seconds() > 0.3 && ejected) {
-                        if ((ang > 180 && ang < 195) || launcherdist.getDistance(DistanceUnit.CM) < 6) {
+                        if ((ang > 180 && ang < 195) || launcherdist.getDistance(DistanceUnit.CM) < 5.5) {
                             froggylaunch = launchseq.SHOOTING;
                             break;
                         }
@@ -589,7 +589,7 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
         private void launch(int shootnum) {
             calculateRPM();
             //feedforwardPower = ff.calculate(RPM, power);
-            feedforwardPower = ff.calculate(RPM, 3250);
+            feedforwardPower = ff.calculate(RPM, 3300);
             ang = (ejectAnalog.getVoltage()/3.3) * 360;
             launcher1.set(feedforwardPower);
             launcher2.set(feedforwardPower);
