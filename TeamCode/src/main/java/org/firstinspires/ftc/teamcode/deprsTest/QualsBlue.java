@@ -80,11 +80,8 @@ public class QualsBlue extends OpMode {
     // ----- launcher -----
     private double RPM;
     private double previousRPM = 0;
-    private double previouspreviosRPM = 0;
     private double lastTime;
     private int lastPosition;
-    private double slopeLaunch1;
-    private double slopeLaunch2;
 
     // ----- turret -----
     double turretTarget = 183F; // inital turret angle
@@ -111,9 +108,6 @@ public class QualsBlue extends OpMode {
     // ---- timers ----
     private ElapsedTime pushupTimer = new ElapsedTime();
     private ElapsedTime revolverTimer = new ElapsedTime();
-    private ElapsedTime cameraTimer = new ElapsedTime();
-    private boolean noTag = true;
-    private double range = 20;
     @Override
     public void init() {
         // ----- drive -----
@@ -242,7 +236,7 @@ public class QualsBlue extends OpMode {
                     launcher1.set(0);
                     launcher2.set(0);
                 }
-            } prevCross = gamepadEx2.getButton(GamepadKeys.Button.CROSS);
+            }prevCross = gamepadEx2.getButton(GamepadKeys.Button.CROSS);
             if (shootcycle) {
                 gate.turnToAngle(Globals.openGate);
                 if (Collections.frequency(revolverState, "EMPTY") < 3) {
@@ -256,12 +250,16 @@ public class QualsBlue extends OpMode {
                                 eject.turnToAngle(Globals.pushServo.defualt);
                                 rotated = false;
                                 currentshoot3 = shoot3.rotate;
+
+
                             }
                         }
                         break;
 
-                    case rotate:
+                    case rotate: //TODO fix this
+
                         eject.turnToAngle(Globals.pushServo.defualt);
+
                         if (ang < 168 && !rotated) {
                             oneRotationRevolver(true);
                             Collections.rotate(revolverState, 1);
@@ -283,6 +281,7 @@ public class QualsBlue extends OpMode {
                             oneRotationRevolver(false);
                             Collections.rotate(revolverState, -1);
                         }
+
                         if (Math.abs(Math.abs(revolver.getCurrentPosition() - previousRevolverPosition) - Globals.revolver.oneRotation) < 10 && rotated) {
                             eject.turnToAngle(Globals.pushServo.eject);
                             if ((ang > 180 && ang < 210) || dist < 5.5) {
@@ -326,8 +325,10 @@ public class QualsBlue extends OpMode {
 
     }
     public void oneRotationRevolver(boolean left) {
+        // PID setup
 
-        revolverPID.setTolerance(10);
+        // PID setup
+        revolverPID.setTolerance(0);
         revolverPID.setPIDF(Globals.revolver.revolverKP, Globals.revolver.revolverKI, Globals.revolver.revolverKD, Globals.revolver.revolverKF);
         previousRevolverPosition = revolver.getCurrentPosition();
         revolverTarget += left ? +Globals.revolver.oneRotation : -Globals.revolver.oneRotation;
@@ -335,7 +336,8 @@ public class QualsBlue extends OpMode {
     }
 
     public void intakeSystem() {
-
+        revolverPID.setTolerance(0);
+        revolverPID.setPIDF(Globals.revolver.revolverKP, Globals.revolver.revolverKI, Globals.revolver.revolverKD, Globals.revolver.revolverKF);
         revolverPower = revolverPID.calculate(revolver.getCurrentPosition(), revolverTarget);
         revolver.set(revolverPower);
         revolverTarget += (int) ((gamepadEx2.getTrigger(GamepadKeys.Trigger.RIGHT_TRIGGER) - gamepadEx2.getTrigger(GamepadKeys.Trigger.LEFT_TRIGGER)) * Globals.revolver.revolverNudge);
@@ -354,14 +356,9 @@ public class QualsBlue extends OpMode {
         boolean ballExists = cDist1 < 3 || cDist2 < 3;
 
         if (!revolverReady &&
-            Math.abs(Math.abs(
-            revolver.getCurrentPosition() - previousRevolverPosition)
-            - Globals.revolver.oneRotation) < 10) {
-
+                Math.abs(Math.abs(revolver.getCurrentPosition() - previousRevolverPosition) - Globals.revolver.oneRotation) < 10) {
             revolverReady = true;
         }
-
-
         if (gamepadEx2.getButton(GamepadKeys.Button.CIRCLE) && !revolverOn && !prevCircle) {
             revolverState.set(0, "P");
             revolverState.set(1, "P");
@@ -376,7 +373,8 @@ public class QualsBlue extends OpMode {
         prevPS = gamepadEx2.getButton(GamepadKeys.Button.PS);
         prevCircle = gamepadEx2.getButton(GamepadKeys.Button.CIRCLE);
 
-        if (!shootcycle) {
+        if (!shootcycle) {// "P", "G", or "EMPTY"
+
             if (gamepadEx2.getButton(GamepadKeys.Button.SQUARE) && !prevSquare2 && revolverReady) {
                 revolverReady = false;
                 oneRotationRevolver(true);
@@ -397,20 +395,16 @@ public class QualsBlue extends OpMode {
         double deltaTime = currentTime - lastTime;
         int deltaTicks = currentPosition - lastPosition;
 
-
-        slopeLaunch1 = (RPM - previousRPM)/0.02;
-        slopeLaunch2 = (RPM - previouspreviosRPM)/0.04;
         if (deltaTime > 0.02) {
-            previouspreviosRPM = previousRPM;
             previousRPM = RPM;
             double revs = (double) deltaTicks / 28.0; // GoBILDA CPR
             RPM = (revs / deltaTime) * 60.0;
+
             lastTime = currentTime;
             lastPosition = currentPosition;
         }
     }
     private void autoAimServoMode() {
-
 
         ff.setPIDF(Globals.launcher.flykP, Globals.launcher.flykI, Globals.launcher.flykD, Globals.launcher.flykF);
         turretPIDF.setPIDF(Globals.turret.turretKP, Globals.turret.turretKI, Globals.turret.turretKD, Globals.turret.turretKF);
@@ -435,63 +429,54 @@ public class QualsBlue extends OpMode {
         if (!(lb || rb) && autoAimEnabled) {
             if (detections != null && !detections.isEmpty()) {
                 for (AprilTagDetection d : detections) {
-                    if (d.ftcPose != null) {
-                        range = d.ftcPose.range;
+                    if (d.ftcPose != null && d.id == 20) {//blue IS 20 red IS 24 TODO READD ID==20
+                        power = (2547.5 * pow(2.718281828459045, (0.0078 * d.ftcPose.range))) / Globals.launcher.launcherTransformation; // here
+                        
                         bearing = d.ftcPose.bearing;
-                        noTag = false;
+                        aligned = Math.abs(d.ftcPose.bearing) <= Globals.turret.turretTol;
+                        double delta = aligned ? 0.0 : turretPIDF.calculate(d.ftcPose.bearing, -Globals.turret.turretLocationError);
+                        turretTarget += delta; //THIS IS POSITIVE
                     }
                 }
-            } else if (!noTag) {
-                noTag = true;
-                cameraTimer.reset();
+            } else {
+                power = Globals.targetRPM;
             }
-
         } else if (lb ^ rb) {
             aligned = false;
             turretTarget -= lb ? +Globals.turret.nudge : -Globals.turret.nudge; //THIS IS NEGATIVE
         } else if (!autoAimEnabled) {
             aligned = true;
             power = Globals.targetRPM;
+        } else {
+            bearing = 0;
         }
 
-        if (!noTag || cameraTimer.seconds() < 1) {
-            power = (2547.5 * pow(2.718281828459045, (0.0078 * range))) / Globals.launcher.launcherTransformation;
-            aligned = Math.abs(bearing) <= Globals.turret.turretTol;
-            double delta = aligned ? 0.0 : turretPIDF.calculate(bearing, -Globals.turret.turretLocationError);
-            turretTarget += delta;
-        } else {
-            power = Globals.targetRPM;
-            aligned = false;
-        }
         if (turretTarget >= 245) {
             turretTarget = 245;
         } else if (turretTarget <= 120) {
             turretTarget = 120;
         }
-    }
+
+
+        }
 
 
 
     private void doTelemetry() {
-//        telemetry.addLine("revolver")
-//                .addData("0", revolverState.get(0))
-//                .addData("1", revolverState.get(1))
-//                .addData("2", revolverState.get(2));
-//        telemetry.addData("# balls", Collections.frequency(revolverState, "P"));
-//        telemetry.addLine(" ");
-//        telemetry.addData("aligned? ", aligned);
-//        telemetry.addData("autoaim enabled? ", autoAimEnabled);
-//        telemetry.addLine(" ");
-//        telemetry.addData("launch cycle, ", currentshoot3);
-//
-//        telemetry.addData("ang ", (ejectAnalog.getVoltage()/3.3) * 360);
-//        telemetry.addData("dist ", launchDistanceSensor.getDistance(DistanceUnit.CM));
-//        telemetry.update();
+        telemetry.addLine("revolver")
+                .addData("0", revolverState.get(0))
+                .addData("1", revolverState.get(1))
+                .addData("2", revolverState.get(2));
+        telemetry.addData("# balls", Collections.frequency(revolverState, "P"));
+        telemetry.addLine(" ");
+        telemetry.addData("aligned? ", aligned);
+        telemetry.addData("autoaim enabled? ", autoAimEnabled);
+        telemetry.addLine(" ");
+        telemetry.addData("launch cycle, ", currentshoot3);
 
-        telemetry.addData("bear", bearing);
-        telemetry.addData("powe", power);
-        telemetry.addData("sl1", slopeLaunch1);
-        telemetry.addData("se2", slopeLaunch2);
+        telemetry.addData("ang ", (ejectAnalog.getVoltage()/3.3) * 360);
+        telemetry.addData("dist ", launchDistanceSensor.getDistance(DistanceUnit.CM));
+        telemetry.update();
 
         TelemetryPacket rpmPacket = new TelemetryPacket();
         rpmPacket.put("RPM", RPM);

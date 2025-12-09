@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode.FROGTONOMOUS;
+package org.firstinspires.ftc.teamcode.testing;
 
 
 
@@ -25,6 +25,7 @@ import com.qualcomm.hardware.limelightvision.Limelight3A;
 
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.hardware.DistanceSensor;
 
 import com.qualcomm.robotcore.hardware.HardwareMap;
@@ -80,10 +81,10 @@ import java.util.List;
 
 
 @Autonomous
-
+@Disabled
 @Configurable
 
-public class FROGTONOMOUSBLUE extends CommandOpMode {
+public class FROGTONOMOUSREDFAILED extends CommandOpMode {
 
     private Follower follower;
 
@@ -96,6 +97,7 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
     private boolean one = false;
 
     private boolean two = false;
+
 
     private boolean revolverReady = true;
 
@@ -121,7 +123,7 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
 
     private SimpleServo set, rotate, eject;
 
-    private DistanceSensor intakedistone, intakedisttwo, launcherdist;
+    private DistanceSensor distanceSensor, secondDistanceSensor;
 
     private double RPM;
 
@@ -131,7 +133,7 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
 
     private double bearing = 0.0;
 
-    double turretTarget = 299F; // inital turret angle red
+    double turretTarget = 1F; // inital turret angle red
 
     private boolean launching = false;
 
@@ -159,11 +161,11 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
 
                 .addPath(
 
-                        new BezierLine(new Pose(18.790, 119.941), new Pose(44.078, 94.302))
+                        new BezierLine(new Pose(144-18.790, 119.941), new Pose(144-44.078, 94.302))
 
                 )
 
-                .setLinearHeadingInterpolation(Math.toRadians(-126), Math.toRadians(-115))
+                .setLinearHeadingInterpolation(Math.toRadians(-54), Math.toRadians(-65))
 
                 .build();
 
@@ -173,11 +175,11 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
 
                 .addPath(
 
-                        new BezierLine(new Pose(44.078, 94.302), new Pose(44.078, 84.941))
+                        new BezierLine(new Pose(144-44.078, 94.302), new Pose(144-44.078, 80.941))
 
                 )
 
-                .setLinearHeadingInterpolation(Math.toRadians(-115), Math.toRadians(180))
+                .setLinearHeadingInterpolation(Math.toRadians(-65), Math.toRadians(0))
 
                 .build();
 
@@ -187,11 +189,11 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
 
                 .addPath(
 
-                        new BezierLine(new Pose(44.078, 84.941), new Pose(18.844, 84.941))
+                        new BezierLine(new Pose(144-44.078, 80.941), new Pose(144-18.5, 80.941))
 
                 )
 
-                .setLinearHeadingInterpolation(Math.toRadians(180), Math.toRadians(180))
+                .setLinearHeadingInterpolation(Math.toRadians(0), Math.toRadians(0))
 
                 .setTimeoutConstraint(500)
 
@@ -205,11 +207,11 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
 
                 .addPath(
 
-                        new BezierLine(new Pose(19.844, 84.941), new Pose(38.283, 94.127))
+                        new BezierLine(new Pose(144-18.5, 80.941), new Pose(144-38.283, 94.127))
 
                 )
 
-                .setLinearHeadingInterpolation(Math.toRadians(180), Math.toRadians(-115))
+                .setLinearHeadingInterpolation(Math.toRadians(0), Math.toRadians(-65))
 
                 .build();
 
@@ -219,11 +221,11 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
 
                 .addPath(
 
-                        new BezierLine(new Pose(38.283, 94.127), new Pose(44.254, 60.3))
+                        new BezierLine(new Pose(144-38.283, 94.127), new Pose(144-44.254, 57.707))
 
                 )
 
-                .setLinearHeadingInterpolation(Math.toRadians(-115), Math.toRadians(180))
+                .setLinearHeadingInterpolation(Math.toRadians(-65), Math.toRadians(0))
 
                 .build();
 
@@ -233,11 +235,11 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
 
                 .addPath(
 
-                        new BezierLine(new Pose(44.254, 60.3), new Pose(22.654, 60.3))
+                        new BezierLine(new Pose(144-44.254, 57.707), new Pose(144-21, 57.883))
 
                 )
 
-                .setLinearHeadingInterpolation(Math.toRadians(180), Math.toRadians(180))
+                .setLinearHeadingInterpolation(Math.toRadians(0), Math.toRadians(0))
 
                 .setTimeoutConstraint(500)
 
@@ -249,22 +251,24 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
 
                 .addPath(
 
-                        new BezierLine(new Pose(22.654, 60.3), new Pose(41.268, 95.532))
+                        new BezierLine(new Pose(144-21, 57.883), new Pose(144-41.268, 95.532))
 
                 )
 
-                .setLinearHeadingInterpolation(Math.toRadians(180), Math.toRadians(-115))
+                .setLinearHeadingInterpolation(Math.toRadians(0), Math.toRadians(-65))
 
                 .build();
 
         escape = follower.pathBuilder()
                 .addPath(
-                        new BezierLine(new Pose(41.746, 92.873), new Pose(22.280, 54.645))
+                        new BezierLine(new Pose(144-41.746, 92.873), new Pose(144-22.280, 54.645))
                 )
-                .setLinearHeadingInterpolation(Math.toRadians(-115), Math.toRadians(-115))
+                .setLinearHeadingInterpolation(Math.toRadians(-65), Math.toRadians(-65))
                 .build();
 
     }
+
+
 
     public void onerotation(boolean left) {
 
@@ -276,6 +280,9 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
         revolverTarget += left? +Globals.revolver.oneRotation : -Globals.revolver.oneRotation;
 
     }
+//hao sucks
+    //hao is the worst programmer ive ever seen bro uses chat gpt for everytihng
+
 
     public void getPattern() {
 
@@ -332,6 +339,8 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
         limelight.stop();
 
     }
+
+
 
     public boolean ballcases(int pickupnum, boolean comingin) {
 
@@ -487,54 +496,91 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
 
 
 
+
+
     ///////////////////////////////////////////////
 
 
 
     public class intakesubsys extends SubsystemBase {
+
         private final Motor intake, revolver;
 
+
+
         public intakesubsys(HardwareMap map) {
+
             intake = new Motor(map, "intake");
+
             intake.setRunMode(Motor.RunMode.RawPower);
+
             intake.setZeroPowerBehavior(Motor.ZeroPowerBehavior.BRAKE);
+
             intake.set(0.0);
 
+
+
             revolver = new Motor(hardwareMap, "revolver", 28, 1150);
+
             revolver.setRunMode(Motor.RunMode.RawPower);
+
             revolver.resetEncoder();
 
+
+
             revolverPID = new PIDFController(Globals.revolver.revolverKP, Globals.revolver.revolverKI, Globals.revolver.revolverKD, Globals.revolver.revolverKF);
+
             revolverPID.setTolerance(0);
 
-            intakedistone = hardwareMap.get(DistanceSensor.class, "colour1");
-            intakedisttwo = hardwareMap.get(DistanceSensor.class, "colour2");
-            launcherdist = hardwareMap.get(DistanceSensor.class, "name");//todo
+
+
+            distanceSensor = hardwareMap.get(DistanceSensor.class, "colour1");
+
+            secondDistanceSensor = hardwareMap.get(DistanceSensor.class, "colour2");
+
         }
 
+
+
         public void intakeon() {
+
             intake.set(Globals.intakePower);
+
             ballcount = 0;
+
         }
 
         public void intakeoff() {
+
             intake.set(0);
+
             ballcount = 0;
+
         }
+
 
 
         @Override
         public void periodic() {
+
             revolverPID.setTolerance(0);
             revolverPID.setPIDF(Globals.revolver.revolverKP, Globals.revolver.revolverKI, Globals.revolver.revolverKD, Globals.revolver.revolverKF);
 
             revolverPower = revolverPID.calculate(revolver.getCurrentPosition(), revolverTarget);
+
             revolver.set(revolverPower);
 
-            if (!revolverReady && Math.abs(Math.abs(revolver.getCurrentPosition() - previousRevolverPosition) - Globals.revolver.oneRotation) < 5) {
-                revolverReady = true;
+
+
+            if (!revolverReady && Math.abs(Math.abs(revolver.getCurrentPosition() - previousRevolverPosition) - Globals.revolver.oneRotation) < 4) {
+
+                revolverReady = true;;//detect if the rotation is done
+
             }
+
         }
+
+
 
         public void sort(int pickupnum){//1 = ppg 2 pgp 3 gpp,
             telemetry.addData("", ballcount);
@@ -556,7 +602,7 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
 
             if (ballcount < 2) {
 
-                if ((intakedistone.getDistance(DistanceUnit.CM) < 3 || intakedisttwo.getDistance(DistanceUnit.CM) < 3) && revolverReady) {
+                if ((distanceSensor.getDistance(DistanceUnit.CM) < 3 || secondDistanceSensor.getDistance(DistanceUnit.CM) < 3) && revolverReady) {
 
                     if (pattern == 1) {
 
@@ -647,33 +693,59 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
                 }
 
             }
+
         }
+
     }
 
     public static class froggyeat extends CommandBase {
+
         private final intakesubsys intake;
+
         private int pickupnum;
 
+
+
         public froggyeat(intakesubsys intake, int pickupnum) {
+
             this.intake = intake;
+
             this.pickupnum = pickupnum;
+
             addRequirements(intake);
+
         }
 
+
+
         @Override
+
         public void initialize() {
+
             intake.intakeon();
+
         }
 
+
+
         @Override
+
         public void execute() {
+
             intake.sort(pickupnum);
+
         }
 
+
+
         @Override
+
         public void end(boolean interrupted) {
+
             intake.intakeoff();
+
         }
+
     }
 
 
@@ -782,7 +854,7 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
 
                 for (AprilTagDetection d : detections) {
 
-                    if (d.ftcPose != null && d.id == 20) {//blue IS 20 red IS 24
+                    if (d.ftcPose != null && d.id == 24) {//blue IS 20 red IS 24
 
                         distance = d.ftcPose.range;
 
@@ -882,6 +954,7 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
 
         private void shooting(){
             if (timer.seconds() < Globals.autotimers.rotationtime + 0.1) {
+
                 eject.turnToAngle(Globals.pushServo.eject);
 
             }
@@ -925,15 +998,25 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
 
 
         private void launch(int shootnum) {
+
             telemetry.addData("time", timer.seconds());
+
             telemetry.addData("balls", ballsshot);
+
             telemetry.update();
+
+
+
 
 
             if (ballsshot < 3) {
                 launcher1.set(feedforwardPower);
+
                 launcher2.set(feedforwardPower);
+
+
                 if (timer.seconds() > Globals.autotimers.rotationtime) {
+
                     if (pattern == 1) {
 
                         if (shootnum == 0) {
@@ -1260,7 +1343,7 @@ public class FROGTONOMOUSBLUE extends CommandOpMode {
 
         follower = Constants.createFollower(hardwareMap);
 
-        follower.setStartingPose(new Pose(18.790, 119.941, Math.toRadians(-126)));
+        follower.setStartingPose(new Pose(144-18.790, 119.941, Math.toRadians(-54)));
 
         telemetry.update();
 
