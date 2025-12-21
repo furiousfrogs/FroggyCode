@@ -666,7 +666,6 @@ public class FROGTONOMOUSBLUELEFT extends CommandOpMode {
         public void visionend(){
             limelight.stop();
         }
-
     }
 
     public static class froggyvision extends CommandBase{
