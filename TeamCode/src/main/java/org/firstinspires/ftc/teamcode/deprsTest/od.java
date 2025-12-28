@@ -126,6 +126,7 @@ public class od extends OpMode {
     private GoBildaPinpointDriver pinpoint;
     Limelight3A limelight;
     Pose2D pose2D;
+    private boolean clockwise;
 
     @Override
     public void init() {
@@ -222,12 +223,12 @@ public class od extends OpMode {
         drive();
         revolver();
         launch3();
-
+        tangentVelocity();
 
 
         feedforwardPower = ff.calculate(RPM, power);
-        telemetry.addData("be", bearing);
-        telemetry.addData("range", range);
+//        telemetry.addData("be", bearing);
+//        telemetry.addData("range", range);
     }
 
     public void limelight() {
@@ -288,7 +289,7 @@ public class od extends OpMode {
         t1.turnToAngle(turretTarget);
         t2.turnToAngle(turretTarget);
 
-        dist = Math.pow(Math.pow(pose2D.getX(DistanceUnit.INCH) - 16, 2) + Math.pow(135 - pose2D.getY(DistanceUnit.INCH), 2), 0.5);
+        dist = Math.pow(Math.pow(pose2D.getX(DistanceUnit.METER) - 16, 2) + Math.pow(135 - pose2D.getY(DistanceUnit.METER), 2), 0.5);
         power = (2547.5 * pow(2.718281828459045, (0.0078 * dist))) / Globals.launcher.launcherTransformation;
         aligned = robotFieldHeading < fieldAngle + 90 && robotFieldHeading > fieldAngle - 90;
 
@@ -300,8 +301,24 @@ public class od extends OpMode {
 
     }
 
-    private void hood() {
-
+    private void tangentVelocity() {
+        double targetAngle = 5 + Math.toDegrees(Math.atan2(144 - pose2D.getY(DistanceUnit.INCH), pose2D.getX(DistanceUnit.INCH)));
+        double fieldAngle = 180 - targetAngle;
+        double robotFieldHeading = pose2D.getHeading(AngleUnit.DEGREES) < 0 ? 180 + (180 - Math.abs(pose2D.getHeading(AngleUnit.DEGREES))) : pose2D.getHeading(AngleUnit.DEGREES);
+        double netVelocityMagnitude = Math.sqrt(Math.pow(pinpoint.getVelX(DistanceUnit.METER), 2) + Math.pow(pinpoint.getVelY(DistanceUnit.METER), 2));
+        double netVelocityAngle = Math.toDegrees(Math.atan2(pinpoint.getVelY(DistanceUnit.METER), pinpoint.getVelX(DistanceUnit.METER)));
+        double angle = Math.abs(netVelocityAngle - fieldAngle);
+        double tangentVelocity = netVelocityMagnitude * Math.sin(Math.toDegrees(angle));
+        double normalVelocity = netVelocityMagnitude * Math.cos(Math.toDegrees(angle));
+        if (netVelocityAngle < fieldAngle) {
+            clockwise = true;
+        } else { clockwise = false; }
+        telemetry.addData("clockwise", clockwise);
+        telemetry.addData("normalVelocity", normalVelocity);
+        telemetry.addData("tangentVelocity", tangentVelocity);
+        telemetry.addData("netVelocityMagnitude", netVelocityMagnitude);
+        telemetry.addData("netVelocityAngle", netVelocityAngle);
+        telemetry.update();
     }
     private void calculateRPM() {
         double currentTime = getRuntime();
