@@ -31,6 +31,8 @@ import com.seattlesolvers.solverslib.hardware.motors.Motor;
 import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
+import org.firstinspires.ftc.robotcore.external.navigation.Pose2D;
+import org.firstinspires.ftc.robotcore.external.navigation.Pose3D;
 import org.firstinspires.ftc.robotcore.external.navigation.UnnormalizedAngleUnit;
 import org.firstinspires.ftc.teamcode.hardware.Globals;
 import org.firstinspires.ftc.vision.VisionPortal;
@@ -84,6 +86,7 @@ public class od extends OpMode {
     // ----- launcher -----
     private double RPM;
     private double previousRPM = 0;
+    private double previousPreviousRPM = 0;
     private double lastTime;
     private int lastPosition;
 
@@ -93,6 +96,7 @@ public class od extends OpMode {
 
     //index 0 is the top, 1 is the left, 2 is the right when looking from the front view
     private List<String> revolverState = new ArrayList<>(Arrays.asList("EMPTY", "EMPTY", "EMPTY"));
+
     private enum shoot3 {
         idle,
         pushin,
@@ -100,7 +104,10 @@ public class od extends OpMode {
         rotateFailed,
         setup,
 
-    } shoot3 currentshoot3 = shoot3.idle;
+    }
+
+    shoot3 currentshoot3 = shoot3.idle;
+
 
     // ---- misc imports ----
     private VisionPortal visionPortal;
@@ -117,9 +124,19 @@ public class od extends OpMode {
 
     private MecanumDrive drive;
     private GoBildaPinpointDriver pinpoint;
+    Limelight3A limelight;
+    Pose2D pose2D;
+
     @Override
     public void init() {
 
+        //limelight = hardwareMap.get(Limelight3A.class, "limelight");
+//
+        //limelight.setPollRateHz(20);
+//
+        //limelight.pipelineSwitch(0);
+//
+        //limelight.start();
         // ----- drive -----
         fl = new Motor(hardwareMap, "fl");
         fl.setRunMode(Motor.RunMode.RawPower);
@@ -134,12 +151,12 @@ public class od extends OpMode {
         br.setRunMode(Motor.RunMode.RawPower);
         br.setZeroPowerBehavior(Motor.ZeroPowerBehavior.BRAKE);
         drive = new MecanumDrive(fl, fr, bl, br);
+        pinpoint = hardwareMap.get(GoBildaPinpointDriver.class, "pinpoint");
+        pinpoint.setEncoderResolution(GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD);
         pinpoint.setEncoderDirections(GoBildaPinpointDriver.EncoderDirection.FORWARD, GoBildaPinpointDriver.EncoderDirection.FORWARD);
         pinpoint.setOffsets(-3.75, 5.25, DistanceUnit.INCH);
-        pinpoint.setEncoderResolution(GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD);
-        pinpoint.setHeading(0, AngleUnit.RADIANS);
-        pinpoint.setPosX(0, DistanceUnit.METER);
-        pinpoint.setPosY(0, DistanceUnit.METER);
+
+        pinpoint.setPosition(new Pose2D(DistanceUnit.INCH, 33, 135, AngleUnit.DEGREES, 90));
         // ----- launcher -----
         launcher1 = new Motor(hardwareMap, "l1", 28, 6000);
         launcher1.setRunMode(Motor.RunMode.RawPower);
@@ -176,24 +193,9 @@ public class od extends OpMode {
 
 
         // ---- gate ----
-        gate = new SimpleServo(hardwareMap,"gate", 0, 300, AngleUnit.DEGREES);
+        gate = new SimpleServo(hardwareMap, "gate", 0, 300, AngleUnit.DEGREES);
         gate.turnToAngle(Globals.closeGate);
 
-        // ----- build ov9281 -----
-        tagProcessor = new AprilTagProcessor.Builder()
-                .setDrawAxes(true)
-                .setDrawTagID(true)
-                .setDrawTagOutline(true)
-                .setDrawCubeProjection(true)
-                .setLensIntrinsics(914.101, 914.101, 645.664, 342.333)
-                .build();
-
-        visionPortal = new VisionPortal.Builder()
-                .addProcessor(tagProcessor)
-                .setCamera(hardwareMap.get(WebcamName.class, "ov9281"))
-                .setStreamFormat(VisionPortal.StreamFormat.MJPEG)
-                .setCameraResolution(new android.util.Size(1280, 720))
-                .build();
         gamepadEx2 = new GamepadEx(gamepad2);
         gamepadEx1 = new GamepadEx(gamepad1);
 
@@ -214,80 +216,81 @@ public class od extends OpMode {
         drive();
         pinpointTests();
         autoaimodo();
+        //limelight();
+        calculateRPM();
+        intakeSystem();
+        drive();
+        revolver();
+        launch3();
+
+
+
+        feedforwardPower = ff.calculate(RPM, power);
         telemetry.addData("be", bearing);
         telemetry.addData("range", range);
     }
 
-    public void drive(){
-        drive.driveRobotCentric(gamepadEx1.getLeftX(), gamepadEx1.getLeftY(), gamepadEx1.getTrigger(GamepadKeys.Trigger.RIGHT_TRIGGER)-gamepadEx1.getTrigger(GamepadKeys.Trigger.LEFT_TRIGGER));
+    public void limelight() {
+        LLResult result = limelight.getLatestResult();
+        if (result != null && result.isValid()) {
+
+            if (result.getStaleness() < 500) {
+
+                List<LLResultTypes.FiducialResult> tags = result.getFiducialResults();
+
+                if (!tags.isEmpty()) {
+
+                    for (LLResultTypes.FiducialResult tag : tags) {
+
+                        int id = tag.getFiducialId();
+
+                        if (id == 20) {
+                            telemetry.addData("tx", result.getTx());
+                            telemetry.addData("ty", result.getTy());
+                            Pose3D botpose = result.getBotpose();
+                            telemetry.addData("Botpose", botpose.toString());
+
+                        }
+
+                    }
+
+                }
+
+            }
+        }
     }
 
-    public void pinpointTests(){
-        telemetry.addData("x", pinpoint.getPosX(DistanceUnit.METER));
-        telemetry.addData("y", pinpoint.getPosY(DistanceUnit.METER));
-        telemetry.addData("heading", pinpoint.getHeading(UnnormalizedAngleUnit.DEGREES));
-        telemetry.update();
+    public void drive() {
+        if (gamepadEx1.getButton(GamepadKeys.Button.X)) {
+            pinpoint.setPosition(new Pose2D(DistanceUnit.INCH, 33, 135, AngleUnit.DEGREES, 90));
+        }
+        drive.driveRobotCentric(-gamepadEx1.getLeftX(), -gamepadEx1.getLeftY(), gamepadEx1.getTrigger(GamepadKeys.Trigger.LEFT_TRIGGER) - gamepadEx1.getTrigger(GamepadKeys.Trigger.RIGHT_TRIGGER));
     }
-    private void autoaimodo(){
-//125 = 180 degrees
-        turretTarget = -0.6944* (pinpoint.getHeading(AngleUnit.DEGREES) <= 180 ? pinpoint.getHeading(AngleUnit.DEGREES) : pinpoint.getHeading(AngleUnit.DEGREES) - 360) + 183;
+
+    public void pinpointTests() {
+        telemetry.update();
+
+        pose2D = pinpoint.getPosition();
+        telemetry.addData("X coordinate (IN)", pose2D.getX(DistanceUnit.INCH));
+        telemetry.addData("Y coordinate (IN)", pose2D.getY(DistanceUnit.INCH));
+        telemetry.addData("Heading angle (DEGREES)", pose2D.getHeading(AngleUnit.DEGREES));
+        pinpoint.update();
+    }
+    private void autoaimodo() {
+        double targetAngle = 5 + Math.toDegrees(Math.atan2(144 - pose2D.getY(DistanceUnit.INCH), pose2D.getX(DistanceUnit.INCH)));
+        double fieldAngle = 180 - targetAngle;
+        double robotFieldHeading = pose2D.getHeading(AngleUnit.DEGREES) < 0 ? 180 + (180 - Math.abs(pose2D.getHeading(AngleUnit.DEGREES))) : pose2D.getHeading(AngleUnit.DEGREES);
+        if (robotFieldHeading < fieldAngle + 90 && robotFieldHeading > fieldAngle - 90) {
+            turretTarget = 0.6944 * (robotFieldHeading - fieldAngle) + 183;
+        } else {
+            turretTarget = 183;
+        }
         t1.turnToAngle(turretTarget);
         t2.turnToAngle(turretTarget);
 
-
-    }
-    private void autoaimcam() {
-
-        ff.setPIDF(Globals.launcher.flykP, Globals.launcher.flykI, Globals.launcher.flykD, Globals.launcher.flykF);
-        turretPIDF.setPIDF(Globals.turret.turretKP, Globals.turret.turretKI, Globals.turret.turretKD, Globals.turret.turretKF);
-
-        boolean pad = gamepadEx2.getButton(GamepadKeys.Button.DPAD_DOWN);
-        if (pad && !prevPad) {
-            if (autoAimEnabled) {
-                visionPortal.setProcessorEnabled(tagProcessor, false);
-                autoAimEnabled = false;
-
-            } else {
-                visionPortal.setProcessorEnabled(tagProcessor, true);
-                autoAimEnabled = true;
-            }
-        }
-        prevPad = pad;
-
-        boolean lb = gamepad2.left_bumper;
-        boolean rb = gamepad2.right_bumper;
-
-        List<AprilTagDetection> detections = tagProcessor.getDetections();
-        if (!(lb || rb) && autoAimEnabled) {
-            if (detections != null && !detections.isEmpty()) {
-                for (AprilTagDetection d : detections) {
-                    if (d.ftcPose != null) {
-                        notag = false;
-                        range = d.ftcPose.range;
-                        bearing = d.ftcPose.bearing;
-                    }
-                }
-            } else if (!notag){
-                notag = true;
-                cameraTimer.reset();
-            }
-        } else if (lb ^ rb) {
-            aligned = false;
-            turretTarget -= lb ? +Globals.turret.nudge : -Globals.turret.nudge; //THIS IS NEGATIVE
-        } else if (!autoAimEnabled) {
-            aligned = true;
-            power = Globals.targetRPM;
-        }
-        if (!notag || cameraTimer.seconds() < 1) {
-            power = (2547.5 * pow(2.718281828459045, (0.0078 * range))) / Globals.launcher.launcherTransformation; // here
-            aligned = Math.abs(bearing) <= Globals.turret.turretTol;
-            double delta = aligned ? 0.0 : turretPIDF.calculate(bearing, -Globals.turret.turretLocationError);
-            turretTarget += delta; //THIS IS POSITIVE
-        } else {
-            power = Globals.targetRPM;
-            aligned = false;
-            bearing = 0;
-        }
+        dist = Math.pow(Math.pow(pose2D.getX(DistanceUnit.INCH) - 16, 2) + Math.pow(135 - pose2D.getY(DistanceUnit.INCH), 2), 0.5);
+        power = (2547.5 * pow(2.718281828459045, (0.0078 * dist))) / Globals.launcher.launcherTransformation;
+        aligned = robotFieldHeading < fieldAngle + 90 && robotFieldHeading > fieldAngle - 90;
 
         if (turretTarget >= 245) {
             turretTarget = 245;
@@ -295,8 +298,202 @@ public class od extends OpMode {
             turretTarget = 120;
         }
 
-        t1.turnToAngle(turretTarget);
-        t2.turnToAngle(turretTarget);
+    }
+
+    private void hood() {
 
     }
+    private void calculateRPM() {
+        double currentTime = getRuntime();
+        int currentPosition = launcher1.getCurrentPosition();
+
+        double deltaTime = currentTime - lastTime;
+        int deltaTicks = currentPosition - lastPosition;
+
+        if (deltaTime > 0.02) {
+            previousRPM = RPM;
+            double revs = (double) deltaTicks / 28.0; // GoBILDA CPR
+            RPM = (revs / deltaTime) * 60.0;
+
+            lastTime = currentTime;
+            lastPosition = currentPosition;
+        }
+    }
+    public void launch3() {
+        ang = (ejectAnalog.getVoltage()/3.3) * 360;
+        dist = launchDistanceSensor.getDistance(DistanceUnit.CM);
+
+        if (gamepadEx2.getButton(GamepadKeys.Button.CROSS) && !prevCross) {
+            if (!shootcycle) {
+                currentshoot3 =  shoot3.pushin;
+                eject.turnToAngle(Globals.pushServo.defualt);
+                set.turnToAngle(Globals.launcher.downset);
+                pushupTimer.reset();
+
+
+                shootcycle = true;
+                rotated = false;
+            } else {
+                shootcycle = false;
+                currentshoot3 =  shoot3.idle;
+                eject.turnToAngle(Globals.pushServo.defualt);
+                set.turnToAngle(Globals.launcher.downset);
+
+                launcher1.set(0);
+                launcher2.set(0);
+            }
+        }prevCross = gamepadEx2.getButton(GamepadKeys.Button.CROSS);
+        if (shootcycle) {
+            gate.turnToAngle(Globals.openGate);
+            if (Collections.frequency(revolverState, "EMPTY") < 3) {
+                launcher1.set(feedforwardPower);
+                launcher2.set(feedforwardPower);
+                switch (currentshoot3) {
+                    case pushin:
+                        if (pushupTimer.seconds() > 0.5) {
+                            eject.turnToAngle(Globals.pushServo.eject);
+                            if ((ang > 176 && ang < 210)|| dist < 5.5) {
+                                eject.turnToAngle(Globals.pushServo.defualt);
+                                rotated = false;
+                                currentshoot3 =  shoot3.rotate;
+
+
+                            }
+                        }
+                        break;
+
+                    case rotate: //TODO fix this
+
+                        eject.turnToAngle(Globals.pushServo.defualt);
+
+                        if (ang < 168 && !rotated) {
+                            oneRotationRevolver(true);
+                            Collections.rotate(revolverState, 1);
+                            revolverTimer.reset();
+                            revolverReady = false;
+                            rotated = true;
+
+                        }
+                        if (Math.abs(Math.abs(revolver.getCurrentPosition() - previousRevolverPosition) - Globals.revolver.oneRotation) < 10 && rotated) {
+                            currentshoot3 =  shoot3.setup;
+                        } else if (rotated && revolverTimer.seconds() > 1 && Math.abs(revolver.getCurrentPosition() - revolverTarget) < 90){
+                            currentshoot3 =  shoot3.rotateFailed;
+                            rotated = false;
+                        }
+                        break;
+                    case rotateFailed:
+                        if (!rotated) {
+                            rotated = true;
+                            oneRotationRevolver(false);
+                            Collections.rotate(revolverState, -1);
+                        }
+
+                        if (Math.abs(Math.abs(revolver.getCurrentPosition() - previousRevolverPosition) - Globals.revolver.oneRotation) < 10 && rotated) {
+                            eject.turnToAngle(Globals.pushServo.eject);
+                            if ((ang > 180 && ang < 210) || dist < 5.5) {
+                                rotated = false;
+                                currentshoot3 =  shoot3.rotate;
+                            }
+                        }
+                        break;
+
+                    case setup:
+                        if (aligned && Math.abs(power - RPM) < Globals.launcher.launcherTol) {
+                            set.turnToAngle(Globals.launcher.upset);
+                        }
+                        if (Math.abs(previousRPM - RPM) > 300 && set.getPosition() > 0.5) {
+                            currentshoot3 =  shoot3.pushin;
+                            revolverState.set(0, "EMPTY");
+                            set.turnToAngle(Globals.launcher.downset);
+                            pushupTimer.reset();
+
+                            rotated = false;
+                        }
+                        break;
+                    default:
+
+                        break;
+                }
+
+            } else {
+
+                currentshoot3 =  shoot3.idle;
+                shootcycle = false;
+                launcher1.set(0);
+                launcher2.set(0);
+            }
+
+
+        } else {
+            gate.turnToAngle(Globals.closeGate);
+        }
+
+
+    }
+    public void intakeSystem() {
+        revolverPID.setTolerance(0);
+        revolverPID.setPIDF(Globals.revolver.revolverKP, Globals.revolver.revolverKI, Globals.revolver.revolverKD, Globals.revolver.revolverKF);
+        revolverPower = revolverPID.calculate(revolver.getCurrentPosition(), revolverTarget);
+        revolver.set(revolverPower);
+        revolverTarget += (int) ((gamepadEx2.getTrigger(GamepadKeys.Trigger.RIGHT_TRIGGER) - gamepadEx2.getTrigger(GamepadKeys.Trigger.LEFT_TRIGGER)) * Globals.revolver.revolverNudge);
+
+        if (gamepadEx1.getButton(GamepadKeys.Button.TRIANGLE) || gamepadEx2.getButton(GamepadKeys.Button.TRIANGLE)) {
+            intake.set(Globals.intakePower);
+        } else if (gamepadEx1.getButton(GamepadKeys.Button.SQUARE)) {
+            intake.set(-Globals.intakePower);
+        } else {
+            intake.set(0);
+        }
+    }
+    public void oneRotationRevolver(boolean left) {
+        // PID setup
+
+        // PID setup
+        revolverPID.setTolerance(0);
+        revolverPID.setPIDF(Globals.revolver.revolverKP, Globals.revolver.revolverKI, Globals.revolver.revolverKD, Globals.revolver.revolverKF);
+        previousRevolverPosition = revolver.getCurrentPosition();
+        revolverTarget += left ? +Globals.revolver.oneRotation : -Globals.revolver.oneRotation;
+
+    }
+    public void revolver() {
+        double cDist1 = distanceSensor.getDistance(DistanceUnit.CM);
+        double cDist2 = secondDistanceSensor.getDistance(DistanceUnit.CM);
+        boolean ballExists = cDist1 < 3 || cDist2 < 3;
+
+        if (!revolverReady &&
+                Math.abs(Math.abs(revolver.getCurrentPosition() - previousRevolverPosition) - Globals.revolver.oneRotation) < 10) {
+            revolverReady = true;
+        }
+        if (gamepadEx2.getButton(GamepadKeys.Button.CIRCLE) && !revolverOn && !prevCircle) {
+            revolverState.set(0, "P");
+            revolverState.set(1, "P");
+            revolverState.set(2, "P");
+        }
+
+        if (gamepadEx2.getButton(GamepadKeys.Button.PS) && !revolverOn && !prevPS) {
+            revolverState.set(0, "EMPTY");
+            revolverState.set(1, "EMPTY");
+            revolverState.set(2, "EMPTY");
+        }
+        prevPS = gamepadEx2.getButton(GamepadKeys.Button.PS);
+        prevCircle = gamepadEx2.getButton(GamepadKeys.Button.CIRCLE);
+
+        if (!shootcycle) {// "P", "G", or "EMPTY"
+
+            if (gamepadEx2.getButton(GamepadKeys.Button.SQUARE) && !prevSquare2 && revolverReady) {
+                revolverReady = false;
+                oneRotationRevolver(true);
+                Collections.rotate(revolverState, 1);
+            }
+            if (ballExists && revolverReady && Collections.frequency(revolverState, "P") < 3 && !gamepadEx2.getButton(GamepadKeys.Button.SQUARE)) {
+                revolverReady = false;
+                revolverState.set(2, "P");
+                oneRotationRevolver(true);
+                Collections.rotate(revolverState, 1);
+            }
+        } prevSquare2 = gamepadEx2.getButton(GamepadKeys.Button.SQUARE);
+    }
+
+
+
 }
