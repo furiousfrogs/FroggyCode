@@ -1,0 +1,23 @@
+Plans to implement Kalman filter
+
+Run 1d Kalman on x,y,heading (Treat them as independent for now because coupled version is hard to implement)
+
+------- FOR X --------
+x = initial_estimate
+p = initial_variance
+q = model covariance
+r = sensor covariance
+
+while true:
+    u = get_model_output() //from odometry
+    x_pred = x + u
+    p_pred = p + q
+
+    //update
+
+    z = get_sensor_output() //from limelight camera
+
+    K = p_pred / (p_pred + r)
+    x = x_pred + K * (z - x_pred)
+    p = (1 - K) * p_pred
+
